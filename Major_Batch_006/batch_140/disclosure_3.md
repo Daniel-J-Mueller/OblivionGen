@@ -30,7 +30,7 @@
 
 **4. Integration with External Services:**
 
-*   **Wishlist Import:** Ability to import wishlists from other platforms (Amazon, etc.).
+*   **Wishlist Import:** Ability to import wishlists from other platforms.
 *   **Gift Registry Integration:** Integration with gift registry services for weddings, baby showers, etc.
 *    **Crowdfunding element**: Allow contributors to suggest a price for the item if the item does not have a set price. The contribution threshold is then based on the suggested price.
 
