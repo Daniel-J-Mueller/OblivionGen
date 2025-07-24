@@ -1,58 +1,51 @@
-# 11182391
+# 8954444
 
-## Predictive Resource Allocation via Virtual Machine "Shadowing"
+**Adaptive Semantic Highlighting & Contextual Expansion**
 
-**Concept:** Proactively allocate resources to host computing devices *before* demand surges, by creating “shadow” virtual machines that mirror production VMs, but operate at significantly reduced capacity, constantly monitoring resource usage patterns.
+**Concept:** Extend the search functionality beyond simple term matching to understand *semantic relationships* within the text and dynamically highlight/expand content based on user interaction.
 
-**Specifications:**
+**Specs:**
 
-1.  **Shadow VM Creation:**
-    *   Upon deployment of a production VM, automatically deploy a corresponding "shadow" VM on a different host (or zone).
-    *   Shadow VM configuration: Initial resource allocation (CPU, memory, network) is 5-10% of the production VM’s allocation.
-    *   Shadow VMs use the same OS image and applications as production VMs, but operate with synthetic or minimal workloads. The goal is to replicate operational behavior, not production output.
-    *   Implement a configurable "replication fidelity" setting to adjust the level of synthetic workload applied to shadow VMs.
+*   **Core Module:** Semantic Analysis Engine (SAE). Utilizes a pre-trained large language model (LLM) optimized for ebook content. LLM operates locally on the device (or optionally utilizes a privacy-preserving cloud connection).
+*   **Highlighting Modes:**
+    *   *Standard:* Existing term-based highlighting.
+    *   *Semantic:* Highlights not just the search term, but semantically related concepts.  SAE identifies synonyms, hyponyms (more specific terms), hypernyms (more general terms), and related entities within a configurable radius (e.g., +/- 50 words) of the search term.  Highlight colors differentiate the original search term vs. related concepts.
+    *   *Contextual:* Expands highlights to entire sentences or paragraphs containing the search term and its related concepts, providing greater context.
+*   **Interaction Layer:**
+    *   *Tap & Expand:* Tapping a highlighted term (original or related) triggers a popup displaying a brief definition/explanation sourced from a local/cloud knowledge base.
+    *   *Swipe & Explore:* Swiping on a highlighted term initiates a dynamic exploration interface.  This interface displays:
+        *   A ‘concept map’ visualizing semantic relationships between the search term and related concepts.
+        *   Links to external resources (Wikipedia, dictionary entries, etc.).
+        *   An option to perform a new search based on a related concept.
+*   **Dynamic Indexing:**
+    *   The SAE continuously analyzes ebook content in the background, building a ‘semantic index’ alongside the existing term index.  This semantic index stores relationships between concepts, enabling faster semantic searches.
+    *   User interactions (taps, swipes) contribute to refining the semantic index, personalizing the experience.
+*   **Privacy Considerations:**
+    *   All semantic analysis is performed locally by default.
+    *   Optional cloud integration uses differential privacy techniques to protect user data.
 
-2.  **Real-time Monitoring & Pattern Identification:**
-    *   Continuously monitor key performance indicators (KPIs) – CPU utilization, memory usage, disk I/O, network bandwidth – from both production and shadow VMs.
-    *   Employ time-series analysis (e.g., ARIMA, Exponential Smoothing) to identify predictable usage patterns – daily, weekly, monthly cycles.
-    *   Develop anomaly detection algorithms to identify deviations from established patterns, signaling potential demand surges.
-
-3.  **Predictive Resource Scaling:**
-    *   Based on identified patterns and anomalies, proactively scale resources on the *host* of the production VM *before* the demand spike hits.
-    *   Scaling logic:
-        *   If a predictable pattern indicates a surge, increase CPU/memory allocation on the host by a calculated percentage.
-        *   If an anomaly is detected, implement a more aggressive scaling strategy, potentially over-provisioning resources.
-    *   Implement a feedback loop to fine-tune scaling parameters based on observed performance and resource utilization.
-
-4.  **Host Affinity & Dynamic Migration:**
-    *   Configure a preference for shadow VMs to reside on hosts with spare capacity.
-    *   If a host is approaching capacity, dynamically migrate shadow VMs to less loaded hosts.
-    *   Upon significant sustained load increase on a production VM’s host, proactively migrate *both* the production and shadow VMs to a new, less loaded host.
-
-5.  **Infrastructure Components:**
-    *   **Monitoring Agent:** Deployed on each host, collecting KPI data from VMs.
-    *   **Pattern Analysis Engine:** Centralized service performing time-series analysis and anomaly detection.
-    *   **Resource Orchestrator:** Service responsible for scaling resources and migrating VMs.
-    *   **Host Information Database:** Stores host capacity, current utilization, and shadow VM placement.
-    *   **API Interface:** Allows integration with existing monitoring and orchestration tools.
-
-**Pseudocode (Resource Orchestrator - Scaling Logic):**
+**Pseudocode (SAE – Semantic Search):**
 
 ```
-function scale_resources(host_id, vm_id, predicted_load_increase) {
-  host_info = get_host_info(host_id)
-  current_capacity = host_info.cpu_capacity + host_info.memory_capacity
-  available_capacity = current_capacity - host_info.current_utilization
+function semanticSearch(query, ebookText, semanticIndex):
+  // 1. LLM-based concept extraction
+  concepts = extractConcepts(query, ebookText) // returns list of related concepts & weights
 
-  if (predicted_load_increase > available_capacity) {
-    // Request additional resources (e.g., from cloud provider)
-    request_resources(predicted_load_increase - available_capacity)
-    //Update host_info with new capacity
+  // 2. Retrieve relevant passages using both term & semantic indices
+  termResults = searchTermIndex(query, ebookText)
+  semanticResults = searchSemanticIndex(concepts, semanticIndex)
 
-  }
-  //Adjust CPU/Memory allocations on the host
-  allocate_resources(host_id, vm_id, predicted_load_increase)
-}
+  // 3. Combine & rank results (weighted scoring based on relevance)
+  combinedResults = mergeResults(termResults, semanticResults)
+
+  // 4. Highlight results in ebookText
+  highlightResults(combinedResults, ebookText)
+
+  return ebookText // with highlighted semantic results
 ```
 
-**Novelty:** This system differentiates itself from traditional reactive scaling solutions by leveraging “shadow” VMs to proactively predict resource needs *before* they materialize, improving performance and reducing latency. It anticipates load based on the behavior of mirrored, low-intensity VMs, rather than solely responding to current load.
+**Hardware Considerations:**
+
+*   Sufficient onboard processing power (multi-core CPU, dedicated NPU) to run LLM efficiently.
+*   Increased memory capacity to store semantic index and LLM model.
+*   Fast storage (SSD) for quick access to ebook content and index.
