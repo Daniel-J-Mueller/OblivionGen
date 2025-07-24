@@ -1,81 +1,74 @@
-# 10469322
+# 11564036
 
-## Dynamic Packet Shaping with Predictive Behavioral Analysis
+## Adaptive Ultrasonic Field Shaping for Enhanced Presence Detection
 
-**Concept:** Extend rate limiting beyond simple size comparisons to incorporate predictive analysis of packet sequences, identifying potential amplification attacks *before* significant bandwidth is consumed. This system will proactively shape traffic based on learned behavioral profiles, rather than reactively limiting rates after a threshold is exceeded.
+**Concept:** Instead of relying solely on Doppler shift analysis of reflected ultrasonic waves, we can actively shape the ultrasonic field emitted by the loudspeaker to create "zones" of sensitivity within the environment. This allows for more precise detection and discrimination of movement, particularly in complex spaces or when multiple objects are present.
 
 **Specifications:**
 
-**I. Core Modules:**
+*   **Hardware:**
+    *   Loudspeaker Array: Replace the single loudspeaker with a phased array consisting of multiple ultrasonic transducers. Each transducer will be individually controllable in terms of amplitude and phase. Minimum 16 transducers, optimally 64 or 128.
+    *   Microphone Array: Complement the loudspeaker array with a corresponding microphone array. This allows for beamforming and improved signal-to-noise ratio. Minimum 4 microphones, optimally 16 or 32.
+    *   DSP/FPGA: Dedicated digital signal processing unit or field-programmable gate array for real-time control of the loudspeaker array and processing of microphone signals.
+*   **Software/Algorithm:**
+    *   Environment Mapping: System performs initial scan to build a rudimentary 3D map of the environment using the microphone and loudspeaker array. This can be accomplished by emitting a wideband ultrasonic sweep and analyzing the reflections.
+    *   Zone Definition: User or system defines zones within the mapped environment. Zones can be defined as areas of interest (e.g., doorway, seating area) or areas to ignore.
+    *   Beamforming & Steering: DSP/FPGA controls the amplitude and phase of each transducer in the loudspeaker array to create highly focused ultrasonic beams directed towards defined zones. This focuses the emitted energy, increasing sensitivity within those zones.
+    *   Null Steering: Simultaneously, the system creates nulls (areas of reduced sensitivity) in the ultrasonic field to minimize interference from reflections off static objects or areas outside the zones of interest.
+    *   Adaptive Beamforming: Implement an adaptive beamforming algorithm that continuously adjusts the ultrasonic field based on the real-time analysis of the microphone signals. This allows the system to compensate for changes in the environment (e.g., moving furniture) and improve detection accuracy.
+    *   Doppler Shift Analysis: Continue to utilize Doppler shift analysis of the reflected ultrasonic waves, but now focus specifically on signals originating from within the defined zones.
+    *   Multi-Frequency Emission: Experiment with emitting multiple ultrasonic frequencies simultaneously. Different frequencies may be more effective at detecting movement in different materials or under different conditions.
 
-*   **Packet Capture & Feature Extraction:** Module to capture inbound packets and extract relevant features:
-    *   Packet size (as in the original patent)
-    *   Inter-arrival time
-    *   Source/Destination IP/Port
-    *   Packet flags (SYN, ACK, etc.)
-    *   Payload entropy (measure of randomness – high entropy may indicate malicious data)
-*   **Behavioral Profile Database:**  Stores learned behavioral profiles for network addresses/applications.  Profiles contain:
-    *   Average packet size
-    *   Typical inter-arrival time distribution
-    *   Acceptable packet size variance
-    *   Allowed sequence patterns (e.g., TCP handshake completion)
-    *   Historical anomaly scores
-*   **Anomaly Detection Engine:** Compares incoming packets against established behavioral profiles.
-    *   Calculates an anomaly score based on deviations from expected behavior.
-    *   Employs machine learning algorithms (e.g., recurrent neural networks, Long Short-Term Memory networks) to predict expected packet sequences and identify anomalies.
-    *   Considers context (e.g., time of day, application type) when calculating the anomaly score.
-*   **Dynamic Shaping Module:** Adjusts packet transmission rates based on the anomaly score:
-    *   **Proactive Shaping:**  If the anomaly score exceeds a predefined threshold *before* significant bandwidth consumption, dynamically adjusts transmission rates for subsequent packets from the source.  This prevents amplification from taking hold.
-    *   **Granular Control:**  Instead of simply limiting rate, the module can:
-        *   **Delay Packets:** Introduce a variable delay based on the anomaly score.
-        *   **Prioritize Packets:** Prioritize legitimate traffic over potentially malicious traffic.
-        *   **Shape Packet Payload:**  Reduce payload size for anomalous packets (lossless compression or stripping non-essential data).
-*   **Feedback Loop:** Continuously updates behavioral profiles based on observed traffic patterns. This ensures the system adapts to evolving network conditions and reduces false positives.
-
-**II. Pseudocode:**
+**Pseudocode:**
 
 ```
-// Per Packet Processing
+// Initialization
+mapEnvironment()
+defineZones()
 
-function processPacket(packet) {
-  features = extractFeatures(packet)
-  profile = getProfile(features.sourceAddress)
+// Main Loop
+while (true) {
+    // 1. Shape Ultrasonic Field
+    shapeField(zones)
 
-  anomalyScore = calculateAnomalyScore(features, profile)
+    // 2. Emit Ultrasonic Signal
+    emitSignal()
 
-  if (anomalyScore > threshold) {
-    shapingParameters = determineShapingParameters(anomalyScore)
-    applyShaping(packet, shapingParameters)
-  }
+    // 3. Receive and Process Signals
+    receivedSignals = receiveSignals()
+    processedSignals = processSignals(receivedSignals)
 
-  updateProfile(features, anomalyScore) // continuous learning
+    // 4. Analyze Doppler Shift and Zone Activity
+    motionDetected = analyzeMotion(processedSignals)
+
+    // 5. Adaptive Adjustment
+    adjustField(motionDetected)
 }
 
-// Shaping Parameter Determination
-function determineShapingParameters(anomalyScore) {
-  // Example: Linear scaling with saturation
-  delay = min(anomalyScore * delayScaleFactor, maxDelay)
-  priority = max(1 - anomalyScore * priorityScaleFactor, minPriority)
-  return {delay: delay, priority: priority}
+//Helper Functions
+function shapeField(zones) {
+    for each zone {
+        calculate transducer phase/amplitude to focus energy on zone
+        calculate transducer phase/amplitude to create nulls outside zone
+        apply settings to transducer array
+    }
 }
 
-// Profile Update
-function updateProfile(features, anomalyScore) {
-  // Implement exponential moving average to update profile parameters
-  // based on observed traffic patterns and anomaly scores
+function adjustField(motionDetected) {
+    if (motionDetected) {
+        refine focus on zone
+        increase signal power
+    } else {
+        reduce signal power
+        optimize for low power consumption
+    }
 }
 ```
 
-**III. Hardware Requirements:**
+**Potential Advantages:**
 
-*   High-performance multi-core processors
-*   Large RAM capacity to store behavioral profiles
-*   High-speed network interface cards (NICs)
-*   Dedicated hardware acceleration for machine learning tasks (e.g., GPUs or FPGAs)
-
-**IV. Future Extensions:**
-
-*   Integration with threat intelligence feeds to identify known malicious actors.
-*   Distributed deployment to scale protection across multiple network segments.
-*   Automated anomaly analysis and reporting to provide insights into network security events.
-*   Self-learning capabilities to adapt to evolving attack patterns without human intervention.
+*   Improved accuracy and reliability of presence detection.
+*   Reduced false positives caused by static objects or noise.
+*   Ability to detect movement in complex environments.
+*   Enhanced privacy by focusing detection only on specific zones.
+*   Lower power consumption by reducing the overall emitted ultrasonic energy.
