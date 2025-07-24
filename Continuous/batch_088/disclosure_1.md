@@ -1,67 +1,64 @@
-# 10157214
+# 9489510
 
-## Dynamic Schema Projection for Distributed Data Migration
+## Virtual Machine State-Driven Automated Remediation
 
-**Concept:** Extend the row-level mapping concept to include schema transformations *during* migration, allowing data to be restructured and optimized for the destination distributed storage *on-the-fly*. This avoids pre-migration schema alignment, enabling migration from databases with vastly different schemas.
+**Concept:** Expand the proactive status indicators into automated remediation steps triggered by the detected VM states. Instead of *just* informing the user a credential isn't available, *attempt to fix it*.
 
-**Specs:**
+**Specifications:**
 
-**Component:** Schema Projection Service (SPS) – Operates alongside the existing migration system.
+**I. Core Components:**
 
-**Data Structures:**
+*   **Remediation Action Library:** A database of pre-defined actions categorized by VM state and potential issue. Examples:
+    *   `VM_NOT_READY & CREDENTIAL_MISSING`: Initiate VM startup sequence.
+    *   `VM_READY & CREDENTIAL_MISSING & KEY_PAIR_PRESENT`: Attempt password reset using known key pair.
+    *   `VM_READY & CREDENTIAL_MISSING & NO_KEY_PAIR`: Prompt user for key pair import/creation.
+    *   `VM_RUNNING & HIGH_CPU`: Initiate CPU throttling or resource reallocation.
+    *   `VM_RUNNING & LOW_DISK_SPACE`: Initiate disk space cleanup or expansion.
+*   **Policy Engine:** Allows administrators to define policies governing automated remediation. This includes:
+    *   Allowed remediation actions per VM type or user group.
+    *   Thresholds for triggering remediation (e.g., CPU usage > 90%).
+    *   Logging and auditing of all remediation actions.
+*   **State Detection Module:** (Builds upon the existing patent’s detection mechanism).  Expanded to monitor a wider range of VM states beyond credential availability, including:
+    *   CPU usage
+    *   Memory usage
+    *   Disk space
+    *   Network connectivity
+    *   Operating system health (e.g., critical errors logged)
 
-*   **Projection Definition:** JSON object defining transformation rules. Includes:
-    *   `source_field`: Field name in the source database.
-    *   `destination_field`: Field name in the destination storage.
-    *   `transformation_type`:  Enum: `DIRECT`, `FUNCTION`, `LOOKUP`.
-    *   `transformation_parameters`: JSON object containing parameters for the specified `transformation_type`. (e.g. function name, lookup table ID, data type conversion).
-*   **Projection Map:** Key-value store (in-memory cache) mapping source table/row identifiers to corresponding Projection Definitions.
+**II. Workflow:**
 
-**Workflow:**
+1.  **Continuous Monitoring:** The State Detection Module continuously monitors VM states.
+2.  **State Analysis:** When a state deviates from the expected norm (or a credential issue is detected), the system analyzes the current VM state.
+3.  **Policy Lookup:** The Policy Engine determines if automated remediation is allowed for the detected state and the current user/VM configuration.
+4.  **Remediation Action Selection:** If remediation is allowed, the system selects the most appropriate action from the Remediation Action Library.
+5.  **Action Execution:** The system executes the selected action. This might involve:
+    *   Sending commands to the VM (e.g., restart, reset password).
+    *   Allocating additional resources (e.g., CPU, memory, disk space).
+    *   Triggering external services (e.g., backup, disaster recovery).
+6.  **Status Update:** The system updates the user interface with the status of the remediation action.  Include a detailed log of actions taken.
 
-1.  **Schema Discovery:** Before migration, the SPS scans the source database schema and, optionally, allows user-defined Projection Definitions.  A default ‘DIRECT’ mapping is created for fields with compatible data types.
-2.  **Request Interception:** All read/write requests to the source database are intercepted.
-3.  **Projection Lookup:** For each intercepted request, the SPS checks for a matching Projection Definition in the Projection Map based on the source table and row identifier.
-4.  **Data Transformation:**
-    *   **DIRECT:** Data is copied directly.
-    *   **FUNCTION:**  A user-defined function (UDF) is called to transform the data based on `transformation_parameters`.  The UDF can perform data type conversions, calculations, or other manipulations.
-    *   **LOOKUP:** The source data is used as a key to query a lookup table (stored in the distributed storage or a separate service) to retrieve the transformed value.
-5.  **Write to Destination:** The transformed data is written to the destination distributed storage. The row-level mapping is updated to reflect the new data location and schema.
+**III. Pseudocode (Remediation Action Execution):**
 
-**Pseudocode (SPS – Request Handling):**
-
+```pseudocode
+FUNCTION ExecuteRemediationAction(vm_instance, action_name, action_parameters)
+    IF action_name == "VM_STARTUP" THEN
+        vm_instance.start()
+        Log("VM Startup initiated.")
+    ELSE IF action_name == "PASSWORD_RESET" THEN
+        encrypted_password = GenerateNewPassword(vm_instance.key_pair)
+        vm_instance.set_password(encrypted_password)
+        Log("Password reset successful.")
+    ELSE IF action_name == "RESOURCE_ALLOCATION" THEN
+        vm_instance.allocate_resources(action_parameters["cpu"], action_parameters["memory"], action_parameters["disk"])
+        Log("Resources allocated successfully.")
+    ELSE
+        Log("Unknown remediation action: " + action_name)
+    END IF
+END FUNCTION
 ```
-function handle_request(request):
-  source_table = request.source_table
-  row_id = request.row_id
-  source_field = request.field
-  operation = request.operation  // "read" or "write"
 
-  projection_definition = ProjectionMap.get(source_table, row_id)
-  if projection_definition is null:
-    // Use default mapping (direct copy)
-    transformed_data = request.data
-  else:
-    // Apply transformation
-    transformation_type = projection_definition.transformation_type
-    if transformation_type == "FUNCTION":
-      transformed_data = execute_function(projection_definition.transformation_parameters.function_name, request.data)
-    elif transformation_type == "LOOKUP":
-      transformed_data = lookup_table(projection_definition.transformation_parameters.table_id, request.data)
-    else:
-      transformed_data = request.data
+**IV.  User Interface Enhancements:**
 
-  if operation == "write":
-    update_row_mapping(row_id, transformed_data)
-
-  return transformed_data
-```
-
-**Considerations:**
-
-*   **UDF Execution Environment:** Secure and isolated environment for executing user-defined functions.
-*   **Lookup Table Management:** Scalable and efficient lookup table storage and retrieval mechanism.
-*   **Error Handling:** Robust error handling and reporting for transformation failures.
-*   **Schema Evolution:**  Mechanism for handling schema changes in both the source and destination systems.
-*   **Partial Migrations**: Account for the need to migrate *parts* of a schema, or selectively pick-and-choose the transformations applied.
-*   **Cost**: UDFs and Lookups will add compute costs. Consider how to optimize.
+*   **Remediation History:** A detailed log of all automated remediation actions taken on each VM instance.
+*   **Policy Management Console:** A centralized interface for administrators to define and manage remediation policies.
+*   **Real-time Status:** Visual indicators showing the current status of each VM instance and any ongoing remediation actions.
