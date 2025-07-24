@@ -1,59 +1,43 @@
-# 9152808
+# 9418085
 
-## Dynamic Decoy Payload Generation & Morphing
+## Dynamic Schema Evolution via Federated Querying
 
-**Concept:** Extend the decoy data concept beyond simple insertion & detection to a system where decoys *actively change* their payload *during* network transit, guided by real-time network conditions and threat intelligence. This isn’t about obfuscation, it's about creating a dynamic, evolving ‘fingerprint’ that makes decoy tracking incredibly difficult for attackers, and provides richer telemetry.
+**Concept:** Extend the automatic schema generation to dynamically adapt to evolving data sources *without* requiring schema re-ingestion or downtime. Leverage a federated query approach to probe multiple potential schemas concurrently and select the most accurate representation on-the-fly.
 
 **Specs:**
 
-**1. Payload Morphing Engine (PME):**
+*   **Component:** Schema Evolution Engine (SEE) - operates alongside the existing query service.
+*   **Data Input:** Description of data source (as in the patent).  Crucially, the SEE also receives a 'schema drift tolerance' parameter – a percentage indicating acceptable schema change before re-evaluation.
+*   **Schema Repository:** A store of potential schemas for each data source. Initial schemas are generated as described in the patent.
+*   **Federated Probing:**
+    1.  When a query arrives, the SEE retrieves the *N* most probable schemas for the data source (based on drift tolerance and historical accuracy).
+    2.  The query is reformulated into *N* slightly different queries, each tailored to one of the potential schemas.  This involves mapping column names and data types appropriately.
+    3.  These *N* reformulated queries are executed in parallel against the data source.
+    4.  Each query's results are validated against the data source's actual data.  Validation metrics include:
+        *   **Data Completeness:** Percentage of expected data fields present.
+        *   **Data Validity:** Percentage of data values conforming to the expected data type.
+        *   **Query Execution Time:** A proxy for schema accuracy – a more accurate schema should yield faster execution.
+    5.  A scoring function combines these metrics to rank the schemas.
+*   **Dynamic Schema Selection:** The highest-scoring schema is used to transform the query results.
+*   **Schema Update:** If the highest-scoring schema’s score falls below a threshold, or if the score difference between the top two schemas exceeds a threshold, the SEE triggers a schema re-evaluation process (as in the original patent) to generate new candidate schemas.
+*   **Schema Versioning:** All schemas are versioned to allow for rollback and debugging.
 
-*   **Function:**  Responsible for dynamically altering the decoy payload.
-*   **Inputs:**
-    *   Base Decoy Payload: Initial payload defined in policy data (size, basic structure).
-    *   Network Condition Data:  Real-time data including latency, packet loss, bandwidth, observed traffic patterns.
-    *   Threat Intelligence Feed: Data on known attacker techniques, signatures, and behaviors.
-    *   Morphing Ruleset: A configurable set of rules that dictate *how* the payload changes.  Examples:
-        *   Byte Swapping: Reordering bytes within the payload.
-        *   XOR Shifting: Applying an XOR operation with a dynamically generated key.
-        *   Data Expansion/Contraction: Adding/removing benign data to alter size.
-        *   Protocol Mimicry: Injecting fragments of valid (but irrelevant) protocol headers.
-*   **Output:** Modified decoy payload.
-
-**2.  Distributed Morphing Nodes (DMNs):**
-
-*   **Function:**  Network nodes strategically placed to apply morphing transformations. These could be integrated into existing network infrastructure (routers, switches, firewalls) or operate as standalone appliances.
-*   **Operation:**  When a packet containing a decoy passes through a DMN, the following happens:
-    1.  DMN intercepts the packet.
-    2.  DMN retrieves current Network Condition Data & Threat Intelligence.
-    3.  DMN selects a Morphing Rule from the Ruleset based on the data.
-    4.  DMN applies the Rule to the decoy payload.
-    5.  DMN forwards the modified packet.
-
-**3.  Telemetry & Analysis Engine (TAE):**
-
-*   **Function:** Collects & analyzes data related to decoy behavior, focusing on how the morphed payloads affect attacker detection.
-*   **Data Collected:**
-    *   Decoy Insertion Points
-    *   Morphing Rule Applied at Each Node
-    *   Latency & Packet Loss for Decoy Packets
-    *   Correlation between Morphing & Detection (e.g., if a specific Morphing Rule consistently triggers an alert).
-*   **Analysis:**
-    *   Identify Morphing Rules that improve decoy stealth.
-    *   Detect changes in attacker behavior based on decoy reactions.
-    *   Optimize Morphing Ruleset for maximum effectiveness.
-
-**Pseudocode (PME):**
+**Pseudocode (Simplified):**
 
 ```
-function morphPayload(basePayload, networkData, threatData, ruleset):
-  // 1. Select a rule based on network & threat conditions
-  selectedRule = ruleset.selectRule(networkData, threatData)
+function processQuery(query, dataSourceDescription):
+  candidateSchemas = getSchemaRepository().getCandidateSchemas(dataSourceDescription)
 
-  // 2. Apply the selected rule to the base payload
-  modifiedPayload = selectedRule.apply(basePayload)
+  parallel for each schema in candidateSchemas:
+    reformattedQuery = reformatQuery(query, schema)
+    queryResults = executeQuery(reformattedQuery, dataSourceDescription)
+    validationScore = validateResults(queryResults, schema)
+    store score for schema
 
-  return modifiedPayload
+  bestSchema = getBestSchema(scores)
+
+  transformedResults = transformResults(queryResults, bestSchema)
+  return transformedResults
 ```
 
-**Innovation:** This moves beyond simply *detecting* decoys to actively *evolving* them. The dynamic morphing makes it significantly harder for attackers to fingerprint or ignore decoys. The telemetry provides valuable insights into attacker techniques and allows for continuous optimization of the decoy system. This could be integrated into a ‘self-learning’ security system that adapts to emerging threats in real-time.
+**Novelty:** This moves beyond static schema generation to a dynamic, adaptive system. It improves system resilience to data source changes, minimizes downtime, and offers increased accuracy in a rapidly evolving data landscape. It is more complex, but it aims to provide a more robust and scalable solution than simple re-ingestion of schemas. It doesn't require constant monitoring, but uses a reactionary approach to ensure continuous data integrity.
