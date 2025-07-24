@@ -1,60 +1,56 @@
-# 10061915
+# 11238008
 
-## Secure Hardware Attestation for Dynamic Resource Allocation – ‘Chameleon Compute’
+## Adaptive Archival Granularity
 
-**Concept:** Extend secure enclaves beyond simple system monitoring to actively *shape* resource allocation based on real-time attestation of application trustworthiness and behavior. This moves beyond ‘trust but verify’ to ‘trust *and adapt*’.
+**Concept:** The existing patent focuses on archiving operation records. This builds on that by introducing *adaptive granularity* in what gets archived – moving beyond just individual operation records to archive aggregated 'snapshots' of data state, triggered by predictive modeling of data access patterns. This lowers storage costs and dramatically speeds up restores/queries.
 
-**Specifications:**
+**Specification:**
 
-**1. Attestation-Driven Resource Profiles:**
+**1. Predictive Access Model:**
 
-*   Each application, upon launch, provides a declared resource profile (CPU, memory, network bandwidth, storage I/O).
-*   A secure enclave (like Intel SGX or AMD SEV) hosts an *Attestation Engine*. This engine receives cryptographic attestations from the application’s enclave.
-*   The Attestation Engine validates the application's identity and, crucially, a *behavioral hash*.  This hash is generated dynamically based on observed application runtime characteristics (system calls, memory access patterns, network activity).
-*   Based on the validated behavioral hash, the Attestation Engine dynamically adjusts the allocated resources, *up or down*.
-*   If the behavioral hash deviates significantly from the declared profile (indicating potential malicious activity or unexpected behavior), the Attestation Engine can throttle resources, isolate the application, or terminate the process.
+*   **Input:** Historical data access logs (reads, writes, updates). Data store schema. Data object relationships.
+*   **Process:** Employ a time-series forecasting model (e.g., Prophet, LSTM) to predict future data access frequency for each data object/key space. Incorporate seasonality (daily, weekly, monthly) and trend analysis.  The model outputs a "Access Score" for each object.
+*   **Output:** Access Score per data object, updated at configurable intervals (e.g., hourly, daily).
 
-**2. Dynamic Resource ‘Shaping’ Algorithm:**
+**2. Adaptive Archival Trigger:**
 
-```pseudocode
-function adjustResources(applicationID, behavioralHash, declaredProfile) {
-  // Calculate 'deviation score' comparing behavioralHash to declaredProfile
-  deviationScore = calculateDeviation(behavioralHash, declaredProfile)
+*   **Thresholds:** Define configurable thresholds for the Access Score. (e.g. High Access: Score > 80, Medium Access: 40-80, Low Access: <40).
+*   **Archival Policy:**
+    *   **Low Access:** Trigger a full snapshot archive of associated data objects *and* a compaction of recent operation logs related to those objects.
+    *   **Medium Access:** Trigger incremental archival of operation logs (e.g., archive logs older than X days)
+    *   **High Access:** No automatic archival. Monitor continuously.
+*   **Dynamic Adjustment:** The thresholds are themselves dynamically adjusted based on overall system load and storage capacity.
 
-  if (deviationScore < threshold_low) {
-    // Behavior aligns with declared profile – increase resources (within limits)
-    increaseResources(applicationID, scale_factor_positive)
-  } else if (deviationScore > threshold_high) {
-    // Significant deviation – throttle or terminate
-    if (deviationScore > threshold_critical) {
-      terminateProcess(applicationID)
-    } else {
-      throttleResources(applicationID, scale_factor_negative)
-    }
-  } else {
-    // Maintain current resource allocation
-  }
-}
+**3. Snapshot Creation & Compaction:**
+
+*   **Consistent Snapshot:** Utilize data store's native snapshotting capabilities to create a consistent point-in-time view of the data.
+*   **Differential Archival:** Only archive changes *since* the last snapshot.
+*   **Log Compaction:** Combine multiple operation records affecting the same data object into a single "delta" record for archival. This drastically reduces archive size.
+
+**4. Restore/Query Mechanism:**
+
+*   **Intelligent Tiering:** Archive data is stored in tiered storage (e.g., fast SSD, slower HDD, cloud storage) based on Access Score.
+*   **Restore from Snapshot:** For large-scale restores, restore directly from the most recent snapshot.
+*   **Apply Delta Logs:** Apply archived delta logs to the snapshot to bring the data up to the desired point in time.
+*   **Direct Delta Access:** For small-scale queries, access archived delta logs directly without restoring the full snapshot.
+
+**Pseudocode (Archival Trigger):**
+
+```
+function trigger_archival(data_object, access_score):
+  if access_score < LOW_ACCESS_THRESHOLD:
+    create_full_snapshot(data_object)
+    compact_operation_logs(data_object)
+    archive_snapshot_and_logs(data_object)
+  elif access_score < MEDIUM_ACCESS_THRESHOLD:
+    archive_old_operation_logs(data_object, age=X_DAYS)
+  else:
+    monitor_access_pattern(data_object)
+
 ```
 
-**3.  ‘Chameleon’ Hypervisor Integration:**
+**Data Structures:**
 
-*   The hypervisor (e.g., KVM, Xen) is modified to receive resource allocation directives from the Attestation Engine via a secure hypercall interface.
-*   The hypervisor dynamically adjusts vCPU allocation, memory limits, network bandwidth, and storage I/O based on these directives.
-*   Resource adjustments are logged with associated attestation data for auditing and forensic analysis.
-
-**4.  Attestation Chain of Trust:**
-
-*   The Attestation Engine itself is rooted in a hardware-backed root of trust (e.g., TPM, secure boot).
-*   Attestation data is digitally signed using a key stored within the secure enclave, providing cryptographic proof of authenticity and integrity.
-*   The attestation process includes remote verification with a central attestation service to prevent rogue enclaves from spoofing attestations.
-
-**5.  Adaptive Security Policies:**
-
-*   The system supports configurable security policies that define acceptable behavioral deviations and corresponding resource adjustment actions.
-*   Policies can be tailored to specific applications or user roles, enabling granular security control.
-*   Machine learning algorithms can be employed to automatically learn and refine security policies based on observed application behavior and threat patterns.
-
-
-
-This ‘Chameleon Compute’ system moves beyond static security boundaries to create a dynamically adaptive computing environment that responds to real-time threats and ensures resource allocation aligns with application trustworthiness.
+*   `AccessScoreTable`: Key: `data_object_id`, Value: `access_score` (updated by Predictive Access Model)
+*   `ArchivalPolicy`: Configuration parameters (thresholds, age, storage tiers)
+*   `DeltaLog`:  Data structure for compacted operation records.
