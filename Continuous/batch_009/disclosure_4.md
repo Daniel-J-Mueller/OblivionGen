@@ -1,64 +1,81 @@
-# 9219679
+# 10867497
 
-## Virtual Network 'Shadowing' & Predictive Cost Adjustment
+## Adaptive Environmental Response System (AERS)
 
-**Concept:** Expand the existing cost-aware routing to include 'shadowing' of network traffic across multiple virtual network configurations *simultaneously*. This allows for predictive cost analysis and proactive adjustment of routing before performance degradation occurs. It’s like having a ‘flight simulator’ for network traffic.
+**Concept:** Integrate the floodlight controller with localized environmental sensing and automated response capabilities, moving beyond simple motion-activated illumination and alerting.
 
-**Specs:**
+**Hardware Specifications:**
 
-1.  **Virtual Network Duplication Module:**
-    *   Function: Creates near real-time replicas of the active virtual network configuration. These 'shadow' networks operate with a reduced scale (e.g., 10-20% of live traffic) for resource efficiency.
-    *   Input: Live network configuration data (topology, routing tables, cost assignments).
-    *   Output: Identical virtual network instances operating in parallel.
+*   **Sensor Suite:**
+    *   Existing components: Camera (image sensor), Motion Sensors (PIR), Microphone.
+    *   Additions:
+        *   Temperature/Humidity Sensor (Digital - e.g., DHT22 or BME280).
+        *   Air Quality Sensor (Particulate Matter - PM2.5, PM10, VOCs - e.g., PMS5003, CCS811).
+        *   Rain Sensor (Capacitive or resistive type).
+        *   Soil Moisture Sensor (Capacitive type - for optional integration with garden/landscape monitoring).
+        *   Barometric Pressure Sensor (BMP180 or similar).
+*   **Actuator Suite:**
+    *   Existing: Floodlight. Speaker.
+    *   Additions:
+        *   Small, low-power solenoid valve (for misting/spraying - optional, for localized cooling/humidification).
+        *   Micro-fan (small, directional, for localized air movement - optional).
+        *   Low-power heating element (small, localized – for frost/ice mitigation – optional).
+*   **Processing:** Existing processor – upgraded memory/storage for sensor data logging/analysis.
+*   **Communication:** Existing communication module – upgraded bandwidth for transmitting expanded sensor data.
+*   **Power:** Existing power sources + consideration for solar power integration (small solar panel & charging circuit)
 
-2.  **Traffic Mirroring Engine:**
-    *   Function: Selectively mirrors a portion of live network traffic to the shadow networks.  This is done on a per-flow basis, prioritizing critical applications.
-    *   Input: Live network traffic, application prioritization rules.
-    *   Output: Mirrored traffic streams directed to shadow networks.
+**Software/Firmware Specifications:**
 
-3.  **Cost Prediction Algorithm:**
-    *   Function: Runs the mirrored traffic through the shadow networks with *hypothetical* cost adjustments. This allows simulation of future network conditions (e.g., increased bandwidth costs, link failures).
-    *   Input: Mirrored traffic, shadow network configurations, hypothetical cost changes.
-    *   Output: Predicted network performance metrics (latency, throughput, cost) for each hypothetical cost scenario.  A 'cost curve' is generated representing performance vs. cost.
-
-4.  **Proactive Routing Adjustment Module:**
-    *   Function: Based on the cost prediction algorithm’s output, automatically adjusts routing rules in the *live* network to optimize performance and cost.
-    *   Input: Cost prediction data, current network state, service level agreements (SLAs).
-    *   Output: Updated routing tables and cost assignments for the live network.
-
-5.  **Dynamic Shadow Scaling:**
-    *   Function: Adjusts the scale of the shadow networks based on network load and the accuracy of the cost predictions. Higher load/lower accuracy = larger shadow networks.
-    *   Input: Network load, cost prediction error rate, resource availability.
-    *   Output: Adjusted shadow network scale (percentage of live traffic mirrored).
-
-**Pseudocode (Proactive Routing Adjustment Module):**
+*   **Data Acquisition Module:**  Continuously read and log data from all sensors (temperature, humidity, air quality, rain, soil moisture, barometric pressure, camera feed, motion). Timestamp all data.
+*   **Environmental Profile Creation:**  Establish baseline environmental profiles based on logged data over time.  This learns “normal” conditions.
+*   **Anomaly Detection:**  Algorithm to identify deviations from baseline environmental profiles.
+*   **Automated Response Logic:** Pseudocode:
 
 ```
-function adjust_routing(predicted_costs, current_network_state, sla_requirements) {
+IF (Rain Detected AND Temperature < 5°C) THEN
+    Activate Heating Element (localized frost protection)
+    Send Alert: "Freezing rain detected. Frost protection active."
+ENDIF
 
-  // 1. Identify critical paths based on current network state & SLA
-  critical_paths = identify_critical_paths(current_network_state, sla_requirements);
+IF (Air Quality (PM2.5) > Threshold) THEN
+    Activate Micro-fan (localized air circulation)
+    Send Alert: "Elevated particulate matter detected. Air circulation active."
+ENDIF
 
-  // 2. For each critical path, evaluate cost-performance tradeoff in predicted_costs
-  for each path in critical_paths {
-    best_route = find_best_route(path, predicted_costs); //Considers cost AND performance
-    
-    // 3. If a better route exists (based on a defined threshold)
-    if (best_route != current_route) {
-      update_routing_table(best_route);
-    }
-  }
+IF (Soil Moisture < Threshold AND No Rain Detected) THEN
+    Send Alert: "Dry soil conditions detected." //For potential irrigation automation
+ENDIF
 
-  // 4. Implement failover/rollback procedures
-  implement_failover_rollback();
+IF (Temperature > Threshold AND Humidity > Threshold) THEN
+    Activate Micro-fan (localized cooling)
+    Send Alert: “High temperature & humidity detected. Cooling Active”
+ENDIF
 
-  return updated_routing_table;
-}
+IF (Motion Detected AND Time = Night) THEN
+    Activate Floodlight
+    Capture Video
+    Transmit Alert
+ENDIF
 ```
 
-**Hardware/Software Requirements:**
+*   **User Interface (App Integration):**
+    *   Real-time sensor data visualization.
+    *   Customizable alert thresholds.
+    *   Automated response rule configuration.
+    *   Historical data logging and charting.
+    *   Remote control of actuators (floodlight, fan, heater, solenoid).
 
-*   High-performance servers to host shadow networks.
-*   Software-defined networking (SDN) controller with API access.
-*   Network monitoring and analytics tools.
-*   Machine learning algorithms for cost prediction.
+*   **Machine Learning Integration (Future Enhancement):**  Implement machine learning algorithms to predict environmental changes (e.g., predict rainfall based on barometric pressure, humidity, and temperature) and proactively adjust automated responses.
+
+**Housing Modifications:**
+
+*   Slightly larger housing to accommodate additional sensors and actuators.
+*   Integrated vents for airflow with micro-fan.
+*   Weather-resistant design.
+
+**Target Applications:**
+
+*   Smart home environmental monitoring and control.
+*   Localized microclimate management (e.g., protecting sensitive plants).
+*   Early warning system for environmental hazards (e.g., frost, heat waves).
+*   Security system with enhanced environmental awareness.
