@@ -1,59 +1,47 @@
-# 9424456
+# D999212
 
-## Dynamic Resonance Mapping for Sub-Dermal Vascular Imaging
+## Haptic-Kinesthetic Keypad with Variable Resistance & Shape-Changing Keys
 
-**Concept:** Expand ultrasonic fingerprint authentication to include mapping of sub-dermal vascular networks *beneath* the fingerprint ridges. This creates a much more robust biometric identifier, and opens possibilities for health monitoring. The existing patent focuses on ridge/valley depth; this expands into depth *and* flow characteristics of blood vessels.
+**Concept:** A keypad where each key isn't just pressed, but *felt* differently, offering variable resistance and even subtle shape changes during actuation. This goes beyond simple tactile feedback (vibration) and aims for a fully kinesthetic experience, enhancing user interaction and potentially allowing for encoded commands based on *how* a key is pressed, not just *which* key.
 
-**System Specifications:**
+**Specs:**
 
-*   **Transducer Array:** A high-density (minimum 500 elements/cm²) phased array of ultrasonic transducers operating at 10-20 MHz.  Transducers must support both continuous wave (CW) and pulsed-Doppler modes.  Element spacing is critical – must be less than half the wavelength at the highest operating frequency.  Piezoelectric material: Lead Zirconate Titanate (PZT) with high electromechanical coupling coefficient.
-*   **Beamforming Processor:**  Dedicated FPGA-based processor capable of real-time digital beamforming with dynamic focusing and steering.  Algorithm: Delay-and-Sum beamforming with adaptive weighting to minimize sidelobes and maximize signal-to-noise ratio.  Must support multiple simultaneous beams.
-*   **Doppler Processing Unit:**  Dedicated hardware for processing Doppler shifts.  Algorithm: Autocorrelation or cross-correlation methods for estimating blood flow velocities.  Must be capable of separating low-velocity blood flow from tissue motion artifacts.
-*   **Resonance Chamber:** Integrate a small, localized resonance chamber directly above the transducer array. This chamber is filled with a biocompatible fluid (saline solution) to improve acoustic coupling and enhance signal penetration. Microfluidic control to dynamically adjust fluid levels.
-*   **Data Acquisition System:** High-speed analog-to-digital converters (ADCs) with a sampling rate of at least 100 MHz. 16-bit resolution minimum.
-*   **Image Reconstruction Engine:**  GPU-accelerated image reconstruction algorithms. Combine amplitude and phase information from the reflected ultrasonic waves.
-*   **Software Interface:** User-friendly software for data visualization, image processing, and biometric template management. Export to standard formats (DICOM, etc.).
-*   **Power Supply:** Stable and low-noise power supply to minimize interference.
+*   **Key Material:** Each key is constructed from a matrix of micro-actuators embedded within a flexible polymer shell (e.g., silicone with embedded conductive traces).
+*   **Actuator Type:**  Electroactive Polymers (EAPs) or Shape Memory Alloys (SMAs) are preferred, chosen for their ability to change shape and/or stiffness when electrically stimulated.
+*   **Resistance Control:** Each key incorporates a microfluidic damping system.  Tiny channels within the key contain a magneto-rheological (MR) fluid. Applying a magnetic field (via miniature electromagnets within the key) alters the fluid's viscosity, changing the resistance felt during keypress.  Resistance is programmable per-key.
+*   **Shape Change:** Upon initial press, EAPs/SMAs subtly deform the key's surface – a slight "dimpling" effect. The degree of deformation is programmable.  As the press continues, the deformation can increase to provide a clear indication of full actuation.
+*   **Sensor Suite:**  Each key integrates:
+    *   Force sensor: Measures the pressure applied.
+    *   Velocity sensor: Detects the speed of the keypress.
+    *   Strain gauge: Measures the degree of key deformation.
+*   **Control System:**  A microcontroller (ARM Cortex-M series) manages the sensors, actuators, and MR fluid control for each key.  Communication with a host device is via USB-C or Bluetooth.
+*   **Power:**  Powered via USB-C or small rechargeable battery.
+*   **Key Dimensions:** Variable, but target a similar footprint to standard keyboard keys. Height can be slightly increased to accommodate the internal components.
 
-**Operation:**
-
-1.  **Initial Scan:** A low-power ultrasonic pulse is emitted to map the surface topology of the fingerprint (similar to the original patent).
-2.  **Resonance Excitation:** The resonance chamber is activated, and a series of ultrasonic waves at varying frequencies are emitted. Frequencies are swept until resonance is detected in the sub-dermal tissue. Detected resonance frequency correlates with tissue density and vascular characteristics.
-3.  **Doppler Imaging:** Simultaneously with resonance detection, pulsed-Doppler ultrasound is used to measure blood flow velocity within the capillaries and larger vessels beneath the fingerprint surface.
-4.  **Data Fusion:** The surface topology data, resonance frequency data, and Doppler velocity data are combined to create a 3D vascular map of the fingerprint.
-5.  **Biometric Template Creation:** A unique biometric template is created based on the combined data. This template includes not only the fingerprint ridges but also the vascular network and blood flow characteristics.
-
-**Pseudocode for Data Fusion & Template Creation:**
+**Pseudocode (Keypress Handling):**
 
 ```
-// Input: SurfaceMap (3D array of ridge/valley depths),
-//        ResonanceMap (2D array of resonance frequencies),
-//        DopplerMap (2D array of blood flow velocities)
+function keypressHandler(keyID, force, velocity):
+  // Read key configuration (resistance profile, shape change profile)
 
-// 1. Align ResonanceMap and DopplerMap to SurfaceMap using feature detection (ridge locations)
+  // Adjust MR fluid viscosity based on desired resistance
+  setMRFluidViscosity(keyID, resistanceProfile[force, velocity])
 
-// 2. Normalize data: Scale Resonance frequencies and Doppler velocities to a common range.
+  // Activate EAPs/SMAs to create shape change
+  activateShapeChange(keyID, shapeChangeProfile[force, velocity])
 
-// 3. Create combined 3D map:
-CombinedMap[x, y, z] = SurfaceMap[x, y, z] + (ResonanceMap[x, y] * Weight_Resonance) + (DopplerMap[x, y] * Weight_Doppler)
-
-// 4. Apply feature extraction:
-//    - Identify key vascular features (bifurcations, loops, etc.)
-//    - Calculate statistical features (vessel density, tortuosity, etc.)
-
-// 5. Create Biometric Template:
-Template = {
-    SurfaceFeatures: Extracted features from SurfaceMap,
-    VascularFeatures: Extracted features from VascularMap,
-    StatisticalFeatures: Statistical features calculated from combined data
-}
-
-// Output: Biometric Template
+  // If force exceeds threshold AND shape change complete:
+  if (force > actuationThreshold AND shapeChangeComplete):
+    // Register keypress event
+    registerKeyPress(keyID)
+    // Provide haptic feedback (optional, if desired)
+  end if
+end function
 ```
 
 **Potential Applications:**
 
-*   Enhanced Biometric Authentication: Higher accuracy and security compared to traditional fingerprint scanning.
-*   Health Monitoring: Detection of vascular diseases (e.g., atherosclerosis) through changes in vascular characteristics.
-*   Personalized Medicine: Identification of individual vascular patterns for targeted drug delivery.
-*   Forensic Science: Enhanced identification of individuals based on unique vascular signatures.
+*   Enhanced gaming experience (different key feels for different in-game actions).
+*   Accessibility for visually impaired users (distinct key feels for different functions).
+*   Secure input (encoded commands based on *how* a key is pressed, adding a layer of security).
+*   Musical interfaces (variable resistance can simulate different instrument actions).
