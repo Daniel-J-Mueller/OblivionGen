@@ -1,61 +1,67 @@
-# 10176802
+# 7689457
 
-## Dynamic Lattice Pruning via Reinforcement Learning
+**Dynamic Cluster Weighting via User-Driven “Vibe” Assignment**
 
-**Concept:** Extend the lattice encoding approach by incorporating a reinforcement learning agent to dynamically prune the lattice *before* encoding, optimizing for both information retention and computational efficiency. The agent learns to identify and remove less-informative arcs within the lattice, streamlining the subsequent RNN encoding process.
+**Concept:** Extend the cluster-based recommendation system by allowing users to assign a subjective “vibe” to each cluster, influencing recommendation weighting. This goes beyond simple ratings or tags – it's a free-form emotional/experiential descriptor, processed via sentiment analysis and mapped to weighting adjustments.
 
-**Specifications:**
+**Specs:**
 
-1.  **Lattice Representation:** The ASR lattice is represented as a directed graph where nodes represent states (words/phonemes) and edges represent transitions (arcs) with associated acoustic and language model scores.
+1.  **User Interface – Cluster Vibe Input:**
+    *   Within the collection management interface, provide a field alongside each cluster display labeled “Cluster Vibe.”
+    *   Accept free-text input (e.g., “Cozy evenings,” “High-energy workouts,” “Gift ideas for Dad,” “Things I want to learn”).
+    *   Include a visual representation of existing items within the cluster for context.
 
-2.  **Reinforcement Learning Agent:**
-    *   **State:** The state space is defined by the local structure of the lattice around a given arc. This includes:
-        *   Acoustic and language model scores of the arc.
-        *   Number of incoming and outgoing arcs.
-        *   Average scores of incoming/outgoing arcs.
-        *   Depth of the arc in the lattice.
-    *   **Action:** The agent can either *keep* or *prune* the current arc.
-    *   **Reward:** The reward function is designed to balance:
-        *   **Information Retention:** Measured by the impact of pruning on the overall lattice probability (using a beam search to estimate the best hypothesis after pruning). Lower probability decrease = higher reward.
-        *   **Computational Cost Reduction:**  Measured by the number of arcs removed.  More arcs removed = higher reward.  A weighting factor will balance these two objectives.
-    *   **Algorithm:**  A Deep Q-Network (DQN) will be used to approximate the optimal Q-function, learning a policy for arc pruning.
+2.  **Sentiment Analysis Engine:**
+    *   Integrate a natural language processing (NLP) engine capable of sentiment and emotion detection.
+    *   Analyze the “Cluster Vibe” text to extract key emotional dimensions (valence, arousal, dominance).
+    *   Map these dimensions to numerical weighting factors.  Example:
+        *   High Valence (positive emotion) + High Arousal =  Weighting Increase (+20%) – prioritize recommendations from this cluster.
+        *   Low Valence + Low Arousal = Weighting Decrease (-15%) – de-emphasize recommendations from this cluster.
+        *   Neutral = No Weighting Adjustment.
 
-3.  **Pruning Process:**
-    *   The RL agent traverses the lattice arc by arc (potentially using a randomized traversal order to encourage exploration).
-    *   For each arc, the agent observes the state and selects an action (keep or prune).
-    *   If the arc is pruned, the edge is removed from the lattice.
-    *   The agent receives a reward based on the impact of the pruning decision.
-    *   The agent updates its Q-network based on the received reward.
+3.  **Dynamic Recommendation Weighting:**
+    *   Modify the existing recommendation engine to incorporate cluster weights.
+    *   During recommendation generation, multiply the relevance score of items within a cluster by the corresponding cluster weight.
+    *   Normalize weights across all clusters to ensure a balanced recommendation set.
 
-4.  **RNN Encoding:**  After pruning, the reduced lattice is encoded using the RNN encoder described in the provided patent.
+4.  **“Vibe” Similarity Matching:**
+    *   Implement a system to match user-defined “Vibes” with new items.
+    *   When a user adds a new item to their collection, analyze its attributes (description, category, tags).
+    *   Calculate a similarity score between the item and existing cluster “Vibes.”
+    *   Automatically suggest the item be added to the most relevant cluster.
 
-5.  **Training:** The RL agent is trained offline on a large corpus of speech data. The training objective is to maximize the cumulative reward. The training data should be diverse to ensure generalization.
+5.  **“Vibe” Drift Detection:**
+    *   Monitor user interaction with recommendations from each cluster over time.
+    *   If a cluster consistently generates low engagement despite a high “Vibe” weighting, flag it for review.
+    *   Prompt the user to reconsider the assigned “Vibe” or suggest alternative descriptors.
 
 **Pseudocode:**
 
 ```
-// Offline Training Phase:
-FOR each episode:
-  Initialize lattice
-  WHILE lattice not fully traversed:
-    Observe state (local lattice structure around current arc)
-    Select action (keep/prune) using epsilon-greedy policy
-    Execute action (remove arc if prune)
-    Calculate reward (based on lattice probability change & arc count)
-    Update Q-network using reward and observed state/action pair
-
-// Online ASR Processing:
-1. Receive audio data & generate ASR lattice
-2. Initialize RL agent (trained model)
-3. Traverse lattice arc-by-arc:
-    a. Observe state
-    b. Select action (keep/prune)
-    c. If prune: Remove arc
-4. Encode pruned lattice using RNN encoder
-5. Determine ASR hypothesis based on encoded vector
+// Recommendation Generation Loop
+FOR each user:
+    clusters = GetUserClusters(user)
+    FOR each cluster IN clusters:
+        vibe = GetClusterVibe(cluster)
+        weight = CalculateVibeWeight(vibe)  // Sentiment Analysis & Mapping
+        items = GetClusterItems(cluster)
+        FOR each item IN items:
+            item.relevanceScore = item.relevanceScore * weight
+    // Normalize scores across all clusters
+    rankedItems = SortItemsByRelevance(items)
+    OutputTopNRecommendations(rankedItems)
 ```
 
-**Hardware Considerations:**
-
-*   GPU acceleration for DQN training and inference.
-*   Sufficient memory to store the lattice and Q-network parameters.
+```
+//CalculateVibeWeight(vibeText)
+sentiment = AnalyzeSentiment(vibeText) //NLP engine
+valence = sentiment.valence
+arousal = sentiment.arousal
+IF valence > 0.7 AND arousal > 0.7:
+    weight = 1.2
+ELSE IF valence < -0.3 AND arousal < -0.3:
+    weight = 0.85
+ELSE:
+    weight = 1.0
+RETURN weight
+```
