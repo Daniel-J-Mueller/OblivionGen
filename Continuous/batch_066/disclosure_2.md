@@ -1,65 +1,74 @@
-# 11804060
+# 9665095
 
-## Multi-Modal Anomaly Detection – Biofeedback Integration & Predictive Alert System
+## Autonomous Workspace Reconfiguration System
 
-**System Overview:** This design expands the multi-modal anomaly detection system to incorporate real-time biofeedback data from the subject being scanned, creating a predictive alert system for health anomalies *before* they manifest as clear image-based anomalies. It moves beyond simply identifying anomalies in images to anticipating them.
+**System Overview:** A system leveraging the cleanup robot’s navigation and manipulation capabilities to dynamically reconfigure workspace layouts based on real-time operational needs.
 
-**Core Innovation:** Predictive Anomaly Scoring – Leveraging biofeedback as an early warning system.
+**Core Components:**
 
-**Hardware Specifications:**
+*   **Cleanup Robot (Modified):** Existing platform augmented with:
+    *   **Modular Attachment Interface:** Standardized mechanical/electrical interface to accept various modular tools (see below).
+    *   **High-Precision Localization:** Enhanced sensor suite (LiDAR, IMU, visual odometry) for sub-centimeter localization accuracy.
+    *   **Force/Torque Sensors:** Integrated into the carrying tray and gate mechanisms for delicate manipulation.
+*   **Modular Tools:** Interchangeable tools for specialized tasks:
+    *   **Mobile Workstation Module:** A flat, stable platform that attaches to the carrying tray, creating a mobile workbench.
+    *   **Component Delivery Module:** A small, secure compartment for transporting small parts or tools.
+    *   **Lightweight Barrier Module:** Deployable physical barriers (e.g., expandable mesh) to quickly cordon off areas.
+    *   **Projection Module:** Projects temporary guidance markers, safety zones, or instructions onto the floor.
+*   **Central Control System (Enhanced):**
+    *   **Workspace Modeling:** Digital twin of the warehouse layout.
+    *   **Task Assignment:** Algorithms to optimize robot task assignments based on operational needs.
+    *   **Dynamic Path Planning:** Real-time path planning considering obstacles, robot capabilities, and task priorities.
+    *   **User Interface:** Intuitive interface for operators to request workspace reconfigurations.
 
-*   **Multi-Modal Sensor Array:**  Existing system’s image sensors (surface & subcutaneous) + real-time biofeedback sensors. These include:
-    *   Electrocardiogram (ECG) – Heart rate variability.
-    *   Electrodermal Activity (EDA) – Sweat gland activity.
-    *   Photoplethysmography (PPG) – Blood volume pulse.
-    *   Respiration Rate Sensor – Breathing pattern analysis.
-*   **Edge Computing Unit:** High-performance embedded processor to handle sensor data fusion and preliminary analysis.  Must support simultaneous processing of image and biofeedback data streams.
-*   **Communication Module:** Wireless (Bluetooth 5.0 or Wi-Fi 6) for data transmission to central server/cloud.
-*   **Haptic Feedback Unit:** Small vibratory motor for localized alerts (optional, for user notification).
+**Operational Procedure:**
 
-**Software Specifications:**
+1.  **Request Initiation:** Operator requests a workspace reconfiguration via the user interface (e.g., “Create a temporary inspection zone near bay 4”).
+2.  **Planning & Assignment:** Central control system:
+    *   Analyzes the request.
+    *   Identifies necessary tools/modules.
+    *   Assigns the task to a cleanup robot.
+    *   Generates a dynamic path plan.
+3.  **Tool Acquisition:** Robot navigates to a central tooling station and automatically attaches the required modules.
+4.  **Workspace Modification:** Robot navigates to the designated area and performs the requested modification:
+    *   **Creating Inspection Zones:** Deploys barrier modules and projection modules to define the zone.
+    *   **Relocating Components:** Transports small parts or tools using the component delivery module.
+    *   **Setting up Temporary Workstations:** Deploys the mobile workstation module.
+5.  **Confirmation & Feedback:** Robot transmits confirmation of task completion to the central control system. Operator receives feedback via the user interface.
 
-*   **Data Acquisition Module:** Real-time capture of image data (from existing system) and biofeedback data. Synchronization is critical.
-*   **Feature Extraction Module:** 
-    *   Image Features: Existing embedding module.
-    *   Biofeedback Features: Time-domain (mean, variance, skewness, kurtosis) and frequency-domain (power spectral density) analysis of each biofeedback signal. Wavelet transforms for transient event detection.
-*   **Anomaly Scoring Module:** This is the core of the innovation.
-    1.  **Baseline Establishment:**  During a calibration phase, the system establishes personalized baselines for both image-based and biofeedback features.  Uses a sliding window approach to account for natural fluctuations.
-    2.  **Biofeedback Anomaly Detection:** A separate anomaly detection algorithm (e.g., Autoencoder, One-Class SVM) is trained on the biofeedback features.  This detects deviations from the established baseline.  Outputs a 'Biofeedback Anomaly Score' (BAS) ranging from 0 to 1.
-    3.  **Image Feature Correlation:** The system analyzes the correlation between the BAS and the image-based embedding vectors. This helps to identify potential precursors to visible anomalies.
-    4.  **Fused Anomaly Score:**  Combines the BAS and the image-based anomaly score using a weighted sum:
-        *   `Final Anomaly Score = (w1 * Image Anomaly Score) + (w2 * BAS)`
-        *   `w1` and `w2` are adjustable weights optimized through machine learning.
-    5.  **Predictive Alerting:** If the `Final Anomaly Score` exceeds a predefined threshold, the system generates a predictive alert. The alert can be visual, auditory, or haptic.
-
-*   **Machine Learning Module:**
-    *   **Weight Optimization:**  Reinforcement learning algorithm (e.g., Q-learning) to dynamically adjust `w1` and `w2` based on real-world data and user feedback.
-    *   **Personalized Modeling:**  Machine learning models trained on individual subject data to improve the accuracy of anomaly detection and prediction.
-
-**Pseudocode - Anomaly Scoring Module:**
+**Pseudocode (Task Assignment):**
 
 ```
-// Inputs: Image Embedding Vector (image_vec), Biofeedback Features (bio_features),
-//         Baseline Biofeedback Features (baseline_bio), Weight w1, w2, Anomaly Threshold
+FUNCTION AssignWorkspaceTask(taskRequest, robotList, toolingStation)
+  // Input: taskRequest (description of task), robotList (available robots), toolingStation (location)
+  // Output: assignedRobot, taskPlan
 
-// Calculate Biofeedback Anomaly Score (BAS)
-bas = CalculateBiofeedbackAnomalyScore(bio_features, baseline_bio)
+  // 1. Determine required tools based on taskRequest
+  requiredTools = DetermineTools(taskRequest)
 
-// Calculate Image Anomaly Score (IAS) - using existing system's classification
-ias = CalculateImageAnomalyScore(image_vec)
+  // 2. Filter robots capable of handling required tools
+  capableRobots = FilterRobots(robotList, requiredTools)
 
-// Calculate Fused Anomaly Score
-fused_score = (w1 * ias) + (w2 * bas)
+  // 3. If no capable robots, signal error
+  IF (capableRobots.length == 0)
+    RETURN (ERROR, "No capable robots available")
 
-// Generate Alert
-if fused_score > AnomalyThreshold:
-    GenerateAlert("Potential Anomaly Detected")
-else:
-    // No alert
+  // 4. Select robot based on proximity to task location and current workload
+  assignedRobot = SelectRobot(capableRobots, taskLocation)
+
+  // 5. Generate task plan (route to tooling station, acquire tools, navigate to task location, execute task)
+  taskPlan = GenerateTaskPlan(assignedRobot, taskLocation, requiredTools)
+
+  // 6. Assign task to robot
+  assignedRobot.AssignTask(taskPlan)
+
+  RETURN (assignedRobot, taskPlan)
+END FUNCTION
 ```
 
 **Potential Applications:**
 
-*   **Preventative Healthcare:** Early detection of health issues before they become critical.
-*   **Stress Monitoring:**  Detecting stress levels and providing real-time feedback.
-*   **Security Applications:**  Identifying potential threats based on physiological responses.
+*   Dynamic adaptation to changing production requirements.
+*   Rapid deployment of safety barriers during emergencies.
+*   On-demand creation of temporary assembly stations.
+*   Optimized workflow through reconfigurable workspace layouts.
