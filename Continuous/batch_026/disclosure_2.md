@@ -1,72 +1,55 @@
-# 8887085
+# 10311397
 
-## Dynamic Content & Perceptual Loading
+## Adaptive Resonance Frequency Tagging
 
-**Concept:** Extend dynamic content loading beyond simple placeholder visuals. Implement a system where unloaded content areas *simulate* perceptual features of loaded content, creating the *illusion* of completeness before actual data arrives.
+**Concept:** Extend the power modulation technique to incorporate resonant frequency shifts in the endpoint device's power consumption circuitry as a secondary identification channel, creating a multi-factor authentication/identification system.  Rather than *just* a modulated current draw sequence, the endpoint device *slightly* alters its internal switching regulator frequency (or uses a variable impedance load) in conjunction with the current modulation. 
 
 **Specs:**
 
-**1. Perceptual Feature Mapping:**
+*   **Endpoint Device Hardware:**
+    *   Each endpoint device incorporates a programmable switching regulator (e.g., a buck/boost converter) or a digitally controlled load.
+    *   The regulator/load frequency/impedance is adjustable within a narrow band (e.g., +/- 2% of a base frequency).
+    *   A microcontroller on the endpoint device controls both the current modulation sequence *and* the resonant frequency/impedance shift.
+    *   The base frequency/impedance is unique to a batch/model of endpoint device.
+*   **Power Source/Controller Hardware:**
+    *   The power source (POE injector/switch) incorporates a high-resolution current sensor *and* a frequency/impedance sensor. This could be implemented via a resonant circuit coupled to the power line and monitoring impedance changes.
+    *   The controller software analyzes *both* the current modulation sequence *and* the frequency/impedance shift to uniquely identify the endpoint device.
+*   **Communication Protocol:**
+    *   **Initialization:** Upon connection, the controller sends a "discovery signal" - a specific current modulation pattern.
+    *   **Response:** The endpoint device responds with its pre-programmed current modulation sequence *and* its unique resonant frequency/impedance shift.
+    *   **Identification:** The controller receives both signals, correlates them against a database of known devices, and assigns an identifier.
+    *   **Authentication:** Subsequent communication can use a shorter, encrypted modulation pattern as an authentication handshake, verified by the frequency/impedance signature.
+*   **Database:**
+    *   The controller maintains a database mapping each unique frequency/impedance signature to a device identifier and associated metadata (e.g., MAC address, IP address, location, function).
 
-*   **Data Structure:** A JSON-based map defining perceptual features for each content type.  Example:
-    ```json
-    {
-      "image": {
-        "dominant_color": "calculate_from_metadata_or_fallback",
-        "blur_radius": "5px",
-        "average_brightness": "calculate_from_metadata_or_fallback"
-      },
-      "text": {
-        "font_family": "system_default_serif",
-        "line_height": "1.2em",
-        "average_word_length": "calculate_from_metadata_or_fallback",
-        "paragraph_count": "estimate_from_metadata_or_fallback"
-      },
-      "video": {
-        "average_color": "calculate_from_first_frame_metadata",
-        "motion_vector_strength": "estimate_from_metadata",
-        "audio_volume": "estimate_from_metadata"
-      }
-    }
-    ```
-*   This data should be either present as metadata with each object, or estimated from the object's type/source.
-
-**2. Simulation Rendering Engine:**
-
-*   A client-side rendering module responsible for generating 'simulated' content for unloaded areas.
-*   **Image Simulation:**  Generate blurred backgrounds using the `dominant_color` and `blur_radius` from the perceptual feature map. Optionally, introduce subtle animated noise simulating slight motion.
-*   **Text Simulation:**  Render placeholder blocks with appropriate font, line height, and a color matching the predicted text color. Populate the blocks with random characters or 'lorem ipsum' text to fill the space, adjusted for the estimated `paragraph_count`. Implement subtle letter spacing adjustments based on `average_word_length`.
-*   **Video Simulation:** Display a static frame colored with `average_color` and apply a subtle flickering effect that mimics expected motion based on `motion_vector_strength`. Simulate audio 'hiss' at a volume determined by the estimated `audio_volume`.
-*   The simulation rendering engine should be modular, allowing easy addition of new content type simulations.
-
-**3. Dynamic Simulation Trigger:**
-
-*   Monitor viewport position and proactively fetch metadata for content *near* the viewport but not yet loaded.
-*   Use the metadata to generate the initial simulation.
-*   As content loads, seamlessly transition from the simulation to the actual content.
-*   Adjust simulation fidelity based on network conditions. (e.g., lower fidelity simulations on slow connections).
-
-**4. Pseudocode for Simulation Generation:**
+**Pseudocode (Controller Side - Device Identification):**
 
 ```
-function generateSimulation(contentType, metadata, viewportPosition) {
-  if (contentType == "image") {
-    dominantColor = metadata.dominant_color;
-    blurRadius = metadata.blur_radius;
-    renderBlurredBackground(dominantColor, blurRadius, viewportPosition);
-  } else if (contentType == "text") {
-    fontFamily = metadata.font_family;
-    lineHeight = metadata.line_height;
-    paragraphCount = metadata.paragraph_count;
-    renderTextBlock(fontFamily, lineHeight, paragraphCount, viewportPosition);
-  } else if (contentType == "video") {
-    averageColor = metadata.average_color;
-    motionVectorStrength = metadata.motion_vector_strength;
-    renderVideoFrame(averageColor, motionVectorStrength, viewportPosition);
-  } else {
-    renderDefaultPlaceholder(viewportPosition); //Fallback
-  }
-}
+FUNCTION IdentifyDevice(currentModulationData, frequencyData):
+  // 1. Analyze Current Modulation
+  possibleDeviceIDs = LookupDeviceIDsByCurrentPattern(currentModulationData)
+
+  // 2. Filter by Frequency Signature
+  filteredDeviceIDs = []
+  FOR each deviceID in possibleDeviceIDs:
+    IF GetDeviceFrequencySignature(deviceID) == frequencyData:
+      APPEND deviceID to filteredDeviceIDs
+
+  // 3. Handle Ambiguity
+  IF LENGTH(filteredDeviceIDs) == 1:
+    RETURN filteredDeviceIDs[0] // Unique Identification
+  ELSE IF LENGTH(filteredDeviceIDs) > 1:
+    //Further disambiguation using additional data (e.g. port number) or a challenge/response.
+    RETURN "Multiple Devices Found - Requires Further Verification"
+  ELSE:
+    RETURN "Device Not Found"
+
+FUNCTION GetDeviceFrequencySignature(deviceID):
+  //Query database for pre-defined frequency signature associated with deviceID.
+  //This signature might be a central frequency value, or a range.
+  RETURN signature;
 ```
 
-**Novelty:**  This goes beyond static placeholders. It uses perceptual data to *simulate* the experience of viewing loaded content, reducing the perceived loading time and providing a more engaging user experience.  It doesn't just fill space; it attempts to *trick the brain* into thinking content is present.
+**Novelty:**
+
+This system adds a secondary, analog identification channel to the existing power modulation technique. It’s less susceptible to spoofing (as it requires precise hardware control) and offers improved security and reliability.  The resonant frequency/impedance shift is *not* used for power delivery, only for identification, preventing any impact on performance or efficiency. This allows for a far more robust and secure identification system compared to solely relying on current modulation.
