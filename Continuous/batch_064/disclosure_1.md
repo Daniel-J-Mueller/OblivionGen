@@ -1,69 +1,94 @@
-# 11232391
+# 10274720
 
-## Autonomous Vehicle Swarm Mapping & Dynamic Route Optimization – "EchoNet"
+## Micro-Lens Array for Enhanced Light Control & Individual Pixel Addressing
 
-**System Overview:**
+**Concept:** Integrate a micro-lens array (MLA) directly *within* the pixel structure, alongside the TFT, to achieve precise light direction and, crucially, *individual* pixel light modulation beyond simple on/off control. This builds on the light-blocking layer idea – instead of blocking light, we *redirect* it.
 
-EchoNet leverages a swarm of low-cost, ground-based autonomous vehicles (let’s call them “EchoUnits”) equipped with basic sensors (LiDAR, cameras, IMUs) to create and maintain a hyper-detailed, real-time map of both indoor and outdoor environments, then uses this map for dynamic route optimization – going beyond static map data. The system focuses on micro-level changes (temporary obstructions, spills, pedestrian traffic) to enable true “last meter” navigation for delivery/service bots.
+**Specs:**
 
-**Hardware Specs (EchoUnit):**
+*   **MLA Material:** Transparent polymer (e.g., PDMS) or glass, chosen for refractive index and moldability.  Must withstand manufacturing processes.
+*   **Lenslet Dimensions:**  5-20um diameter, 2-10um focal length.  Precisely engineered for the pixel pitch and display viewing angle.
+*   **Lenslet Array Configuration:**  Each pixel incorporates *multiple* (3-5) lenslets, arranged in a non-uniform pattern within the pixel area. The pattern is unique per pixel.
+*   **TFT Integration:**  The TFT structure is partially embedded *under* the MLA, minimizing shadow cast and maximizing light transmission.  Thin-film encapsulation is crucial.
+*   **Active Control:** Each lenslet’s focal length is dynamically adjustable via micro-electro-mechanical systems (MEMS) or liquid crystal manipulation. Each lenslet has an associated micro-actuator.
+*   **Addressing:** Each lenslet is individually addressable via a dedicated control line integrated with the existing gate/source lines.  A modified driver circuit is required.
+*   **Light-Blocking Layer Adaptation:** The existing light-blocking layer is redesigned as a 'light-shaping' layer. It incorporates micro-apertures and diffractive elements to further refine light direction and prevent cross-talk between pixels.
+*   **Substrate:** Utilizes existing support plates, with modifications for MEMS integration and increased electrical routing density.
 
-*   **Dimensions:** 20cm x 20cm x 15cm
-*   **Weight:** 1.5kg
-*   **Locomotion:** Four-wheel drive, differential steering
-*   **Sensors:**
-    *   2D LiDAR (range: 10m, 360° coverage)
-    *   RGB Camera (1080p, 30fps)
-    *   IMU (accelerometer, gyroscope, magnetometer)
-*   **Compute:** Raspberry Pi 4 Model B (or equivalent)
-*   **Communication:** Wi-Fi 6 (802.11ax), Bluetooth 5.0
-*   **Power:** Rechargeable Li-Ion battery (3 hours operational time)
-*   **Cost (estimated):** $200 - $300 per unit
+**Innovation Description:**
 
-**Software Architecture:**
+The core idea is to move beyond simple pixel illumination/blocking. By individually controlling the direction of light *within* each pixel, we can achieve several benefits:
 
-1.  **Data Acquisition & Fusion:** Each EchoUnit continuously collects sensor data. Data is time-stamped and tagged with the unit's GPS/IMU location. Sensor fusion algorithms (Kalman filtering, SLAM) create a local map of the immediate surroundings.
-2.  **Swarm Communication & Map Merging:** EchoUnits communicate wirelessly (mesh network) to share their local maps. A central server (or distributed ledger) merges these local maps into a global map.
-3.  **Dynamic Obstacle Detection & Prediction:**  AI algorithms analyze the global map for dynamic obstacles.  Algorithms predict obstacle movement based on historical data and current velocity.
-4.  **Real-Time Route Optimization:**  A route planning module calculates optimal routes for delivery/service bots, taking into account dynamic obstacles, predicted traffic, and bot capabilities (size, speed).
-5.  **Adaptive Map Resolution:** The system dynamically adjusts map resolution based on the density of obstacles and the required level of detail.  High-resolution maps are maintained in areas with frequent changes.
+1.  **Viewing Angle Enhancement:**  Steering light toward the viewer’s eye enhances perceived brightness and contrast, particularly at wider viewing angles.
+2.  **Sub-Pixel Rendering:**  The micro-lens array effectively creates a dynamically adjustable sub-pixel grid *within* each physical pixel. This drastically increases effective resolution and color gamut.
+3.  **3D Display Capabilities:**  By carefully controlling light direction from adjacent pixels, we can create a basic autostereoscopic 3D effect *without* the need for specialized glasses.
+4.  **Privacy Features:** Directing light away from certain angles creates a privacy filter.
+5.  **Adaptive Brightness:** Redirecting light internally to improve uniformity and efficiency.
 
-**Pseudocode (Route Optimization):**
+**Pseudocode for Pixel Control:**
 
 ```
-function calculate_route(start_location, end_location, bot_specs):
-  global_map = get_current_map()
-  
-  // Filter map to area within radius of start/end locations
-  filtered_map = filter_map(global_map, start_location, end_location)
+// Pixel Class
+class Pixel {
+  int pixelID;
+  Lenslet[] lenslets;
 
-  // Identify potential paths based on A* or similar algorithm
-  potential_paths = a_star(filtered_map, start_location, end_location, bot_specs)
+  // Constructor
+  Pixel(int id, Lenslet[] lensArray) {
+    pixelID = id;
+    lenslets = lensArray;
+  }
 
-  // Score each path based on:
-  // - Distance
-  // - Obstacle density
-  // - Predicted obstacle avoidance maneuvers
-  // - Estimated travel time
-  scored_paths = score_paths(potential_paths, dynamic_obstacle_data)
+  // Function to set lenslet focus
+  void setLensletFocus(int lensletIndex, float focalLength) {
+    lenslets[lensletIndex].setFocalLength(focalLength);
+  }
 
-  // Select the optimal path
-  optimal_path = select_optimal_path(scored_paths)
+  // Function to control pixel output
+  void setPixelOutput(float brightness, float colorR, float colorG, float colorB) {
+      // Control TFT to set basic pixel brightness and color.
+      // Then, dynamically adjust lenslet focal lengths for sub-pixel rendering and view angle optimization
+      for (int i = 0; i < lenslets.length; i++) {
+          float focalAdjustment = calculateFocalAdjustment(brightness, colorR, colorG, colorB, i);
+          setLensletFocus(i, focalAdjustment);
+      }
+  }
+}
 
-  return optimal_path
+// Lenslet Class
+class Lenslet {
+    float focalLength;
+    MEMSActuator actuator;
+
+    Lenslet(MEMSActuator act) {
+        actuator = act;
+        focalLength = initialFocalLength;
+    }
+
+    void setFocalLength(float newFocalLength) {
+        actuator.move(newFocalLength);
+        focalLength = newFocalLength;
+    }
+}
+
+// Calculate focal adjustment algorithm
+float calculateFocalAdjustment(float brightness, float colorR, float colorG, float colorB, int lensletIndex) {
+    // Algorithm based on desired pixel output and lenslet index
+    // Utilize pre-computed look-up tables or machine learning models
+    // Output: focal length adjustment value
+}
 ```
 
-**Deployment Strategy:**
+**Manufacturing Challenges:**
 
-*   **Initial Mapping:** Deploy a swarm of EchoUnits to map the target environment.
-*   **Continuous Monitoring:**  Maintain a smaller, roving swarm of EchoUnits for continuous monitoring and map updates.
-*   **Docking Stations:** Provide docking stations for EchoUnits to recharge and upload data.
-*   **Scalability:** The system is scalable by adding more EchoUnits to increase map coverage and update frequency.
+*   Precise MLA fabrication and integration.
+*   MEMS actuator reliability and long-term performance.
+*   Increased complexity of driver circuits.
+*   Ensuring uniform light transmission through the MLA.
 
 **Potential Applications:**
 
-*   Last-mile delivery (packages, food)
-*   Indoor logistics (warehouses, hospitals)
-*   Security surveillance
-*   Emergency response
-*   Autonomous cleaning/maintenance
+*   High-resolution displays for VR/AR headsets.
+*   Automotive displays with wide viewing angles.
+*   Energy-efficient displays for mobile devices.
+*   Flexible and foldable displays.
