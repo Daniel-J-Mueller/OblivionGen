@@ -1,52 +1,44 @@
-# 9329915
+# 10116567
 
-## Adaptive Request Synthesis with Generative Models
+## Dynamic Interface Prioritization with AI-Driven Flow Steering
 
-**Concept:** Augment the replay system with generative AI to *create* synthetic production requests, based on learned patterns from captured data, rather than solely relying on replay. This allows for stress testing beyond observed scenarios, identifying edge cases not present in production traffic, and proactively mitigating potential failures.
+**Specification:** A system for dynamically prioritizing network interfaces based on real-time AI-driven analysis of flow characteristics, going beyond simple congestion detection.
 
-**Specifications:**
+**Core Concept:**  Instead of *reacting* to congestion by rerouting flows to alternative multipath groups, proactively *predict* interface saturation and steer traffic based on a learned understanding of application behavior and traffic patterns. This builds upon the existing multipath concepts but introduces a predictive, application-aware element.
 
-**1. Data Preparation & Model Training:**
+**Components:**
 
-*   **Capture Module Enhancement:** Modify the production service capture module to include feature extraction. Instead of solely capturing raw request data, extract features like request method, endpoint, header size, payload structure, data types, and estimated computational complexity (based on request parameters). Store these features alongside the raw request data.
-*   **Generative Model:** Employ a Variational Autoencoder (VAE) or Generative Adversarial Network (GAN) trained on the extracted features and corresponding raw request data. The model should learn the distribution of valid requests.  A conditional GAN (cGAN) would be preferred, allowing generation of requests with specific characteristics (e.g., high payload size, specific endpoint).
-*   **Training Pipeline:** Implement a scheduled training pipeline to continuously retrain the generative model with new captured data, ensuring the model stays up-to-date with evolving production traffic patterns.  Include a mechanism for A/B testing different model versions.
+*   **Flow Characterization Module:** Captures detailed information about each network flow (e.g., packet size distribution, inter-arrival times, application type identified via deep packet inspection, source/destination addresses, port numbers). This goes beyond basic statistics used for congestion control.
+*   **AI/ML Prediction Engine:**  A trained machine learning model (e.g., a recurrent neural network or long short-term memory network) that consumes the flow characterization data and predicts future interface utilization.  The model will be trained offline on historical network data and continuously updated with real-time information.  Specifically, it predicts *when* an interface will become saturated for a given flow.
+*   **Dynamic Interface Weighting System:** Based on the AI predictions, assign dynamic weights to each interface within a multipath group.  Higher weights indicate a preferred interface for new flows. This replaces the equal-cost or weighted-cost approach with a *predicted*-cost approach.
+*   **Flow Steering Logic:**  Incoming flows are steered to interfaces based on their dynamic weights. This can be implemented using a modified hashing algorithm or a flow-based policy engine.  New flows are directed to lower-weighted interfaces, preventing congestion before it happens.
+*   **Feedback Loop:** Continuously monitor interface utilization and refine the AI model and dynamic weights based on actual performance.
 
-**2. Synthetic Request Generation & Injection:**
+**Pseudocode (Flow Steering Logic):**
 
-*   **Test Plan Integration:** Extend the test plan to include a "synthetic request percentage" parameter. This defines the proportion of requests to be generated synthetically versus replayed from the data store.
-*   **Synthetic Request Generator:** A new component responsible for generating synthetic requests. It receives a request profile (derived from the test plan) and utilizes the trained generative model to create requests matching that profile.  Request profiles could specify desired features (e.g., endpoint, payload size, data types) and distribution parameters (e.g., normal distribution for payload size).
-*   **Injection Point:** Integrate the synthetic request generator directly into the job queue system. Each job, based on the test plan and synthetic request percentage, will either request a replayed request from the data store or a generated request from the Synthetic Request Generator.
-*   **Request Transformation:** Implement a transformation layer to ensure generated requests are formatted correctly for the production service. This may involve mapping generated data types to expected data types and encoding payloads correctly.
+```
+// Hash Function (Modified to incorporate weights)
+function steerFlow(flowInfo, interfaceList, weights) {
+    combinedHash = hash(flowInfo.sourceIP, flowInfo.destinationIP, flowInfo.port)
+    weightedSum = 0
+    for (i = 0; i < interfaceList.length; i++) {
+        weightedSum += combinedHash * weights[i]
+    }
+    selectedInterfaceIndex = weightedSum % interfaceList.length
+    return interfaceList[selectedInterfaceIndex]
+}
 
-**3. Feedback & Anomaly Detection:**
+// Initialization
+interfaceList = [interface1, interface2, interface3] // List of available interfaces
+weights = [1.0, 1.0, 1.0] // Initial equal weights
 
-*   **Monitoring & Metrics:** Collect metrics on the characteristics of generated requests (e.g., request rate, payload size, endpoint distribution). Compare these metrics to the characteristics of observed production traffic to identify potential discrepancies.
-*   **Anomaly Detection:** Utilize anomaly detection algorithms (e.g., isolation forests, one-class SVMs) to identify unusual patterns in generated requests. This can help identify potential issues with the generative model or unexpected edge cases.
-*   **Automated Model Adjustment:** Implement a feedback loop to automatically adjust the generative model based on anomaly detection results. This can involve retraining the model, adjusting its parameters, or filtering out anomalous requests.
-
-
-
-**Pseudocode (Synthetic Request Generator):**
-
-```pseudocode
-function generate_synthetic_request(request_profile):
-  # Request profile contains: endpoint, payload_size_distribution, data_type_requirements
-  
-  # Generate random parameters based on request_profile distributions
-  parameters = generate_random_parameters(request_profile)
-
-  # Use the generative model to create a request payload
-  payload = generative_model.generate(parameters) 
-
-  # Format the request payload according to the production service requirements
-  formatted_request = format_request(payload)
-
-  return formatted_request
+// Real-time Update (based on AI predictions)
+function updateWeights(aiPredictions) {
+    // aiPredictions: Array of predicted interface utilization for each interface
+    for (i = 0; i < aiPredictions.length; i++) {
+        weights[i] = 1.0 - aiPredictions[i] // Lower utilization = higher weight
+    }
+}
 ```
 
-**Scalability Considerations:**
-
-*   The generative model should be deployed as a scalable microservice.
-*   The job queue should be designed to handle a high volume of requests, both replayed and generated.
-*   The data store should be optimized for fast access to captured request data.
+**Novelty:** This approach differs significantly from the provided patent by moving from *reactive* congestion avoidance to *proactive* flow steering. It leverages AI to understand application behavior and predict interface saturation *before* it occurs, enabling more efficient resource utilization and improved network performance. The dynamic weighting system offers a more granular and adaptable approach to multipath routing than traditional methods.
