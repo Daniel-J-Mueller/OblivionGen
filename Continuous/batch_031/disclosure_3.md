@@ -1,41 +1,78 @@
-# 10134464
+# 11003690
 
-## Adaptive Mask Generation for Fine-Grained Access Control
+## Adaptive Granularity Data Consolidation
 
-**Concept:** Expand upon the shifting hardware's mask generation capabilities to support dynamic, fine-grained access control, moving beyond simple region identification to permission-based addressing. Instead of a single mask determining *if* an address is within a region, the mask will represent *what* operations are permitted on that address – read, write, execute, etc.
+**Concept:** Extend the data segment aggregation to dynamically adjust the granularity (time interval) of data segments *before* storage, based on detected data volatility and prediction models. This allows optimizing storage costs and query performance.
 
-**Specs:**
+**Specifications:**
 
-*   **Mask Encoding:** The mask will be wider than a simple region identifier, utilizing multiple bits per addressable unit (e.g., byte, word). These bits will represent permission flags (Read, Write, Execute, Debug, etc.).  The width of the mask will be configurable.
-*   **Dynamic Permission Assignment:** A “Permission Table” stored in a dedicated memory region will map address ranges to permission flags. This table will be updated dynamically during runtime.
-*   **Shifting Hardware Augmentation:**  The existing shifting hardware will be extended with a “Permission Shifter”. This module receives:
-    *   The base address of the permission table.
-    *   The transaction address.
-    *   A “Region Size” parameter.
-*   **Permission Shifter Operation:**
-    1.  Calculate the offset into the Permission Table based on the transaction address.
-    2.  Retrieve the permission flags from the Permission Table at that offset.
-    3.  Shift the retrieved permission flags left by a number of bits determined by the Region Size. This creates a permission mask aligned with the transaction address.
-*   **Access Control Logic:**  Combine the permission mask (from the Permission Shifter) with the transaction address using a bitwise AND operation. This will yield a “Permitted Address” value.
-*   **Access Granted/Denied:** Compare the “Permitted Address” with the transaction address. If they are equal, access is granted. Otherwise, access is denied.
-*   **Hardware Components:**
-    *   **Permission Table Memory:**  RAM or Flash memory to store permission mappings.
-    *   **Permission Shifter Module:** Custom hardware module implementing the shifting and retrieval logic.
-    *   **Access Control Unit:** Hardware block performing the bitwise AND and comparison operations.
+**1. Volatility Detection Module:**
 
-**Pseudocode (Permission Shifter Module):**
+*   **Input:** Raw measurement streams (first & second measurements as described in the patent).
+*   **Process:**
+    *   Calculate rolling standard deviation and rate of change for each metric within specified time windows (e.g., 1 minute, 5 minutes, 15 minutes).
+    *   Employ anomaly detection algorithms (e.g., Exponential Smoothing, ARIMA) to identify periods of high volatility.
+    *   Assign a volatility score to each time window based on the calculated metrics.
+*   **Output:**  Volatility score for each time interval.
+
+**2. Prediction Module:**
+
+*   **Input:** Historical measurement data, volatility scores, time-series forecasting algorithms (e.g., Prophet, LSTM).
+*   **Process:**
+    *   Train prediction models to forecast future volatility for each metric.
+    *   Generate a predicted volatility score for upcoming time intervals.
+*   **Output:** Predicted volatility score for upcoming time intervals.
+
+**3. Granularity Adjustment Engine:**
+
+*   **Input:** Volatility scores (current & predicted), storage class parameters (max retention time, cost per unit storage), query patterns (from a query log or real-time analysis).
+*   **Process:**
+    *   Define a granularity mapping table: Maps volatility ranges to appropriate data segment durations. Example:
+        *   Low Volatility: 60-minute segments
+        *   Medium Volatility: 15-minute segments
+        *   High Volatility: 1-minute segments
+    *   Dynamically adjust the data segment duration based on the current and predicted volatility scores.  Prioritize shorter durations for high volatility periods and longer durations for stable periods.
+    *   Implement a cost-benefit analysis: Balance storage cost with query performance requirements.
+*   **Output:** Adjusted data segment duration for each time interval.
+
+**4. Segment Generation & Storage:**
+
+*   **Process:**
+    *   Generate data segments with the adjusted duration.
+    *   Store the segments in the archival storage resource, updating the index with the corresponding time interval and granularity level.
+    *   Implement a metadata layer that stores the granularity level and volatility score associated with each data segment.
+
+**5. Query Optimization Engine:**
+
+*   **Process:**
+    *   When a query is received, analyze the requested time range and granularity.
+    *   Retrieve data segments based on the query parameters and metadata.
+    *   Dynamically aggregate or downsample data segments to match the requested granularity.
+    *   Optimize query execution by leveraging the granularity metadata to minimize data retrieval and processing.
+
+**Pseudocode (Granularity Adjustment Engine):**
 
 ```
-function generatePermissionMask(baseAddress, transactionAddress, regionSize):
-  offset = transactionAddress - baseAddress
-  permissionFlags = readMemory(baseAddress + offset)  // Read permission flags from table
-  permissionMask = shiftLeft(permissionFlags, regionSize)  // Left shift to align mask
-  return permissionMask
+FUNCTION AdjustGranularity(currentVolatility, predictedVolatility, storageClassParams):
+  IF currentVolatility > HIGH_THRESHOLD OR predictedVolatility > HIGH_THRESHOLD:
+    segmentDuration = 1 minute
+  ELSE IF currentVolatility > MEDIUM_THRESHOLD OR predictedVolatility > MEDIUM_THRESHOLD:
+    segmentDuration = 15 minutes
+  ELSE:
+    segmentDuration = 60 minutes
+
+  # Cost-benefit analysis (optional)
+  costPerUnitStorage = storageClassParams.costPerUnitStorage
+  queryFrequency = GetQueryFrequency(storageClassParams.metric)
+
+  IF costPerUnitStorage * segmentDuration > queryFrequency:
+    segmentDuration = Max(segmentDuration / 2, 1 minute) # Reduce duration if cost is too high
+
+  RETURN segmentDuration
 ```
 
-**Potential Applications:**
+**Data Structures:**
 
-*   **Secure Memory Access:** Protect sensitive data by restricting access to specific memory regions.
-*   **Code Integrity:**  Prevent unauthorized modification of code by enforcing write protection.
-*   **Fine-Grained Resource Management:** Control access to hardware resources based on permissions.
-*   **Virtualization:** Implement memory isolation between virtual machines.
+*   **Volatility Score:** Floating-point number representing the volatility of a metric within a time interval.
+*   **Granularity Mapping Table:** Dictionary mapping volatility ranges to data segment durations.
+*   **Segment Metadata:** Structure containing segment duration, volatility score, and archival storage location.
