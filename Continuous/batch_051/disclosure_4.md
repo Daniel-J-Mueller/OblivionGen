@@ -1,59 +1,69 @@
-# 12080056
+# 9672122
 
-## Adaptive Heatmap Resolution Based on Object Scale
+## Dynamic Data Affinity & Predictive Relocation
 
-**Concept:** The current patent focuses on generating heatmaps to explain model inferences. This adaptation introduces a dynamic heatmap resolution system, scaling the granularity of the heatmap based on the size of the object being analyzed within the image. Smaller objects will receive higher-resolution heatmaps, while larger objects will have lower-resolution heatmaps. This optimizes computational resources and improves the interpretability of the explanation.
+**Concept:** Extend the fault tolerance system with a proactive data relocation strategy based on predicted compute instance failure rates *and* data access patterns. Instead of *reacting* to failures, *anticipate* them and move data closer to more stable compute resources *before* a failure occurs. This system introduces a 'data affinity score' and predictive modeling to optimize data placement.
 
-**Specifications:**
+**Specs:**
 
-1.  **Object Scale Detection:**
-    *   The system must integrate with the object detection component (if present) or utilize image processing techniques to determine the bounding box dimensions (width, height) of the target object.
-    *   Calculate the object’s area (width \* height).
+**1. Data Affinity Score (DAS):**
 
-2.  **Resolution Mapping Function:**
-    *   Define a function to map object area to heatmap resolution. This could be linear, logarithmic, or a custom function. Example:
-        `heatmap_resolution = base_resolution * (max_area / object_area)`
-        Where:
-        *   `base_resolution` is the default heatmap resolution (e.g., 224x224).
-        *   `max_area` is the maximum object area considered for scaling (tuned empirically).
-        *   `object_area` is the calculated area of the current object.
-    *   Implement a minimum and maximum resolution limit to prevent excessively small or large heatmaps.
+*   **Components:**
+    *   *Compute Instance Stability (CIS):*  A score representing the historical and predicted stability of a compute instance.  Factors: hardware health metrics (CPU temp, memory errors, disk I/O), software error rates, network latency spikes, past failure events.  (Range 0-1, 1 being most stable).  Continuously updated.
+    *   *Data Access Frequency (DAF):* How often a particular data file is accessed by compute instances.  Measured in requests/second.
+    *   *Data Access Latency (DAL):* The average latency experienced by compute instances accessing a specific data file.
+    *   *Cross-Zone Access Penalty (CZAP):*  A penalty applied when a compute instance in one zone accesses data located in another zone. Accounts for network bandwidth, latency, and cost.
+*   **Calculation:**
+    `DAS = (CIS * DAF) / (DAL * CZAP)`  (Higher score indicates stronger affinity)
 
-3.  **Superpixel Adaptation:**
-    *   Modify the image segmentation component to generate superpixels that adapt to the determined heatmap resolution. This ensures that the superpixels align with the heatmap granularity.
+**2. Predictive Relocation Engine (PRE):**
 
-4.  **SHAP Value Calculation Adjustment:**
-    *   Adjust the SHAP value calculation to account for the varying superpixel sizes. This may involve weighting the SHAP values based on the superpixel area to ensure fair comparison across objects of different scales.
+*   **Input:**
+    *   DAS for each data file and compute instance combination.
+    *   Historical data on compute instance failure rates.
+    *   Real-time monitoring of compute instance health.
+    *   System resource availability (CPU, memory, disk space) across compute zones.
+*   **Process:**
+    1.  **Trend Analysis:** Analyze DAS trends over time to identify data files with declining affinity to their current compute instances.
+    2.  **Failure Prediction:** Use machine learning models (e.g., time series forecasting, logistic regression) to predict the probability of failure for each compute instance.  Model trained on historical failure data, health metrics, and resource utilization.
+    3.  **Relocation Candidate Selection:** Identify data files with low DAS *and* hosted on compute instances with a high probability of failure. These are relocation candidates.
+    4.  **Optimal Destination Selection:**  For each candidate, determine the optimal destination compute zone based on:
+        *   Available storage space.
+        *   Current data access frequency from the destination zone.
+        *   Network bandwidth and latency between source and destination zones.
+        *   Cost of data transfer.
+    5.  **Relocation Scheduling:**  Schedule data relocation during periods of low system load to minimize performance impact. Utilize techniques like incremental data transfer or snapshot-based replication.
+*   **Output:** Relocation plan: list of data files to move, source and destination zones, and estimated relocation time.
 
-5.  **Visualization & Output:**
-    *   The generated heatmap will be resized to the original image dimensions for visualization.
-    *   Store the heatmap resolution alongside the heatmap data for reproducibility and analysis.
+**3. Implementation Details:**
 
-**Pseudocode:**
+*   **Monitoring Agent:** Deploy a monitoring agent on each compute instance to collect health metrics, resource utilization, and data access patterns.
+*   **Centralized Coordinator:** Implement a centralized coordinator service to manage the PRE, collect monitoring data, and generate relocation plans.
+*   **Data Replication Mechanism:** Leverage existing data replication mechanisms (e.g., consistent hashing, erasure coding) to ensure data availability during relocation.
+*   **API Integration:** Provide APIs for external systems to monitor relocation progress, adjust relocation parameters, and trigger manual relocations.
 
-```python
-def generate_adaptive_heatmap(image, object_detection_results, base_resolution, max_area):
-    # 1. Object Scale Detection
-    bounding_boxes = object_detection_results # List of (x, y, width, height)
-    object_area = bounding_boxes[0][2] * bounding_boxes[0][3]  # Area of the first detected object
+**Pseudocode (PRE - simplified):**
 
-    # 2. Resolution Mapping Function
-    heatmap_resolution = int(base_resolution * (max_area / object_area))
-    heatmap_resolution = max(64, min(heatmap_resolution, 512)) # Limit resolution
-
-    # 3. Superpixel Adaptation
-    segmentation_config = {
-        "resolution": heatmap_resolution
-    }
-    superpixels = perform_segmentation(image, segmentation_config)
-
-    # 4. SHAP Value Calculation Adjustment
-    shap_values = calculate_shap_values(image, superpixels, model)
-    weighted_shap_values = [value * (superpixel_area / total_image_area) for value, superpixel_area in zip(shap_values, superpixel_areas)]
-
-    # 5. Visualization & Output
-    heatmap = visualize_shap_values(weighted_shap_values, image)
-    heatmap = resize(heatmap, original_image_dimensions)
-
-    return heatmap, heatmap_resolution
 ```
+function predictRelocationCandidates(monitoringData):
+  candidates = []
+  for dataFile in monitoringData.dataFiles:
+    for computeInstance in monitoringData.computeInstances:
+      das = calculateDAS(dataFile, computeInstance)
+      failureProbability = predictFailureProbability(computeInstance)
+      if das < threshold AND failureProbability > threshold:
+        candidates.append((dataFile, computeInstance))
+  return candidates
+
+function calculateOptimalDestination(dataFile, sourceComputeInstance):
+  // Consider storage capacity, data access frequency, network costs
+  // Return best destination compute zone
+  ...
+
+function scheduleRelocation(dataFile, sourceZone, destinationZone):
+  // Orchestrate data transfer
+  // Update metadata
+  ...
+```
+
+This proactive approach enhances fault tolerance by reducing the time it takes to recover from failures. By intelligently relocating data, the system minimizes performance impact and ensures high data availability.
