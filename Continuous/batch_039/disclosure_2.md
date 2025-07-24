@@ -1,73 +1,58 @@
-# 7392510
+# 11915286
 
-## Dynamic Webpage Component 'Provenance' Visualization – Temporal Reconstruction
+## Dynamic Content-Aware Attribution with Predictive Modeling
 
-**Concept:** Extend the component-tracing functionality to capture a *temporal* history of component interactions during page generation. Instead of simply showing *what* components were used, visualize *when* they were invoked relative to each other, creating a dynamic timeline layered onto the webpage. This creates a "provenance" view of the page’s creation.
+**System Overview:** A system to dynamically adjust attribution windows and weighting based on predicted user purchase intent, leveraging real-time behavioral data and machine learning. This extends the core concept of cross-site attribution by moving beyond fixed time thresholds and static weighting schemes.
 
-**Specs:**
+**Core Innovation:** Instead of a fixed timeframe for attributing a purchase to initial content exposure, the system predicts the *probability* of a purchase within a given timeframe based on user behavior *after* content exposure. This prediction informs a dynamically adjusting attribution window, and the weighting applied to the content source.
 
-1.  **Instrumentation:** Modify the trace utility to record not only component invocation, but also precise timestamps (down to milliseconds) for start and completion of each component's execution.  Capture parent-child relationships between components as they occur during the generation process.
+**System Components:**
 
-2.  **Data Structure:**  A `ComponentInvocation` object will hold:
-    *   `componentID`: Unique identifier for the component.
-    *   `startTime`: Timestamp of invocation.
-    *   `endTime`: Timestamp of completion.
-    *   `parentComponentID`: ID of the component that initiated this one (null for the root component).
-    *   `dataPayload`:  Any data passed *to* the component.
-    *   `returnValue`: Any data returned *from* the component.
+1.  **Behavioral Data Collection Module:**
+    *   Tracks user interactions *after* initial content exposure: page views, search queries, social media engagement, product comparisons, etc.
+    *   Data sources: Website analytics, ad network data, social media APIs, potentially CRM data.
+    *   Data storage: Time-series database optimized for real-time analysis.
 
-3.  **Provenance Graph Generation:**  A server-side process will take the `ComponentInvocation` data and construct a directed acyclic graph (DAG) representing the execution flow. Nodes are components, and edges represent invocation dependencies with edge weights corresponding to execution time (duration).
+2.  **Feature Engineering Module:**
+    *   Extracts relevant features from the collected behavioral data:
+        *   **Recency:** Time since last interaction.
+        *   **Frequency:** Number of interactions within a given period.
+        *   **Diversity:** Range of topics/products explored.
+        *   **Engagement Depth:** Time spent on pages, video completion rates, etc.
+        *   **Intent Signals:** Search terms like “buy,” “review,” “compare,” etc.
+        *   **Social Sentiment:** Sentiment analysis of social media posts related to the product.
+    *   Feature scaling and normalization.
 
-4.  **Webpage Integration:**
-    *   Embed a “Provenance View” toggle button on the webpage.
-    *   When enabled, inject a JavaScript module that fetches the provenance graph (either statically embedded or fetched via API).
-    *   The JavaScript module renders the graph using a visual library (e.g., D3.js, Vis.js) overlaid *onto* the existing webpage.
-    *   Components on the webpage are dynamically linked to corresponding nodes in the provenance graph.
+3.  **Predictive Modeling Module:**
+    *   Utilizes a machine learning model (e.g., recurrent neural network, gradient boosted trees) trained on historical data to predict the probability of a purchase within specific time windows (e.g., 1 hour, 6 hours, 24 hours, 7 days).
+    *   Model inputs: Engineered features from behavioral data.
+    *   Model output: Probability distribution over time windows.
 
-5.  **Interactive Features:**
-    *   **Timeline Scrubbing:** Allow the user to “scrub” through the timeline of page generation. As the user moves the scrub bar, the webpage visually highlights the components that were actively executing at that point in time.
-    *   **Component Highlighting:** Clicking a component on the webpage will highlight its node in the provenance graph and vice versa.
-    *   **Data Inspection:** Hovering over a node in the graph will display the `dataPayload` and `returnValue` associated with that component.
-    *   **"What-If" Analysis (Advanced):** Allow users to manually adjust component execution times or even disable components to observe the impact on the overall page generation process. This functionality could be used for performance tuning and debugging.
+4.  **Dynamic Attribution Engine:**
+    *   Receives probability distribution from the Predictive Modeling Module.
+    *   Determines the optimal attribution window based on the probability distribution (e.g., the window with the highest cumulative probability).
+    *   Calculates attribution weights for each content source based on the probability within the optimal window.  Sources contributing to the highest probability receive greater weight.
+    *   Supports multi-touch attribution, distributing credit among multiple content sources.
 
-**Pseudocode (JavaScript - simplified):**
+5.  **Real-time Attribution API:**
+    *   Provides an API for accessing attribution data in real-time.
+    *   Allows integration with advertising platforms, marketing automation systems, and analytics dashboards.
 
-```javascript
-// Assume 'provenanceData' is the fetched provenance graph (array of ComponentInvocation objects)
+**Pseudocode (Dynamic Attribution Engine):**
 
-function renderProvenanceView(provenanceData) {
-  // Create a graph visualization using a library like D3.js or Vis.js
-
-  const nodes = provenanceData.map(component => ({
-    id: component.componentID,
-    label: component.componentID,
-    start: component.startTime,
-    end: component.endTime
-  }));
-
-  const edges = provenanceData.filter(component => component.parentComponentID != null).map(component => ({
-    from: component.parentComponentID,
-    to: component.componentID,
-    arrows: 'to'
-  }));
-  
-  // Use visualization library to create a dynamic graph representation on the webpage
-  // Overlay this graph on top of the existing webpage content
-  // Implement interactive features (timeline scrubbing, component highlighting, etc.)
-}
-
-// Event listener to toggle the provenance view
-document.getElementById('toggleProvenance').addEventListener('click', () => {
-  // Fetch provenance data from server (if not already available)
-  fetch('/provenanceData')
-    .then(response => response.json())
-    .then(data => renderProvenanceView(data));
-});
+```
+function calculateAttribution(user_id, transaction_id, content_sources, behavioral_data):
+    probability_distribution = predictPurchaseProbability(user_id, behavioral_data)
+    optimal_window = findOptimalAttributionWindow(probability_distribution)
+    total_probability_in_window = sum(probability_distribution[window_start:window_end])
+    attribution_weights = {}
+    for source in content_sources:
+        source_probability = 0
+        for interaction in source_interactions:
+            if interaction_time >= window_start and interaction_time <= window_end:
+               source_probability += interaction_probability
+        attribution_weights[source] = source_probability / total_probability_in_window
+    return attribution_weights
 ```
 
-**Potential Extensions:**
-
-*   Integration with performance monitoring tools to identify performance bottlenecks.
-*   Anomaly detection: Automatically highlight components that deviate from expected execution patterns.
-*   User-defined events: Allow developers to inject custom events into the provenance graph to track specific application logic.
-*   Cross-browser compatibility testing: Visualize component execution across different browsers and devices.
+**Novelty:** Existing attribution models rely on static time windows and weighting schemes. This system dynamically adjusts attribution based on predicted purchase intent, leading to more accurate and granular attribution data. The integration of predictive modeling and real-time behavioral data represents a significant advancement in attribution technology. The model also anticipates engagement, rather than solely relying upon historical performance.
