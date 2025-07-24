@@ -1,62 +1,67 @@
-# 9959439
+# 10652292
 
-## Automated Docking & Inventory Synchronization for Drone Delivery – “SkyDock”
+## Adaptive Encoding with Perceptual Hash Synchronization
 
-**Concept:** Extend the RFID tracking system to facilitate automated drone docking & inventory synchronization at delivery points, transforming the outbound door into a drone port.
+**Concept:** Extend synchronized encoding beyond simple timestamp alignment to incorporate perceptual hash synchronization. This ensures visual consistency *even with* encoding parameter differences, minimizing jarring transitions during encoder switching (e.g., failover, load balancing).
 
-**System Specifications:**
+**Specs:**
 
-*   **Drone Docking Station Integration:** Modify the outbound door area to include a standardized drone docking station. This station will include a charging pad, secure landing zone (possibly retractable), and a localized communication network.
-*   **Enhanced RFID Reader Network:** Expand the existing RFID reader coverage *above* the outbound door area, creating a 3D read zone. These readers will need to be weather-sealed and capable of detecting RFID tags on drones *and* packages.
-*   **Drone-Mounted RFID Tag:** Equip all delivery drones with a unique, actively powered RFID tag (or a combination of RFID and Bluetooth beacon) for precise location and identification.
-*   **Package-Level RFID Tagging:** All outbound items *must* have RFID tags. These tags will contain details about the item, destination, and potentially even environmental requirements (temperature, fragility).
-*   **Automated Drone Guidance System:** Integrate the RFID data with a drone flight control system. This allows the system to autonomously guide drones to the correct outbound door, initiate docking, and confirm package transfer.
-*   **Inventory Synchronization Protocol:** The system will automatically synchronize the drone’s manifest with the outbound inventory system upon docking. This verifies that the correct package has been loaded for delivery.
-*   **Dynamic Door Activation:** The outbound door will automatically open and close (or the docking station will extend/retract) based on the drone’s arrival and completion of the transfer.
-*   **Real-time Status Dashboard:** Display the status of all outbound drones – location, battery level, manifest, delivery progress – on a centralized dashboard.
+**1. Perceptual Hash Generation Module:**
 
-**Pseudocode (Drone Docking Sequence):**
+   *   **Input:** Raw video frame (YUV420p preferred).
+   *   **Process:**
+        1.  Downscale the frame to a fixed, low resolution (e.g., 64x48).
+        2.  Convert to grayscale.
+        3.  Apply a Discrete Cosine Transform (DCT) to the grayscale image.
+        4.  Retain only the lowest N DCT coefficients (e.g., N=10-20). These represent the most significant visual features.
+        5.  Normalize the coefficients.
+        6.  Generate a unique hash value (e.g., using SHA-256) from the normalized coefficients.
+   *   **Output:** 64-bit Perceptual Hash.
+
+**2. Synchronization Protocol Enhancement:**
+
+   *   Existing timestamp synchronization protocol remains.
+   *   **New:** Add “Perceptual Hash Exchange” message type.
+   *   **Process:**
+        1.  Encoder A (primary) generates a perceptual hash for each encoded frame.
+        2.  Encoder A transmits the hash *along with* the timestamp via the synchronization protocol.
+        3.  Encoder B (secondary) receives the hash and timestamp.
+        4.  Encoder B calculates the perceptual hash of *its* currently processed frame.
+        5.  Encoder B compares its hash to the received hash.
+        6.  **Hash Difference Threshold:** Define a threshold (e.g., Hamming distance of 5 bits) to determine acceptable visual difference.
+        7.  **Adaptive Encoding Adjustment:**
+            *   If hash difference exceeds threshold:
+                *   Adjust encoding parameters (quantization parameters, GOP structure) of Encoder B *before* encoding the current frame to minimize visual difference. This could involve subtly altering the QP values, or slightly adjusting the frame rate. The adjustment should be limited to prevent excessive artifacts.
+            *   If hash difference is within the threshold, proceed with normal encoding.
+
+**3. Encoder Parameter Negotiation:**
+
+   *   Initial handshake to exchange supported encoding parameters (codec, resolution, bitrate, QP ranges).
+   *   Establish a priority list of parameters for adjustment during hash mismatch. (e.g. QP > Frame Rate > Resolution)
+
+**4.  Failover Mechanism Enhancement:**
+
+    *    Upon failover, the secondary encoder immediately begins adjusting its encoding parameters based on the last received perceptual hash and timestamp from the primary.
+    *    This ensures a seamless transition, avoiding jarring visual shifts during switchover.
+
+**Pseudocode (Secondary Encoder):**
 
 ```
-// System Initialization
-RFID_Reader_Network_Activate()
-Drone_Guidance_System_Online()
-Outbound_Door_Status = Closed
-
-// Drone Approach
-while (Drone_Detected == False) {
-    Scan_RFID_Network()
-}
-
-if (Drone_ID matches expected ID) {
-    Guide_Drone_to_Docking_Station()
-} else {
-    Alert_Security()
-}
-
-// Docking & Transfer
-Outbound_Door_Open() //Or extend docking station
-Wait_for_Drone_Docking_Confirmation()
-Verify_Package_Manifest(Drone_Manifest, Expected_Manifest)
-
-if (Manifest_Match == True) {
-    Confirm_Package_Transfer()
-    Outbound_Door_Close() //Or retract docking station
-    Update_Inventory_Status()
-} else {
-    Alert_Discrepancy()
-    Initiate_Manual_Inspection()
-}
-
-// Drone Departure
-Wait_for_Drone_Departure()
-Update_Delivery_Status()
+loop:
+    receive (timestamp, perceptualHash) from Primary Encoder
+    currentFrame = decode next frame
+    currentPerceptualHash = generatePerceptualHash(currentFrame)
+    hashDifference = calculateHashDifference(currentPerceptualHash, perceptualHash)
+    if hashDifference > threshold:
+        // Adjust encoding parameters based on priority list
+        newQP = adjustQP(currentQP, hashDifference)
+        setEncodingParameters(codec, resolution, bitrate, newQP)
+    encodedFrame = encode(currentFrame)
+    transmit(encodedFrame)
 ```
 
-**Anticipated Benefits:**
+**Hardware/Software Requirements:**
 
-*   Reduced labor costs for outbound package handling.
-*   Increased delivery speed and efficiency.
-*   Improved inventory accuracy.
-*   Enhanced security and traceability.
-*   Scalable solution for high-volume outbound logistics.
+*   Encoding hardware with support for dynamic adjustment of quantization parameters.
+*   Sufficient processing power to perform perceptual hash calculations in real-time.
+*   Modified encoding software to incorporate perceptual hash exchange and adaptive encoding logic.
