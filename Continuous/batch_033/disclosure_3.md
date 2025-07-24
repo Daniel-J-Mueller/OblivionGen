@@ -1,45 +1,73 @@
-# 10124893
+# 10601881
 
-## Adaptive Swarm Health Monitoring & Predictive Failure Transfer
+## Dynamic Data Stream Weaving
 
-**Concept:** Extend the UAV’s prognostics beyond individual vehicle health to encompass a dynamically shifting ‘swarm health’ metric, leveraging data from *all* connected UAVs. This enables predictive failure *transfer* – proactively adjusting mission parameters for a UAV *before* a failure occurs by offloading tasks or preemptively rerouting based on observed degradation in similar units within the swarm.
+**Concept:** Extend the idempotent processing framework to enable real-time “weaving” of data streams based on evolving business rules *without* re-processing entire streams or requiring downtime.  The core idea is to treat checkpoint metadata not just as points for resuming processing, but as ‘knots’ in a dynamic graph representing the stream’s lineage.
 
-**Specifications:**
+**Specification:**
 
-**1. Data Aggregation & Swarm Health Index (SHI):**
+**1. Stream Graph Metadata Layer:**
 
-*   **Data Sources:**  Real-time sensor data streams (as described in the source patent) *plus*  high-level mission performance metrics (e.g., remaining battery life, current speed/altitude, payload weight, encountered wind conditions) from *all* connected UAVs within a defined operational radius.
-*   **Data Transmission:** Secure, low-latency communication protocol (e.g., customized 5G/6G mesh network, satellite link) for continuous data exchange.
-*   **SHI Calculation:** A weighted algorithm combines sensor data & performance metrics, generating a ‘Swarm Health Index’ (SHI) for each subsystem type (e.g., propulsion, avionics, power). Weights are dynamically adjusted based on environmental factors, mission phase, and historical failure data.  Example:
-    ```
-    SHI_Propulsion = (Weight_SensorA * SensorA_Value) + (Weight_SensorB * SensorB_Value) + (Weight_Performance * Performance_Metric)
-    ```
-*   **Anomaly Detection:**  Machine learning models (trained on historical data) continuously monitor SHI values for each subsystem, identifying anomalies indicative of potential failures *across the swarm*. 
+*   Introduce a metadata layer atop the existing data stream. This layer maintains a directed acyclic graph (DAG) representing the stream’s history – points where the stream was split, joined, filtered, or transformed.
+*   Each node in the DAG corresponds to a checkpoint. Metadata stored at each node includes:
+    *   Checkpoint ID
+    *   Timestamp
+    *   Transformation/Filtering Rule applied at this checkpoint
+    *   Input Stream IDs (if this checkpoint resulted from a merge)
+    *   Output Stream IDs (if this checkpoint resulted in a split)
+    *   Data Schema at this point in the stream
+*   This graph is persisted in a high-throughput, low-latency key-value store (e.g., RocksDB, Cassandra) accessible to both stream processing workers and a dedicated "Stream Weaver" service.
 
-**2. Predictive Failure Transfer & Mission Adaptation:**
+**2. Stream Weaver Service:**
 
-*   **Failure Propagation Model:** A Bayesian Network (or similar probabilistic model) predicts the likelihood of a specific subsystem failing on a given UAV based on the SHI values of *other* UAVs experiencing similar stress.  Factors considered: 
-    *   Similarity of operating conditions.
-    *   UAV age/flight hours.
-    *   Maintenance history.
-    *   Component manufacturing batch.
-*   **Proactive Task Offloading:** If a UAV is predicted to experience a subsystem failure within a defined timeframe, the system identifies critical tasks that can be offloaded to other UAVs with healthy subsystems.  Criteria for task selection:
-    *   Task priority.
-    *   Remaining operational capacity of other UAVs.
-    *   Communication bandwidth.
-*   **Dynamic Rerouting:**  Rerouting algorithms adjust flight paths for individual UAVs to minimize stress on potentially failing subsystems and/or avoid hazardous conditions.
-*   **Mission Parameter Adjustment:**  Automated adjustment of mission parameters (e.g., speed, altitude, payload weight) to reduce stress on individual UAVs and/or the swarm as a whole.
-*   **Preemptive Landing:** In cases where a failure is imminent and cannot be mitigated, the system initiates a controlled landing of the affected UAV.
+*   A separate service responsible for managing the stream graph and applying dynamic modifications.
+*   Exposes an API for defining and applying "Weaving Rules." A Weaving Rule specifies:
+    *   Target Stream ID
+    *   Checkpoint ID to start weaving from (or “latest”)
+    *   New Transformation/Filtering Rule to apply
+    *   Optionally, a new output stream ID to divert the modified data.
+*   The Stream Weaver service does *not* directly process data. It only updates the stream graph metadata and instructs processing workers.
 
-**3. System Architecture:**
+**3. Modified Stream Processing Worker:**
 
-*   **Onboard Prognostics Module (Enhanced):**  Expanded to include swarm data processing, predictive failure modeling, and task offloading/rerouting logic.
-*   **Ground Control Station (GCS):**  Provides a centralized view of swarm health, mission status, and potential failures.  Allows operators to monitor system performance and intervene if necessary.
-*   **Cloud-Based Data Storage & Analytics:**  Stores historical data for model training, performance analysis, and long-term trend identification. Enables remote model updates and system improvements.
+*   Upon assignment of a partition, the worker retrieves the stream graph metadata for that partition.
+*   Before processing any data from a checkpoint, the worker queries the Stream Weaver service to check if any Weaving Rules apply to the current checkpoint ID.
+*   If a Weaving Rule is found:
+    *   The worker retrieves the new transformation/filtering rule from the Stream Weaver service.
+    *   The worker applies the new rule to the data.
+    *   If a new output stream ID is specified, the worker sends the modified data to the new stream *in addition* to the original stream.  (This allows for A/B testing or gradual rollouts).
+    *   The worker updates the checkpoint metadata with the applied Weaving Rule ID for auditing and rollback purposes.
+*   If no Weaving Rule is found, the worker processes the data as usual.
 
-**4. Hardware Requirements:**
+**Pseudocode (Stream Processing Worker):**
 
-*   High-bandwidth, low-latency communication modules on each UAV.
-*   Increased onboard processing power to support swarm data analysis.
-*   Redundant power supplies and cooling systems.
-*   Enhanced sensor suites for monitoring environmental conditions and subsystem performance.
+```
+function processPartition(partitionId):
+  graphMetadata = getStreamGraphMetadata(partitionId)
+  currentCheckpoint = getLatestCheckpoint(graphMetadata)
+
+  while (data = getDataFromCheckpoint(currentCheckpoint)):
+    weavingRule = getWeavingRule(currentCheckpoint)
+
+    if (weavingRule != null):
+      modifiedData = applyTransformation(data, weavingRule)
+      sendData(modifiedData, weavingRule.outputStreamId)
+      sendData(data, originalStreamId) //Optional: send to original stream too
+      updateCheckpointMetadata(currentCheckpoint, weavingRule.id)
+    else:
+      sendData(data, originalStreamId)
+
+    currentCheckpoint = nextCheckpoint(currentCheckpoint)
+```
+
+**4. Rollback Mechanism:**
+
+*   Checkpoint metadata now includes information about applied Weaving Rules.
+*   To rollback to a previous state, the Stream Weaver service can instruct processing workers to ignore Weaving Rules applied *after* a specific checkpoint ID.  Workers can effectively "rewind" the stream's processing.
+
+**Benefits:**
+
+*   **Real-time Adaptability:**  Modify data streams on the fly without downtime or full re-processing.
+*   **A/B Testing & Gradual Rollouts:** Easily divert modified data to separate streams for testing or controlled release.
+*   **Fault Tolerance:** Rollback to previous states in case of errors.
+*   **Improved Observability:** Track the lineage of data through the stream using the graph metadata.
