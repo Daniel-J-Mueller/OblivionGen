@@ -1,82 +1,65 @@
-# 9589560
+# 10499037
 
-## Adaptive Audio Prioritization with Contextual Embedding
+## Adaptive Stereo Vision with Bio-Inspired Eye Movement
 
-**System Specifications:**
+**Concept:** Mimic the saccadic and smooth pursuit eye movements of biological vision systems to actively stabilize and refine stereo vision in a dynamic environment, enhancing depth perception and object tracking. The current patent focuses on *correcting* misalignment – this system *prevents* significant misalignment through proactive adjustment.
 
-**I. Core Functionality:**
+**Specs:**
 
-The system dynamically adjusts audio transmission priority not just on detection scores (as in the provided patent), but on *contextual embeddings* of the audio itself. This goes beyond keyword spotting to assess the *meaning* and *potential importance* of the audio segment.
+*   **Hardware:**
+    *   Two high-resolution cameras (identical to those in the source patent).
+    *   Micro-gimbal mounts for *each* camera, providing 2-axis (pan/tilt) movement with high precision and speed. These are distinct from a single actuator correcting only one camera.
+    *   Inertial Measurement Unit (IMU) integrated into the UAV frame, providing real-time acceleration and angular velocity data.
+    *   Dedicated processing unit (FPGA or dedicated ASIC) for real-time motion processing and control.
 
-**II. Hardware Requirements:**
+*   **Software/Algorithm:**
 
-*   **Edge Device (Client):**
-    *   Microphone array.
-    *   Low-power DSP/Neural Engine capable of running moderate-sized embedding models (e.g., a quantized MobileNetV2 or similar).
-    *   Wireless communication module (Wi-Fi, Bluetooth, Cellular).
-    *   Sufficient RAM for temporary audio buffering and model execution.
-*   **Server:**
-    *   High-performance compute cluster (GPUs recommended) for embedding model training and updates.
-    *   Large-scale data storage for audio data and embeddings.
-    *   Network infrastructure to handle data transfer.
+    1.  **Predictive Motion Modeling:**
+        *   Utilize the IMU data to predict the UAV's motion and, consequently, the expected relative motion between the cameras. This is crucial for *proactive* stabilization.
+        *   Develop a Kalman filter or similar state estimator to fuse IMU data with visual odometry derived from the camera images.
+        *   Model expected camera movement based on UAV acceleration, angular velocity and prior stereo image data.
 
-**III. Software Components:**
+    2.  **Saccadic Adjustment:**
+        *   Implement a "saccade" algorithm that rapidly repositions the cameras to maintain optimal stereo baseline and convergence, triggered by:
+            *   Significant drift detected in the stereo disparity map.
+            *   Detection of rapid motion of objects within the scene.
+            *   Anticipation of UAV maneuvers (based on flight controller data).
+        *   Saccades are *small*, fast adjustments designed to recenter the stereo view on objects of interest.
+        *   Saccade velocity and acceleration are constrained to minimize motion blur and maintain image quality.
 
-1.  **Audio Preprocessing Module (Edge):**
-    *   Noise reduction.
-    *   Automatic Gain Control (AGC).
-    *   Feature extraction (e.g., MFCCs, spectrograms).
+    3.  **Smooth Pursuit Tracking:**
+        *   Implement a smooth pursuit algorithm to continuously track moving objects and smoothly adjust the camera positions to keep them within the field of view.
+        *   Object detection and tracking can be performed using established computer vision techniques (e.g., optical flow, feature tracking).
+        *   Smooth pursuit adjustments are *slower* and more gradual than saccades, providing continuous stabilization.
 
-2.  **Embedding Model (Edge/Server):**
-    *   A deep learning model (e.g., a variant of Wav2Vec 2.0 or HuBERT) trained to produce dense vector representations (embeddings) of audio segments.  The initial model is trained on the server.
-    *   Quantization and optimization for edge deployment.
-    *   Federated learning capability to personalize models on individual devices.
+    4.  **Disparity Map Refinement:**
+        *   Even with active stabilization, minor misalignment may still occur. Implement a robust stereo matching algorithm to generate a disparity map.
+        *   Use the disparity map to refine the camera positions and correct any residual misalignment.
 
-3.  **Priority Calculation Module (Edge):**
-    *   Combines the detection score (from keyword spotting, if applicable) with the embedding similarity score.  The embedding similarity is calculated against a dynamically updated set of "important" audio embeddings stored on the server.
-    *   A weighting function determines the relative importance of detection score vs. embedding similarity.  This weighting can be adjusted based on user preferences or application context.
-    *   Output: A priority score (e.g., 0-100).
+*   **Pseudocode (Simplified Saccade Trigger):**
 
-4.  **Transmission Controller (Edge):**
-    *   Based on the priority score, determines whether to transmit the audio segment immediately, buffer it for later transmission, or discard it.
-    *   Adaptive bitrate control based on network conditions.
+```
+// Parameters
+float driftThreshold = 0.1; // Disparity drift threshold
+float saccadeSpeed = 50; // Degrees per second
 
-5.  **Server-Side Embedding Database:**
-    *   Stores embeddings of "important" audio segments (e.g., emergency calls, urgent requests).
-    *   Supports efficient similarity search (e.g., using approximate nearest neighbor algorithms).
-    *   Continuously updated with new "important" embeddings.
+// Main Loop
+while (true) {
+  // Calculate disparity drift (based on stereo matching)
+  float disparityDrift = calculateDisparityDrift();
 
-6.  **Federated Learning Module (Server):**
-    *   Aggregates updates from edge devices to improve the embedding model.
-    *   Privacy-preserving techniques (e.g., differential privacy) to protect user data.
+  if (abs(disparityDrift) > driftThreshold) {
+    // Calculate saccade angle
+    float saccadeAngle = -disparityDrift * 10; // Scale drift to angle
 
-**IV. Pseudocode (Priority Calculation Module):**
-
-```pseudocode
-function calculatePriority(detectionScore, audioEmbedding):
-  # Constants (tunable)
-  EMBEDDING_WEIGHT = 0.6
-  DETECTION_WEIGHT = 0.4
-  SIMILARITY_THRESHOLD = 0.7
-
-  # Calculate similarity between audioEmbedding and embeddings in server database
-  similarityScore = findMostSimilarEmbedding(audioEmbedding)
-
-  # Apply threshold
-  if similarityScore > SIMILARITY_THRESHOLD:
-    priority = (EMBEDDING_WEIGHT * similarityScore) + (DETECTION_WEIGHT * detectionScore)
-  else:
-    priority = detectionScore  # Rely solely on detection score
-
-  return priority
+    // Move cameras to new angle
+    moveCameras(saccadeAngle, saccadeSpeed);
+  }
+}
 ```
 
-**V. Operational Flow:**
-
-1.  Client device captures audio.
-2.  Audio is preprocessed.
-3.  The embedding model generates an audio embedding.
-4.  The priority calculation module combines detection score (if any) with embedding similarity.
-5.  The transmission controller determines whether to transmit the audio segment based on the priority score.
-6.  The server receives the audio segment (if transmitted).
-7.  The server updates the embedding database and potentially retrains the embedding model using federated learning.
+*   **Refinements:**
+    *   Integrate machine learning to predict object motion and proactively adjust camera positions.
+    *   Explore the use of multiple IMUs to improve motion estimation accuracy.
+    *   Develop adaptive filtering techniques to reduce noise and improve the stability of the system.
+    *   Implement a fail-safe mechanism that reverts to a static stereo configuration in case of system failure.
