@@ -1,40 +1,72 @@
-# 11374314
+# 8135820
 
-## Adaptive Metamaterial Phased Array
+## Dynamic Resource Tagging & Predictive Caching
 
-**Concept:** Integrate dynamically reconfigurable metamaterials *within* each antenna element of the phased array module. This allows for beam steering and shaping *beyond* what’s achievable with phase shifting alone, and opens possibilities for polarization control and interference mitigation on a per-element basis.
+**Concept:** Extend the cluster-based routing with a dynamic tagging system applied *to the resource itself*, coupled with predictive caching based on tag similarity and cluster behavior. Instead of just classifying *clients*, classify *content* and predict caching needs based on shared characteristics.
 
-**Specifications:**
+**Specs:**
 
-*   **Metamaterial Unit Cell:**  Split-ring resonator (SRR) based, fabricated on a thin dielectric substrate (Rogers 4350B).  SRR geometry optimized for operation at the target frequency band (e.g., 28 GHz for 5G/6G).
-*   **Reconfigurability Mechanism:**  Varactor diodes integrated into the SRR gaps.  Control voltage applied to each varactor adjusts capacitance, altering the resonant frequency and thus the electromagnetic properties of the metamaterial.  Each element will have at least two varactors for polarization/beamwidth control.
-*   **Antenna Element Design:** Patch antenna element with metamaterial layer directly integrated on top of the radiating surface.  Metamaterial layer patterned to create a graded index metamaterial surface. The patch antenna is optimized for dual-band operation to minimize the insertion loss.
-*   **Sub-Module Architecture:** Utilize the described 4-submodule arrangement (rotated 90-degree pattern), but *each* submodule will contain an array of metamaterial-enhanced antenna elements. Each element can be controlled individually.
-*   **Control System:**  FPGA-based digital control system. Each element's varactor bias voltage managed independently. Algorithm for dynamic beamforming, polarization control, and interference cancellation. Incorporate machine learning for adaptive beam shaping based on the environment.
-*   **Calibration:** The existing calibration antenna/fastener slot will be repurposed to house a miniature field probe for near-field measurements. The field probe data is used to refine the metamaterial control parameters in real-time.
-*   **Power Distribution:** Integrated power management circuitry to provide stable bias voltages to the varactors. Consider wireless power transfer to the varactors to minimize wiring complexity.
+**1. Resource Tagging Module (RTM):**
 
-**Pseudocode (Beam Steering Algorithm):**
+*   **Input:** Requested resource (URL, file, stream ID).
+*   **Process:**
+    *   Analyze resource content (HTTP headers, initial payload, metadata).
+    *   Employ machine learning models (trained on historical data) to assign dynamic tags representing:
+        *   Content Type (video, image, script, etc.) – Standard classification.
+        *   Content Freshness (how often the resource is updated).
+        *   Content Popularity (estimated based on request frequency – updated continuously).
+        *   Content Similarity (vector embedding based on content analysis – identifies near-duplicate resources).
+        *   Geographic Relevance (identified regions where the content is most requested).
+    *   Output: Tag list associated with the resource. These tags are stored in a distributed key-value store (e.g., Redis) accessible by all DNS servers and cache servers.
+
+**2. Cluster Behavior Profiler (CBP):**
+
+*   **Input:** Historical DNS request data aggregated by cluster.
+*   **Process:**
+    *   Monitor request patterns within each cluster, focusing on tag frequencies.
+    *   Build a ‘cluster profile’ representing the dominant tags requested by that cluster. This profile is a weighted list of tags, with weights reflecting frequency.
+    *   Update the profile dynamically based on recent requests.
+*   **Output:** Cluster profiles stored in a distributed key-value store.
+
+**3. Predictive Caching System (PCS):**
+
+*   **Integration Point:** Intercepts DNS queries *after* RTM tagging and *before* routing to cache servers.
+*   **Process:**
+    *   Retrieve the resource tags from the RTM.
+    *   Identify the requesting client’s cluster.
+    *   Retrieve the cluster profile.
+    *   Calculate a ‘similarity score’ between the resource tags and the cluster profile.
+    *   If the similarity score exceeds a threshold:
+        *   Instruct the DNS server to route the request to a *pre-fetch* cache server.
+        *   The pre-fetch cache server proactively retrieves the resource and stores it.
+    *   If the similarity score is below the threshold:
+        *   Route to standard caching infrastructure.
+
+**Pseudocode (PCS):**
 
 ```
-// Input: Desired beam direction (azimuth, elevation)
-// Output: Varactor bias voltages for each antenna element
+function processDNSQuery(dnsQuery) {
+  resourceTags = getResourceTags(dnsQuery.resourceIdentifier)
+  clientCluster = getClientCluster(dnsQuery.clientIP)
+  clusterProfile = getClusterProfile(clientCluster)
+  similarityScore = calculateSimilarity(resourceTags, clusterProfile)
 
-function calculate_beam_steering_voltages(desired_azimuth, desired_elevation):
-  for each antenna_element in antenna_array:
-    element_position = get_element_position(antenna_element)
-    phase_shift = calculate_phase_shift(element_position, desired_azimuth, desired_elevation)
-    varactor_voltage = map_phase_shift_to_voltage(phase_shift)  // Calibration table/function
-    set_varactor_voltage(antenna_element, varactor_voltage)
+  if (similarityScore > threshold) {
+    prefetchCacheServer = selectPrefetchCacheServer()
+    routeRequestToCacheServer(prefetchCacheServer)
+    prefetchResource(prefetchCacheServer, dnsQuery.resourceIdentifier) //Asynchronous
+  } else {
+    routeRequestToStandardCache()
+  }
+}
 
-//Helper functions would require detailed antenna geometry/element placement
+function prefetchResource(cacheServer, resourceIdentifier) {
+    //Initiate asynchronous resource retrieval & caching on cacheServer
+}
 ```
 
-**Novelty:**
+**4. Cache Server Adaptation:**
 
-This design moves beyond simple phase shifting by incorporating dynamically reconfigurable metamaterials directly into the antenna elements. This enables:
-
-*   **Fine-grained control:** Individual element control for precise beam shaping and polarization.
-*   **Adaptive performance:** Real-time adjustment to changing environmental conditions and interference.
-*   **Enhanced beamforming:**  Beyond traditional beamforming, metamaterials enable the creation of arbitrary beam shapes.
-*   **Multi-functionality:**  The same hardware can support beam steering, polarization control, and interference cancellation.
+*   Cache servers need to be equipped with logic to handle pre-fetched content.
+*   Priority should be given to pre-fetched requests to reduce latency.
+*   Cache eviction policies should consider both age and pre-fetch status.
