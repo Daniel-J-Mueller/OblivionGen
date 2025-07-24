@@ -1,51 +1,47 @@
-# 11995124
+# 11514125
 
-## Temporal Graph Sharding with Predictive Pre-fetch
+## Personalized Constraint Relaxation via User Behavioral Modeling
 
-**Concept:** Extend the internal data format to natively support temporal data, then shard the graph based on time *and* predicted future query access patterns. This shifts from reactive query optimization to proactive data placement.
+**Concept:** Dynamically adjust constraint penalties in multi-objective ranking not based on fixed upper bounds or iteration counts, but based on real-time user behavior. The system learns how much a user *tolerates* violations of secondary objectives, and adjusts the penalty term accordingly. This moves beyond a purely algorithmic optimization to a user-centric optimization.
 
 **Specs:**
 
-*   **Internal Data Format Enhancement:**
-    *   Add a `timestamp` field to each data element. This isn't just an insertion timestamp, but represents the time to which the data *relates*.  (e.g., a friendship established on 2023-10-27).
-    *   Introduce a `validity_range` field (start_timestamp, end_timestamp). Allows for versioning and representing data that is only true within a specific time window.
-    *   Each column now has a `temporal_resolution` setting (e.g., milliseconds, seconds, days).
-
-*   **Temporal Sharding:**
-    *   Graph data is partitioned not just by column, but also by time intervals. (e.g., data from 2023-10-01 to 2023-10-31 resides on shard X).  
-    *   Shard boundaries can be fixed (calendar-based) or dynamic (based on data density/access patterns).
-    *   Shards are *versioned* – old shards are archived but remain accessible for historical queries.
-
-*   **Predictive Prefetch Engine:**
-    *   Utilize time-series forecasting algorithms (e.g., ARIMA, Prophet) to predict future query access patterns.
-    *   The engine analyzes historical queries, seasonal trends, and external events (e.g., news, social media) to forecast data needs.
-    *   Based on predictions, data is proactively pre-fetched from archive shards or remote storage and loaded into faster, in-memory shards.
-    *   Prefetching is prioritized based on predicted query importance and resource availability.
-
-*   **Query Execution Plan Adaptation:**
-    *   Query parser identifies temporal constraints in queries.
-    *   Execution plan generator determines the relevant shards based on time ranges.
-    *   If data is pre-fetched, the query is routed to the in-memory shard.
-    *   If data resides on archive shards, the query is routed to those shards, with potential caching of results in a faster tier.
-    *   The system learns from query execution patterns to refine prediction models.
-
-**Pseudocode (Query Execution):**
+*   **Data Collection Module:**
+    *   Tracks user interactions with search results: clicks, dwell time, purchases, adds to cart, explicit ratings (thumbs up/down).
+    *   Records query context: time of day, location (coarse), device type.
+    *   Maintains a user profile storing preferences learned from interaction history.  Key preference indicator:  "Secondary Objective Tolerance" (SOT) – a value representing willingness to sacrifice the secondary objective for gains in the primary.
+*   **SOT Estimation:**
+    *   Utilize a recurrent neural network (RNN) to model user behavior over time. The RNN takes as input sequences of (query, search results, user interaction) tuples.
+    *   The RNN’s output is a predicted SOT value for the current query. This value scales the penalty term in the Lagrangian function.
+    *   Training Data: Large-scale user interaction logs.
+    *   Loss Function:  A combination of prediction accuracy (e.g., predicting clicks) and a regularization term to encourage exploration of diverse results.
+*   **Lagrangian Modification:**
+    *   Original Lagrangian:  `L = Cost(Primary) + λ * Penalty(Secondary)`
+    *   Modified Lagrangian: `L = Cost(Primary) + SOT * λ * Penalty(Secondary)`
+    *   Where:
+        *   `SOT` is the estimated Secondary Objective Tolerance from the RNN.
+        *   `λ` is the original penalty weight.
+*   **System Architecture:**
+    1.  User submits a query.
+    2.  Query & user ID are passed to the SOT Estimation Module.
+    3.  SOT Estimation Module returns the user’s predicted SOT value.
+    4.  The ranking engine calculates the Lagrangian with the adjusted penalty term.
+    5.  Results are ranked and displayed.
+    6.  User interaction data is captured and fed back into the SOT Estimation Module for continuous learning.
+*   **Pseudocode (Ranking Engine):**
 
 ```
-function executeQuery(query):
-  temporalConstraints = parseTemporalConstraints(query)
-  relevantShards = identifyShards(temporalConstraints)
-
-  for shard in relevantShards:
-    if shard.isPrefetched():
-      results = shard.query(query)
-      return results
-    else:
-      results = shard.query(query)
-      cacheResults(results) //Cache to speed up next request
-      return results
-
-  return emptyResult // If no shards contain the data
+function rank_results(query, user_id, search_results):
+    sot = estimate_sot(user_id, query)
+    primary_cost = calculate_primary_cost(search_results)
+    secondary_cost = calculate_secondary_cost(search_results)
+    penalty = calculate_penalty(secondary_cost)
+    lagrangian = primary_cost + sot * penalty
+    ranked_results = optimize(lagrangian) # e.g., using gradient descent
+    return ranked_results
 ```
 
-**Novelty:** Current graph databases primarily focus on static data or basic temporal snapshots. This system actively anticipates future data needs based on predictive modeling, reducing latency and improving query performance for time-sensitive applications. The combination of temporal sharding *and* predictive pre-fetch is a unique approach to scaling graph databases for time-series data.
+*   **Hardware Requirements:**
+    *   Standard server-grade hardware.
+    *   GPU acceleration for RNN training and inference.
+    *   Sufficient storage for user interaction logs and model weights.
