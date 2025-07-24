@@ -1,63 +1,59 @@
-# 11295525
+# 10477161
 
-## Dynamic Perspective Shifting
+## Dynamic Predictive Polling with Environmental Awareness
 
-**Concept:** Augment the real-time video stream with dynamically shifting perspectives, allowing the remote user to virtually "walk around" the environment beyond the guide's immediate field of view, constructed from multiple synchronized streams and AI-driven scene reconstruction.
+**Concept:** Extend the battery-saving polling functionality by incorporating real-time environmental data to *predict* user access requests, optimizing polling intervals beyond simple battery charge thresholds. The system won't just react to battery level, but proactively anticipate need based on contextual cues.
 
 **Specs:**
 
-*   **Sensor Network:** Deploy a network of low-latency, high-resolution cameras (minimum 5) distributed within the environment alongside the primary guide camera. These cameras are synchronized via a dedicated, low-bandwidth protocol. Synchronization tolerance: +/- 50 milliseconds.
-*   **AI Scene Reconstruction Engine:** A server-side engine processes the combined camera feeds to create a sparse 3D model of the environment. Utilizes SLAM (Simultaneous Localization and Mapping) algorithms for real-time reconstruction. Update frequency: 10Hz.
-*   **User Interface (UI):** The user device displays the primary guide camera feed as the default view. A gesture-based interface allows the user to "swipe" or "drag" to switch between virtual perspectives constructed from the other cameras. A “free roam” mode utilizes the reconstructed 3D model to allow smooth, interpolated transitions between viewpoints, even those not directly represented by a physical camera.
-*   **Synchronization Protocol:**  Each camera transmits not only video data but also precise spatial coordinates and orientation data. The server maintains a constantly updated world coordinate system. Timestamps are crucial for aligning the streams. A rolling buffer maintains the last 5 seconds of synchronized video data from all cameras.
-*   **Bandwidth Management:**  The system employs a multi-resolution streaming strategy. The primary guide camera feed is streamed at the highest quality. Secondary camera feeds are streamed at lower resolutions, dynamically adjusted based on network conditions and user selection.
-*   **Audio Spatialization:** Audio is captured from an array of microphones positioned alongside the cameras. The audio signal is spatialized based on the current virtual viewpoint, creating a more immersive experience.
-*   **Prediction & Interpolation:**  To minimize latency, the system predicts the user's desired viewpoint based on their gestures and interpolates between existing camera feeds. This is especially important for smooth transitions in "free roam" mode.
+*   **Sensors:** Integrate the following into the A/V device:
+    *   Passive Infrared (PIR) motion sensor – wide field of view.
+    *   Ambient light sensor.
+    *   Microphone – capable of detecting sounds indicative of human presence (e.g., footsteps, voices – processing occurs locally, not cloud).
+    *   Optional: Basic weather data acquisition (temperature, humidity - if exposed to elements).
+*   **Local Processing Unit (LPU):** A low-power microcontroller dedicated to sensor data processing.
+*   **AI/ML Model (embedded):** A lightweight, pre-trained machine learning model residing on the LPU. This model is trained on datasets correlating environmental sensor readings with historical user access patterns (collected during initial setup/use).  Model outputs a "likelihood of access" score (0-100).
+*   **Polling Interval Adjustment Algorithm:**
 
-**Pseudocode (User Device):**
+    ```pseudocode
+    function adjustPollingInterval(batteryLevel, likelihoodOfAccess):
+      // Base Polling Interval (e.g., 10 seconds)
+      baseInterval = 10
 
-```
-// User Gesture Detected (Swipe/Drag)
-function onGesture(direction, speed) {
-    // Calculate desired viewpoint based on gesture
-    desiredViewpoint = calculateViewpoint(direction, speed);
+      // Battery Adjustment
+      if batteryLevel < 20:
+        intervalMultiplier = 3 // Extend interval
+      elif batteryLevel < 50:
+        intervalMultiplier = 2
+      else:
+        intervalMultiplier = 1
 
-    // Check if a physical camera is nearby
-    nearbyCamera = findNearestCamera(desiredViewpoint);
+      // Access Likelihood Adjustment
+      if likelihoodOfAccess > 80:
+        intervalMultiplier = 0.5 // Reduce interval
+      elif likelihoodOfAccess > 50:
+        intervalMultiplier = 0.75
 
-    if (nearbyCamera != null) {
-        // Switch to the feed from the nearby camera
-        displayCameraFeed(nearbyCamera);
-    } else {
-        // Generate a virtual viewpoint using the 3D model
-        virtualViewpoint = generateVirtualViewpoint(desiredViewpoint);
+      //Combined Interval
+      adjustedInterval = baseInterval * intervalMultiplier
 
-        // Blend the feeds from multiple cameras to create the virtual view
-        blendedView = blendCameraFeeds(virtualViewpoint);
+      //Minimum & Maximum limits
+      if adjustedInterval < 2:
+        adjustedInterval = 2
+      if adjustedInterval > 60:
+        adjustedInterval = 60
 
-        // Display the blended view
-        displayView(blendedView);
-    }
-}
+      return adjustedInterval
+    ```
 
-function blendCameraFeeds(viewpoint) {
-    // Identify relevant cameras (based on viewpoint)
-    relevantCameras = identifyRelevantCameras(viewpoint);
+*   **Data Transmission:** Device transmits a “sensor snapshot” (PIR, light, sound levels, battery) with *each* polling request. This data is used by the network device/cloud for continuous model refinement and to improve the accuracy of the “likelihood of access” prediction.
+*   **Model Update Mechanism:** Over-the-air (OTA) updates for the embedded AI/ML model to incorporate new data and improve prediction accuracy.
+*    **Privacy Considerations:** All sound processing occurs locally. Only sensor *levels* are transmitted, not audio recordings. Data transmission is encrypted. User has the ability to disable sound detection.
 
-    // Project each camera feed onto the desired viewpoint
-    projectedFeeds = projectFeeds(relevantCameras, viewpoint);
+**Operational Flow:**
 
-    // Blend the projected feeds using a weighted average
-    blendedFeed = weightedAverage(projectedFeeds);
-
-    return blendedFeed;
-}
-```
-
-**Hardware Requirements:**
-
-*   Multiple synchronized high-resolution cameras (minimum 5)
-*   Array of microphones
-*   High-performance server for scene reconstruction
-*   Low-latency network infrastructure
-*   User device with sufficient processing power for rendering and display.
+1.  LPU continuously monitors sensors.
+2.  LPU calculates "likelihood of access" score.
+3.  Polling interval is adjusted based on battery level *and* likelihood of access score.
+4.  Device sends polling request (including sensor snapshot).
+5.  Network device/cloud uses the data for model refinement and responds to the polling request.
