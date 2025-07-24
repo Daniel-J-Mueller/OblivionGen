@@ -1,55 +1,73 @@
-# 12099515
+# 8965005
 
-**Adaptive Granularity Time Series Generation & Anomaly Detection**
+## Personalized Audio "Bubbles" via Distributed Noise Mapping
 
-**Specification:**
+**Concept:** Expand on the noise compensation idea to create individually tailored, localized audio environments – "audio bubbles" – by dynamically mapping noise characteristics across a distributed network of devices.
 
-This system builds upon the concept of converting non-time series data into time series data, but introduces *dynamic* time windowing based on data volatility and predictive modeling. Instead of fixed ingestion intervals, the system adapts to the inherent "rhythm" of the data itself.
+**Specs:**
 
-**Components:**
+*   **Device Roles:**
+    *   **Anchor Device (Primary):** User's primary device (phone, tablet, etc.). Responsible for initiating the noise mapping process and defining the "bubble" radius.
+    *   **Mapping Nodes (Secondary):** Any nearby devices (other phones, smart speakers, IoT sensors) participating in the noise map.
+*   **Noise Data Collection:**
+    *   Each Mapping Node continuously samples ambient audio.
+    *   Nodes analyze audio for dominant noise frequencies & amplitude. Data includes timestamp and geolocational data (approximate, privacy-focused).
+    *   Data transmitted (encrypted) to the Anchor Device.
+*   **Noise Map Creation:**
+    *   Anchor Device aggregates data from Mapping Nodes.
+    *   Creates a dynamic 3D noise map representing noise distribution within the defined “bubble” radius.
+    *   Noise map data stored locally on the Anchor Device.
+*   **Audio Processing & Transmission:**
+    *   When playing audio, the Anchor Device applies inverse filtering based on the noise map data.
+    *   The processed audio is transmitted to the user’s headphones/speakers.
+    *   Optionally, audio processing data can be *shared* with nearby Mapping Nodes to apply similar filtering on *their* audio output, creating a more unified acoustic experience for multiple users within proximity.
+*   **Dynamic Adjustment:**
+    *   Noise map is constantly updated with incoming data.
+    *   Audio processing parameters adjust in real-time to compensate for changing noise conditions.
+*   **Privacy Features:**
+    *   Data anonymization/pseudonymization.
+    *   User control over data sharing (opt-in/opt-out).
+    *   Limited data retention.
 
-1.  **Volatility Monitor:** Continuously assesses the rate of change within incoming data portions.  Metrics include standard deviation, entropy, and rate of change of aggregates.
-
-2.  **Predictive Model (LSTM-based):** Trained on historical data to predict future values for each metric.  The model outputs a confidence interval for its prediction.
-
-3.  **Dynamic Windowing Engine:**  This is the core. It adjusts the length of the time windows based on both volatility *and* prediction confidence.
-    *   **High Volatility / Low Confidence:** Short windows – prioritize immediate detection of anomalies (reactive).
-    *   **Low Volatility / High Confidence:** Long windows – prioritize long-term trend analysis and predictive anomaly detection (proactive).
-
-4.  **Anomaly Detection Service:** Standard time series anomaly model (e.g., ARIMA, Prophet).
-
-5.  **Metadata Store:** Stores volatility metrics, confidence intervals, and window lengths for each data stream.
-
-**Pseudocode:**
+**Pseudocode (Anchor Device):**
 
 ```
-FOR each incoming data_portion:
-    Calculate volatility_metrics(data_portion)
-    Predict future_value, confidence_interval = predictive_model(data_portion)
+// Initialization
+bubbleRadius = 10 meters;
+noiseMap = createNoiseMap(bubbleRadius);
+mappingNodes = [];
 
-    IF volatility_metrics > threshold AND confidence_interval < threshold:
-        window_length = short_window_length
-    ELSE IF volatility_metrics < threshold AND confidence_interval > threshold:
-        window_length = long_window_length
-    ELSE:
-        window_length = default_window_length
+// Node Discovery
+function discoverMappingNodes():
+    // Bluetooth/WiFi scanning for nearby devices
+    nearbyDevices = scanForDevices();
+    for each device in nearbyDevices:
+        if device.supportsNoiseMapping():
+            mappingNodes.add(device);
 
-    Append timestamp corresponding to window_length to data_portion
-    Send time series data to anomaly detection service
-    Store volatility_metrics, confidence_interval, window_length in metadata store
+// Noise Map Update
+function updateNoiseMap():
+    for each node in mappingNodes:
+        noiseData = node.getNoiseData();
+        updateNoiseMapData(noiseData);
+
+// Audio Processing
+function processAudio(audioSignal):
+    noiseCompensationData = getNoiseCompensationData(audioSignal);
+    processedSignal = applyNoiseCompensation(audioSignal, noiseCompensationData);
+    return processedSignal;
+
+// Noise Compensation Data Retrieval
+function getNoiseCompensationData(audioSignal):
+    // Use the noise map and the current location to determine the dominant noise frequencies.
+    //  Adjust the audio signal to compensate for the noise.
+    //  Apply a gain to the frequencies.
+    return compensationData;
 ```
 
-**Data Flow:**
+**Possible Extensions:**
 
-1.  Raw data (non-time series) arrives.
-2.  Data is portioned based on initial settings.
-3.  Volatility is calculated.
-4.  Predictive model generates a forecast and confidence interval.
-5.  Dynamic windowing engine determines window length.
-6.  Timestamp is appended, converting data to time series.
-7.  Time series data is sent to the anomaly detection service.
-8.  Metadata is logged for analysis and optimization.
-
-**Novelty & Potential:**
-
-This moves beyond *reactive* anomaly detection (detecting anomalies *after* they occur) toward *predictive* anomaly detection. By intelligently adjusting window lengths, the system can anticipate anomalies before they manifest, enhancing proactive monitoring and enabling faster responses. The metadata logging facilitates continual optimization of the dynamic windowing engine.
+*   **Predictive Noise Modeling:**  Use machine learning to predict future noise levels based on historical data and environmental factors.
+*   **Acoustic Beamforming:**  Focus audio output towards the user, minimizing noise leakage.
+*   **Collaborative Noise Cancellation:**  Multiple users contribute noise data to create a shared noise cancellation field.
+*   **Integration with Smart Home Systems:**  Use smart home sensors (e.g., window/door sensors) to trigger noise cancellation when external noise is detected.
