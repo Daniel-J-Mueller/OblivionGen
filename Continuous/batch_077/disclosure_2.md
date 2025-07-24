@@ -1,80 +1,53 @@
-# 10642986
+# 12271732
 
-## Dynamic Software Shadowing & Behavioral Anomaly Detection
+## Adaptive Datapath Specialization via Instruction-Chained Templates
 
-**Concept:** Extend the core idea of identifying unused code segments, but instead of simply blocking/removing them, create a “shadow” execution environment that *actively* monitors access attempts to these segments *after* the initial learning phase. This allows for the detection of sophisticated attacks or unexpected behaviors that attempt to exploit previously unused code.
+**Concept:** Extend the datapath table concept to incorporate "template specialization." Rather than static datapath configurations per microoperation, we define a set of adaptable datapath templates. Instruction sequences ("chains") dynamically select and partially instantiate these templates, creating specialized datapaths tailored to the immediate computation. This minimizes table size and maximizes computational flexibility.
 
 **Specifications:**
 
-**1. Shadow Environment Creation:**
+1.  **Template Library:** A library of pre-defined datapath templates. Each template represents a common computational pattern (e.g., fused multiply-add, convolution layer segment, recurrent unit component). Templates are parameterized – containing slots for functional units, interconnect configurations, and data types.
 
-*   **Component:** Shadow Executor (SE)
-*   **Function:** Creates a lightweight, isolated execution environment mirroring the primary application's memory space.
-*   **Trigger:** Activated automatically after the completion of the initial learning period (as defined in the provided patent).
-*   **Data Synchronization:** SE receives a copy of the application's initial state (memory, open files, etc.) but operates independently thereafter.
+2.  **Instruction Chain Tagging:** Machine instructions include a "chain tag" indicating which template specialization chain is active. The chain tag is part of the opcode decode process.
 
-**2. Interception & Redirection:**
+3.  **Dynamic Template Instantiation:**
 
-*   **Component:** Memory Access Interceptor (MAI) – integrated into the OS or application runtime.
-*   **Function:** MAI intercepts all memory access requests.
-*   **Logic:**
-    *   If the access targets a segment determined to be "unused" during the learning period:
-        *   The MAI *redirects* the access request to the Shadow Executor.
-        *   The SE executes the targeted code segment with the provided inputs.
-        *   The SE captures all outputs, side effects, and any error conditions.
-        *   The MAI then returns a "dummy" or "safe" response to the primary application, preventing actual execution of the original unused code.
-    *   If the access targets a "used" segment: Access proceeds normally.
+    *   The opcode table points to a base template *and* a chain ID.
+    *   The chain ID indexes a "chain descriptor" table.  Chain descriptors define how to modify the base template (which functional unit variants to use, interconnect mappings, data type conversions).
+    *   Control logic reads the base template and the chain descriptor to construct the datapath configuration.
 
-**3. Behavioral Analysis & Reporting:**
+4.  **Microoperation-Level Specialization:**  Within a single microoperation, multiple "specialization slots" exist. These allow further adaptation of the datapath based on runtime data or flags within the instruction.
 
-*   **Component:** Anomaly Detector (AD) – a machine learning model trained on expected execution patterns.
-*   **Data Source:** Logs from the Shadow Executor (execution traces, outputs, errors).
-*   **Function:** Analyzes SE logs to identify anomalous behavior:
-    *   Unexpected outputs.
-    *   Errors occurring during execution of previously unused code.
-    *   Access patterns that deviate from established baselines.
-*   **Reporting:**
-    *   Alerts are generated when anomalies are detected.
-    *   Detailed logs and execution traces are provided for investigation.
+5.  **Partial Instantiation:**  Templates are not fully instantiated at the beginning of the microoperation. Instead, functional units are enabled/disabled or configured on demand based on data flow, creating a "just-in-time" datapath.
 
-**4. Dynamic Adaptation:**
-
-*   **Component:** Learning Period Re-Initiator (LPRI)
-*   **Function:** Monitors system behavior and periodically re-initiates the learning period if significant changes are detected (e.g., software updates, configuration changes).
-*   **Trigger Conditions:**
-    *   A pre-defined threshold of anomaly detections.
-    *   Scheduled re-learning intervals.
-    *   Explicit user command.
-
-**Pseudocode (Anomaly Detection):**
+**Pseudocode (Control Logic):**
 
 ```
-function detect_anomaly(se_logs):
-  // Load historical execution data (baseline)
-  baseline = load_baseline_data()
+function issueMicrooperation(instruction):
+  opcode = decodeOpcode(instruction)
+  templateID, chainID = getTemplateAndChain(opcode)
+  baseTemplate = loadTemplate(templateID)
+  chainDescriptor = loadChainDescriptor(chainID)
+  
+  partialDatapath = createPartialDatapath(baseTemplate) // Initial skeleton
 
-  // Extract features from current SE logs
-  features = extract_features(se_logs)
+  for specializationSlot in specializationSlots:
+    if instruction.flag[specializationSlot]: // Condition based on instruction
+      configureUnit(partialDatapath, specializationSlot, chainDescriptor)
 
-  // Calculate anomaly score (e.g., using distance metrics)
-  anomaly_score = calculate_distance(features, baseline)
-
-  if anomaly_score > threshold:
-    // Anomaly detected
-    generate_alert(anomaly_score, se_logs)
-    return True
-  else:
-    return False
+  // Enable/disable functional units based on data flow
+  for unit in units(partialDatapath):
+    if dataAvailable(unit.input):
+      enableUnit(unit)
+    else:
+      disableUnit(unit)
+      
+  configureComputeChannel(partialDatapath)
 ```
 
-**Data Structures:**
+**Hardware Components:**
 
-*   **Shadow State:** Represents the memory state of the Shadow Executor.
-*   **Execution Trace:** Log of instructions executed within the Shadow Executor, including inputs, outputs, and side effects.
-*   **Baseline Profile:** Statistical representation of expected execution patterns.
-
-**Potential Extensions:**
-
-*   **Sandbox Integration:** Integrate the Shadow Executor with a full-fledged sandbox environment for enhanced security.
-*   **Fuzzing Integration:** Use the Shadow Executor to perform targeted fuzzing of unused code segments.
-*   **Automated Remediation:** Automatically block or isolate malicious code based on anomaly detection results.
+*   **Template ROM:** Stores the template definitions.
+*   **Chain Descriptor RAM:** Stores the chain descriptors.  Programmable to support dynamic template adaptation.
+*   **Configuration Logic:** Decodes the chain descriptors and configures the functional units.
+*   **Dataflow Manager:** Monitors data availability and enables/disables functional units.
