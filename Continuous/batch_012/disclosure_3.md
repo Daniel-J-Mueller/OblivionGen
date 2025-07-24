@@ -1,49 +1,73 @@
-# 10594937
+# 12143783
 
-**Adaptive Meta-Material Lens Array for Dynamic Focal Plane Control**
+## Acoustic Scene Reconstruction with Temporal Echo Mapping
 
-**Concept:** Implement a lens system using a dynamically configurable array of meta-materials. Instead of mechanically adjusting focal length, or relying solely on digital stabilization, the meta-material array alters the refractive index of individual elements to achieve real-time, localized focal adjustments. This allows for a system that optimizes image clarity not just for overall stabilization, but for specific points of interest within the frame, predicting object movement *before* it happens.
+**Concept:** Expand sound source localization beyond pinpointing direction to *reconstruct* the acoustic environment, focusing on capturing reverberation and echoes to build a dynamic 'echo map' for enhanced audio processing and spatial awareness.
 
 **Specs:**
 
-*   **Array Dimensions:** 64x64 elements, each element 1mm x 1mm.
-*   **Meta-Material Composition:** Liquid crystal elastomer infused with nanoparticles (Titanium Dioxide preferred) for adjustable refractive index control.
-*   **Actuation:** Micro-electromechanical systems (MEMS) based micro-heaters for localized temperature control, influencing liquid crystal alignment and refractive index. Individual control of each element.
-*   **Sensor Integration:**  Direct integration with the secondary imaging device from the patent. The secondary sensor feeds data to a predictive algorithm. 
-*   **Predictive Algorithm:** A recurrent neural network (RNN) trained on motion patterns and object recognition data. The RNN predicts the future location of objects of interest.
-*   **Control System:** FPGA-based system for real-time control of MEMS heaters based on RNN output.
-*   **Power Requirements:** < 5W.
-*   **Communication:** SPI interface to primary sensor control unit.
-
-**Operation:**
-
-1.  **Data Acquisition:** Primary and secondary sensors capture images simultaneously.
-2.  **Motion Prediction:**  The RNN analyzes secondary sensor data to predict the trajectory of objects.
-3.  **Refractive Index Mapping:** The control system calculates the optimal refractive index for each element in the array, to focus on predicted object locations.
-4.  **Array Activation:** MEMS heaters are activated, locally changing the temperature of meta-material elements, thereby modulating their refractive index.
-5.  **Dynamic Focusing:** Light rays from the primary sensor are dynamically bent, creating a sharp image of moving objects.
-6.  **Iterative Refinement:**  The secondary sensor provides continuous feedback, allowing the system to refine the refractive index mapping in real-time.
-
-**Pseudocode (Control Loop):**
+*   **Hardware:**
+    *   Multi-microphone array (minimum 8 microphones, spatial distribution configurable).
+    *   High-resolution ADC (at least 24-bit, 96kHz sampling rate).
+    *   Dedicated processing unit (FPGA or high-performance DSP).
+*   **Software Modules:**
+    *   **Early Reflection Detector:**  Identifies and isolates early reflections using a modified SRP-PHAT (Steered Response Power – Phase Transform) algorithm. The modification centers on weighting the SRP-PHAT output based on arrival time *delays* – prioritizing reflections arriving within a defined temporal window after the direct sound.
+    *   **Residual Echo Mapper:**  After direct sound and early reflections are isolated, this module handles the remaining reverberant tail.  It employs a recursive least squares (RLS) adaptive filtering approach. Each microphone acts as a reference, and the algorithm learns the impulse response of the environment in real-time.
+    *   **Temporal Echo Map Generator:**  This module aggregates the data from the Residual Echo Mapper.  Instead of a static impulse response, it creates a *dynamic* 'echo map' – a time-varying representation of the reflections.  This map isn't a visual representation, but a data structure storing the amplitude and delay of echoes at various points in time. The map’s resolution is adjustable based on processing power.
+    *   **Spatial Deconvolution Filter:** Using the generated temporal echo map, this module creates a spatial deconvolution filter. The filter’s goal is to separate overlapping sound sources and reduce reverberation. This is an iterative process.
+*   **Algorithm Pseudocode (Temporal Echo Map Generation):**
 
 ```
-initialize RNN
-initialize Meta-Material Array
+// Input:  Microphone array data (multi-channel audio)
+// Output: Temporal Echo Map (data structure: time -> [amplitude, delay])
 
-while (capturing video):
-  capture primary_image, secondary_image
-  predicted_locations = RNN.predict(secondary_image)
-  refractive_index_map = calculate_refractive_index_map(predicted_locations)
-  set_meta_material_array(refractive_index_map)
-  capture_stabilized_image
-  update_RNN(stabilized_image)
-end while
+function generateTemporalEchoMap(audioData, microphoneArray) {
+  // 1. Isolate direct sound using SRP-PHAT (standard implementation)
+  directSound = applySRPPHAT(audioData, microphoneArray)
+
+  // 2. Subtract direct sound from original audio data
+  residualAudio = audioData - directSound
+
+  // 3. For each microphone:
+  for (mic in microphoneArray) {
+    // 4. Apply RLS adaptive filtering to estimate impulse response
+    impulseResponse = applyRLS(residualAudio[mic])
+
+    // 5. Extract echo information (amplitude & delay) from impulse response
+    echoData = extractEchoData(impulseResponse)
+
+    // 6. Aggregate echo data into temporal echo map
+    temporalEchoMap.addEcho(echoData)
+  }
+
+  return temporalEchoMap
+}
 ```
 
-**Potential Applications:**
+*   **Data Structure (Temporal Echo Map):**
 
-*   High-speed aerial photography
-*   Autonomous drone tracking
-*   Real-time augmented reality
-*   Medical imaging
-*   Space telescopes
+```
+class TemporalEchoMap {
+  map = {} // Key: Time (ms), Value: [Amplitude (dB), Delay (ms)]
+
+  addEcho(echoData) {
+    time = echoData.time
+    amplitude = echoData.amplitude
+    delay = echoData.delay
+
+    if (this.map[time]) {
+      // Average amplitude and delay if time already exists
+      this.map[time].amplitude = (this.map[time].amplitude + amplitude) / 2
+      this.map[time].delay = (this.map[time].delay + delay) / 2
+    } else {
+      this.map[time] = { amplitude: amplitude, delay: delay }
+    }
+  }
+}
+```
+
+*   **Applications:**
+    *   Enhanced Voice Assistants: Improved noise cancellation and accurate voice command recognition in reverberant environments.
+    *   AR/VR Spatial Audio: Realistic sound rendering that accounts for room acoustics and reflections.
+    *   Acoustic Monitoring:  Detecting subtle changes in room acoustics for security or environmental analysis.
+    *   Automated Room Acoustic Analysis:  Mapping room characteristics (reverberation time, reflection points) for architectural design.
