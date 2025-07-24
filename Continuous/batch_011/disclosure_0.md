@@ -1,60 +1,57 @@
-# 10288871
+# 11284360
 
-## Dynamic Light-Shaping TFT Backplane for Micro-LED Displays
+## Adaptive Multi-Band RF Harvesting & Power Distribution
 
-**Concept:** Leverage the light-absorbing organic material layer in the TFT backplane not just for shielding, but as an *active* element for shaping and directing light emitted from micro-LEDs integrated directly above the TFT structure. This creates a dynamically adjustable brightness and color mixing system at the subpixel level *without* needing additional optical layers or complex micro-lens arrays.
+**Concept:** Integrate energy harvesting capabilities into the PAN receiver to supplement or replace battery power, focusing on dynamically switching between harvested frequencies for optimal efficiency.
 
-**Specs:**
+**Specifications:**
 
-1.  **TFT Stack Modification:**
-    *   Replace the standard passivation layer with a multi-layer dielectric stack. The bottom layer functions as standard passivation. The top layer is a thin (50-200nm) layer of electrochromic polymer doped with light-absorbing organic material (similar to the original patent’s material, but specifically selected for its electrochromic properties alongside light absorption).
-    *   Integrate transparent electrodes (ITO or similar) *within* the multi-layer dielectric stack *above* the electrochromic layer. These electrodes are patterned to define subpixel-level control zones.
-    *   Micro-LED placement directly above each subpixel control zone.
+*   **RF Harvester Module:**
+    *   Frequency Range: 2.4 GHz – 6 GHz (covers common PAN, Bluetooth, Wi-Fi bands, and emerging 5/6 GHz options).
+    *   Antenna: Miniature, multi-band fractal antenna optimized for polarization diversity.
+    *   Rectifier: High-efficiency Schottky diode-based rectifier with impedance matching network.
+    *   DC-DC Converter: Buck-Boost converter with MPPT (Maximum Power Point Tracking) algorithm. Input voltage range: 0.3V – 1.5V. Output voltage: 3.3V (regulated).
+    *   Power Management IC: Dedicated IC to manage harvested energy storage and distribution.
+*   **Energy Storage:**
+    *   Supercapacitor: 500 mF, 3.3V supercapacitor for energy buffering. Chosen for high cycle life and rapid charge/discharge rates.
+    *   Charge Controller: Integrated into Power Management IC. Implements overcharge, over-discharge, and short-circuit protection.
+*   **Dynamic Frequency Selection (DFS) Algorithm:**
+    *   Real-time Spectrum Scanning: Continuously monitor RF energy levels across the 2.4-6 GHz band.
+    *   Band Prioritization: Prioritize bands based on signal strength, interference levels, and potential energy yield.
+    *   Switching Mechanism: A microcontroller-controlled RF switch dynamically selects the optimal frequency band for energy harvesting.
+    *   Adaptive Thresholds: Adjust sensitivity and thresholds based on device usage patterns and environmental conditions.
+*   **Power Distribution Network:**
+    *   Hierarchical Power Management: Prioritize power distribution to critical components (PAN receiver, CPU).
+    *   Dynamic Voltage Scaling (DVS): Adjust voltage levels based on processing load to minimize power consumption.
+    *   Power Gating: Disable unused modules to eliminate static power leakage.
+*   **Software/Firmware:**
+    *   Real-time monitoring of harvested energy levels and battery voltage.
+    *   User-configurable parameters for DFS algorithm.
+    *   Energy-aware scheduling algorithm to optimize device operation.
 
-2.  **Electrochromic Control System:**
-    *   Dedicated drive circuitry for each subpixel control zone.
-    *   Apply variable voltage to the transparent electrodes. This voltage changes the refractive index and light absorption characteristics of the electrochromic layer.
-    *   Voltage range: 0-10V, allowing precise control over light transmission.
-    *   Control Algorithm: A lookup table correlating voltage to refractive index/absorption coefficient.  This table is calibrated during manufacturing to account for material variations.
-
-3.  **Micro-LED Integration:**
-    *   Micro-LEDs are bonded directly to the top surface of the electrochromic layer using a low-stress adhesive.
-    *   LED pitch:  Variable, but targeting < 50 microns for high-resolution displays.
-    *   LED color:  Red, Green, and Blue micro-LEDs patterned to create full-color subpixels.
-
-4.  **System Operation:**
-    *   The display controller sends pixel data to the TFT backplane.
-    *   The TFT backplane drives the micro-LEDs.
-    *   *Simultaneously*, the TFT backplane adjusts the voltage applied to the transparent electrodes above each subpixel.
-    *   This adjusts the amount of light emitted from the micro-LED that reaches the viewer.
-    *   Precise voltage control enables:
-        *   Dynamic contrast control: Increasing brightness locally while maintaining overall power efficiency.
-        *   Color mixing:  By selectively absorbing light from one or more LED colors, the perceived color of the subpixel can be fine-tuned.
-        *   Viewing angle compensation: Directing light to specific areas, creating the illusion of a wider viewing angle.
-
-**Pseudocode:**
+**Pseudocode (DFS Algorithm):**
 
 ```
-// Per-Subpixel Loop
-for each subpixel in display:
-  // Get Pixel Data
-  red = pixel_data.red
-  green = pixel_data.green
-  blue = pixel_data.blue
+initialize:
+    scan_interval = 100ms
+    priority_bands = [2.4GHz, 5GHz, 6GHz]  // Initial band order
+    current_band = 2.4GHz
 
-  // Drive Micro-LEDs
-  drive_led(red, green, blue)
+loop:
+    every scan_interval:
+        scan_spectrum()
+        band_strengths = scan_result  // List of band strengths
 
-  // Calculate Voltage for Electrochromic Layer
-  voltage = calculate_voltage(red, green, blue, desired_brightness, desired_color_mix)
+        best_band = find_max(band_strengths)
 
-  // Apply Voltage to Transparent Electrode
-  apply_voltage(voltage)
-end for
+        if best_band != current_band:
+            switch_to_band(best_band)
+            current_band = best_band
+
+        if harvested_energy > threshold:
+            power_critical_components(harvested_energy)
+        else:
+            use_battery_power()
 ```
 
-**Material Specifications:**
-
-*   **Electrochromic Polymer:** Poly(3,4-ethylenedioxythiophene) polystyrene sulfonate (PEDOT:PSS) with tailored additives for improved switching speed and contrast.
-*   **Light Absorbing Organic Material:**  A derivative of the material used in the original patent, chosen for its compatibility with PEDOT:PSS and its ability to efficiently absorb specific wavelengths of light.
-*   **Transparent Electrode:** Indium Tin Oxide (ITO) or a transparent conductive polymer.
+**Novelty:** This design moves beyond simple RF harvesting by implementing a DFS algorithm to intelligently select the frequency band with the highest energy yield. This improves harvesting efficiency and allows the device to adapt to varying RF environments. The integration with dynamic power management further optimizes energy usage, potentially enabling self-powered PAN devices.
