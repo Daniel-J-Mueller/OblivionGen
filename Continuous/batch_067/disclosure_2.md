@@ -1,53 +1,52 @@
-# 9778939
+# 10244270
 
-## Dynamic Hardware Fingerprinting & Predictive Security Posture
+## Dynamic Predictive Fragment Caching
 
-**Specification:** Implement a system for continuous, dynamic hardware fingerprinting coupled with a predictive security posture assessment. The initial patent focuses on establishing host identity *at* provisioning. This expands that to *ongoing* verification and proactive security adjustments.
+**Concept:** Enhance adaptive bitrate streaming by pre-caching video fragments *predictively*, not just reactively, based on user interaction with the webpage *beyond* video playback. This leverages the “above-the-fold” download time concept but extends it to *all* webpage interactions.
 
-**Components:**
+**Specifications:**
 
-*   **Hardware Attestation Module (HAM):** A kernel-level module deployed on each host.  Periodically (configurable interval), the HAM captures a cryptographic hash of critical hardware components – CPU registers, memory map, PCIe device signatures, network interface MAC addresses, firmware versions – forming a dynamic hardware fingerprint. This isn’t static like a TPM-based attestation, but a rolling fingerprint.
-*   **Behavioral Analysis Engine (BAE):** Monitors system calls, network traffic, resource usage, and process behavior.  It creates a baseline "normal" profile for each host. Deviations from this baseline trigger anomaly detection.
-*   **Threat Intelligence Feed:** Integrates with external threat intelligence sources (e.g., known malicious firmware hashes, compromised hardware serial numbers).
-*   **Security Posture Engine (SPE):** Evaluates the combined data from HAM, BAE, and threat intelligence. It assigns a dynamic security score to each host.
-*   **Adaptive Policy Engine (APE):**  Responds to the security score by automatically adjusting network access controls, resource allocation, and security policies.
+1.  **Interaction Tracking:** Implement a Javascript library to monitor *all* user interactions on the webpage – scrolling, mouse movements, link hovers, button presses, form inputs, etc. Assign a "weight" to each interaction type reflecting its potential correlation with upcoming video viewing. (e.g., scrolling down = higher weight, hovering over a non-video link = lower weight).
+2.  **Interaction Vector:** Create an "Interaction Vector" – a continuously updating numerical representation of the user’s engagement with the webpage. This is a weighted sum of all tracked interactions over a sliding time window (e.g., last 5 seconds).
+3.  **Fragment Dependency Graph:**  During manifest parsing, construct a "Fragment Dependency Graph". This graph represents the relationships between video fragments, considering segment durations and potential stitching points. Fragments with higher potential for immediate playback (e.g., the next segment) have stronger connections.
+4.  **Predictive Caching Algorithm:**
+    *   **Baseline:** Initially, cache the first few fragments based on the "above-the-fold" download time approach, as in the original patent.
+    *   **Interaction-Driven Prediction:**  As the Interaction Vector changes, *predict* the probability of the user requesting *specific* fragments based on the Fragment Dependency Graph and the Interaction Vector.
+    *   **Caching Priority:** Prioritize caching fragments with a high probability *and* a low current buffer level.
+    *   **Dynamic Adjustment:**  Continuously adjust the caching priority and fragment selection based on the ongoing Interaction Vector and observed user behavior.
+5. **Buffer Management:** Implement a "speculative buffer". This is a separate buffer that holds pre-cached fragments predicted by the algorithm. If the user requests a pre-cached fragment, it's served immediately from the speculative buffer. Otherwise, it remains available for future requests.
+6. **Network Awareness:** Integrate with the existing adaptive bitrate algorithm to consider network conditions *in addition* to the Interaction Vector when making caching decisions. (e.g., if bandwidth is limited, prioritize caching lower-bitrate fragments).
 
-**Workflow:**
-
-1.  **Initialization:** At boot, the HAM establishes an initial hardware fingerprint.  The BAE starts learning the host’s baseline behavior.
-2.  **Continuous Monitoring:** HAM periodically updates the hardware fingerprint. BAE continuously monitors for behavioral anomalies.
-3.  **Fingerprint Comparison:**  The current hardware fingerprint is compared to a stored "golden" fingerprint (established at provisioning). Minor deviations are expected (e.g., RAM module replacement) and flagged as warnings.  Significant deviations trigger immediate investigation.
-4.  **Behavioral Analysis:** BAE identifies anomalous behavior (e.g., unexpected network connections, unauthorized file access).
-5.  **Threat Intelligence Lookup:**  Hardware components and observed behaviors are cross-referenced with threat intelligence feeds.
-6.  **Security Score Calculation:** SPE combines hardware attestation results, behavioral anomalies, and threat intelligence matches to calculate a dynamic security score.
-7.  **Adaptive Policy Enforcement:** APE adjusts security policies based on the security score. Examples:
-    *   **High Score:** Full network access, normal resource allocation.
-    *   **Medium Score:** Restricted network access (e.g., only to essential services), increased logging, resource throttling.
-    *   **Low Score:** Network isolation, automated forensic analysis, potential automated remediation (e.g., host shutdown).
-
-**Pseudocode (APE):**
+**Pseudocode (Caching Logic):**
 
 ```
-function adjustPolicy(host, securityScore):
-    if securityScore >= 80:
-        setNetworkAccess(host, "full")
-        setResourceAllocation(host, "normal")
-        setLoggingLevel(host, "default")
-    else if securityScore >= 50:
-        setNetworkAccess(host, "restricted")
-        setResourceAllocation(host, "throttled")
-        setLoggingLevel(host, "high")
-    else:
-        setNetworkAccess(host, "isolated")
-        triggerForensicAnalysis(host)
-        if forensicAnalysisIndicatesCompromise(host):
-            shutdownHost(host)
+function updateCache(interactionVector, fragmentDependencyGraph, networkBandwidth, currentBuffer) {
+
+  // Calculate probability of requesting each fragment
+  fragmentProbabilities = calculateFragmentProbabilities(interactionVector, fragmentDependencyGraph);
+
+  // Calculate cache priority for each fragment
+  for (each fragment in fragmentDependencyGraph) {
+    cachePriority = fragmentProbabilities[fragment] * (1 - currentBufferLevel[fragment]) * networkBandwidthFactor;
+  }
+
+  // Sort fragments by cache priority
+  sortedFragments = sortFragmentsByPriority(fragments);
+
+  // Cache the top N fragments (based on available buffer space)
+  for (i = 0; i < N; i++) {
+    if (availableBufferSpace > fragmentSize[sortedFragments[i]]) {
+      cacheFragment(sortedFragments[i]);
+      availableBufferSpace -= fragmentSize[sortedFragments[i]];
+    }
+  }
+}
+
 ```
 
-**Data Structures:**
+**Potential Benefits:**
 
-*   `HardwareFingerprint`: {timestamp, cpuRegistersHash, memoryMapHash, pcieDevicesHash, networkInterfaceMacAddresses, firmwareVersions}
-*   `BehavioralProfile`: {baselineCpuUsage, baselineNetworkTraffic, baselineProcessList}
-*   `SecurityScore`: {hardwareAttestationScore, behavioralAnomalyScore, threatIntelligenceScore, overallScore}
-
-**Novelty:** This goes beyond static provisioning identity. Continuous hardware fingerprinting and dynamic security posture adaptation create a resilient, self-healing security system. It anticipates and responds to hardware and software compromises in real time, minimizing the attack surface and reducing the impact of successful attacks.
+*   Reduced buffering and improved playback smoothness.
+*   Proactive adaptation to user viewing patterns.
+*   Enhanced user experience.
+*   More efficient bandwidth utilization.
