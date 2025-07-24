@@ -1,62 +1,46 @@
-# 8195520
+# 10582295
 
-## Dynamic Order Visualization with Augmented Reality
+## Adaptive Resonance Bone Conduction System
 
-**Concept:** Extend the message audit trail feature into a spatial, augmented reality (AR) experience accessible via a mobile device. Instead of solely relying on text-based communication and order details within a browser interface, the system overlays order information *directly onto* the physical items being ordered or related to the order.
+**Concept:** Expand beyond static damping and resonance control to create a bone conduction system that *actively* adjusts its resonant frequency and damping profile in response to user-specific physiological data and environmental acoustics. 
 
-**Specifications:**
+**Specs:**
 
-**1. AR Order Anchor Generation:**
+*   **Sensor Suite:** Integrate bioimpedance sensors *within* the head contact piece (wedge shaped elastomer). These sensors will measure skin hydration, temperature, and subtle muscle movements near the mastoid bone. Simultaneously incorporate miniature accelerometers/vibration sensors *within* the HMWD frame (near the temples) to capture external acoustic vibrations.
+*   **Microcontroller/DSP:** A low-power microcontroller/DSP unit will process data from the sensor suite. This unit will run an algorithm that correlates bioimpedance/vibration data with optimal bone conduction resonance frequencies and damping profiles for *that specific user* and *that specific environment*.
+*   **Actuated Damping Layers:** Replace static high/low damping elements with layers of magnetorheological (MR) fluid encased in microfluidic channels *within* the inner and outer plates of the bone conduction speaker. Applying a magnetic field (controlled by the microcontroller/DSP) alters the viscosity of the MR fluid, dynamically adjusting the damping characteristics.
+*   **Piezoelectric Actuator/Variable Capacitance:** Integrate a small piezoelectric actuator (or variable capacitance element) *directly* in contact with the central pillar of the outer plate. The microcontroller/DSP will apply a voltage to this actuator, subtly modulating the stiffness of the connection between the outer plate and the piezoelectric element. This allows for fine-tuning of the resonant frequency.
+*   **Adaptive Algorithm:**
+    *   **Calibration Phase:** Upon initial use, the system runs a calibration sequence, measuring the user’s baseline bioimpedance and exposing them to a series of test tones. The algorithm identifies the user's unique resonant frequency 'sweet spot' maximizing audio clarity and minimizing distortion.
+    *   **Real-Time Adaptation:** The algorithm continuously monitors bioimpedance and external vibrations. Changes in hydration (sweat during exercise), muscle tension (jaw movements), or ambient noise levels trigger adjustments to both the MR fluid damping and the piezoelectric actuator/variable capacitance, maintaining optimal audio performance.
+*   **Power:** Integrated low-power wireless charging receiver.
 
-*   Upon order creation (or at user request), the system generates a unique AR "anchor" linked to the order. This anchor is a digital reference point tied to either:
-    *   The physical products themselves (if already in the user's possession, using image recognition/object detection).
-    *   A representative image provided by the merchant (for pre-order items or services).
-    *   A designated “staging area” within the user’s environment (e.g., a specific room or tabletop, defined by the user through the AR interface).
-*   Anchor data is stored in a cloud database accessible through a dedicated mobile application.
-
-**2. Mobile Application Integration:**
-
-*   The mobile application (iOS and Android) utilizes ARKit/ARCore to recognize and track the AR anchor within the user’s camera view.
-*   Upon successful anchor detection, the application overlays dynamic order information onto the physical scene.
-
-**3. Dynamic AR Overlay Content:**
-
-*   **Message Bubbles:** Recent messages between buyer and merchant are displayed as 3D “bubbles” emanating from the products or the anchor point. Bubbles visually indicate message sender (buyer/merchant) and display a truncated message preview. Tapping a bubble expands the full message thread.
-*   **Negotiated Term Highlighting:** Key negotiated terms (e.g., price, quantity, delivery date) are visually overlaid onto the product itself. The system uses color-coding or animated highlighting to draw attention to specific terms.
-*   **Progress Indicators:**  Order progress (e.g., “processing,” “shipped,” “delivered”) is displayed via a visual progress bar or animated icon overlaid on the product or staging area.
-*   **Interactive Component Views:** For assembled products, users can view exploded diagrams or 3D models within the AR environment, linked to specific messages related to assembly or customization.
-*   **"What-If" Scenarios:**  Allow the user to visually simulate changes to the order (e.g., adding an item, changing a color) and see the impact on the total price and delivery date in real-time within the AR view.
-
-**4. System Architecture:**
-
-*   **Order Management System (OMS):** Existing system. Responsible for managing orders, messages, and negotiated terms.
-*   **AR Data Service:** New service. Responsible for:
-    *   Storing AR anchor data.
-    *   Generating and managing dynamic AR overlay content.
-    *   Providing an API for the mobile application to access AR data.
-*   **Mobile Application:** iOS and Android. Utilizes ARKit/ARCore for AR tracking and rendering. Communicates with the AR Data Service via API.
-
-**5. Pseudocode (Mobile App - Message Display):**
+**Pseudocode (Simplified Adaptation Loop):**
 
 ```
-function onAnchorDetected(anchorData) {
-  // Load anchor data (product ID, message thread ID, negotiated terms)
+// Initial Calibration
+calibrateUser()
 
-  // Fetch latest messages from message thread via API
-  messages = api.getMessageThread(messageThreadID)
+// Main Loop
+while (true) {
+  bioimpedanceData = readBioimpedanceSensors()
+  vibrationData = readVibrationSensors()
 
-  // For each message in messages:
-  //   Create 3D message bubble
-  //   Set bubble text to message preview
-  //   Set bubble color based on sender (buyer/merchant)
-  //   Position bubble near product/anchor point
-  //   Attach tap event handler to bubble
-  //       - On tap: display full message thread in a separate UI panel
-}
+  // Analyze data to determine optimal damping & resonance
+  dampingLevel = calculateDamping(bioimpedanceData, vibrationData)
+  resonanceFrequency = calculateResonanceFrequency(bioimpedanceData, vibrationData)
 
-function updateNegotiatedTerms(terms) {
-    // For each term in terms:
-    //   Highlight corresponding feature on the physical product 
-    //   Display relevant details with animated text
+  // Apply adjustments
+  setMRFluidDamping(dampingLevel)
+  setPiezoelectricFrequency(resonanceFrequency)
+
+  delay(10ms) //Update rate
 }
 ```
+
+**Materials:**
+
+*   Outer/Inner Plates: Titanium alloy for strength and biocompatibility.
+*   MR Fluid: Optimized for low viscosity and fast response time.
+*   Elastomeric Head Contact Piece: Medical-grade silicone with integrated bioimpedance sensors.
+*   Microfluidic Channels: Etched into titanium alloy plates.
