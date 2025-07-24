@@ -1,63 +1,61 @@
-# 12154558
+# 8997131
 
-## Adaptive Acoustic Fingerprinting for Entity Resolution
+## Personalized Interactive Advertisement "Worlds"
 
-**Concept:** Extend entity resolution beyond lexical matching by incorporating unique acoustic fingerprints of speakers, adapting to variations in speech patterns and accent. This addresses scenarios where homophones or similar-sounding entities exist, and/or where the speaker's voice characteristics are crucial for disambiguation.
+**Concept:** Extend targeted advertising beyond simple replacement to create brief, interactive "worlds" within the broadcast media experience, tailored to user purchase history and browsing data. Instead of *replacing* an ad, momentarily *augment* the existing broadcast with a personalized interactive layer.
 
-**Specifications:**
+**Specs:**
 
-**1. Acoustic Fingerprint Generation Module:**
+*   **Trigger:** Upon detection of a regional advertisement (as per the patent's audio analysis), initiate a check against the user's profile (purchase history, browsing data from the linked e-commerce system).
+*   **World Generation:** Based on profile data, dynamically generate a simplified 3D or 2.5D "world" – a miniature scene relevant to the user's interests. Examples:
+    *   User frequently purchases camping gear: Generate a miniature campsite scene.
+    *   User browses cooking recipes: Generate a miniature kitchen scene.
+    *   User purchases musical instruments: Generate a miniature stage or practice room.
+*   **Interactive Elements:**  Populate the world with interactive elements directly linked to purchasable items.
+    *   Camping scene: Tap a tent to view product details, tap a lantern to see similar items.
+    *   Kitchen scene: Tap ingredients on a counter to view recipes using those ingredients, tap cookware to view product details.
+*   **Integration:** Seamlessly overlay the interactive world onto the broadcast media.  The original broadcast content is dimmed or partially transparent during interaction. The user can 'exit' the world to resume full-screen playback.
+*   **Duration:**  Limit interaction duration to 5-15 seconds to avoid disrupting the viewing experience.
+*   **Input Method:**  Use remote control, mobile device touchscreen (via companion app), or voice commands to navigate and interact.
+*   **Data Gathering:** Track user interactions within the worlds to refine targeting and world generation algorithms.
 
-*   **Input:** Raw audio data segment corresponding to the entity mention.
-*   **Process:**
-    *   **Feature Extraction:** Utilize Mel-Frequency Cepstral Coefficients (MFCCs), pitch, formant frequencies, and voice quality metrics (jitter, shimmer).
-    *   **Temporal Modeling:** Apply a recurrent neural network (RNN) – specifically, a Long Short-Term Memory (LSTM) or Gated Recurrent Unit (GRU) – to model the temporal evolution of extracted acoustic features. The RNN creates a fixed-length vector representation – the acoustic fingerprint.
-    *   **Normalization:** Normalize the acoustic fingerprint vector to a standard scale.
-*   **Output:** Acoustic fingerprint vector.
-
-**2. Fingerprint Database & Indexing:**
-
-*   A database stores acoustic fingerprints associated with known entities.
-*   Employ a hierarchical indexing structure (e.g., k-d tree, ball tree) for efficient similarity search based on Euclidean distance or cosine similarity between fingerprint vectors.
-
-**3. Entity Resolution with Acoustic Matching:**
-
-*   **Input:**
-    *   First ASR data & Second ASR data (from the existing patent).
-    *   Audio segment corresponding to the identified entity mention.
-*   **Process:**
-    *   Generate acoustic fingerprint for the entity mention.
-    *   Search the fingerprint database for the *k*-nearest neighbors (using the indexing structure).
-    *   **Hybrid Scoring:** Calculate a combined similarity score:
-        *   Lexical Similarity: Based on string matching between the ASR-generated entity mentions and the database entries.
-        *   Acoustic Similarity: Based on the distance between the generated fingerprint and the fingerprints of the nearest neighbors.
-        *   Combined Score = (Weight_Lexical * Lexical_Similarity) + (Weight_Acoustic * Acoustic_Similarity).  Weights are tunable parameters.
-    *   Select the entity with the highest combined score as the resolved entity.
-*   **Output:** Resolved entity.
-
-**4. Adaptive Learning & Feedback Loop:**
-
-*   **User/System Feedback:** Incorporate a feedback mechanism to allow users or the system to correct incorrect entity resolutions.
-*   **Fingerprint Update:** When a correction occurs, update the corresponding entity's acoustic fingerprint in the database.  Use an incremental learning algorithm to smoothly adjust the fingerprint without retraining the entire model.
-*   **Weight Optimization:** Dynamically adjust the weights (Weight_Lexical, Weight_Acoustic) based on the accuracy of entity resolutions. Reinforcement learning techniques can be used to optimize these weights over time.
-
-**Pseudocode (Entity Resolution with Acoustic Matching):**
+**Pseudocode:**
 
 ```
-function ResolveEntity(ASR_Data1, ASR_Data2, AudioSegment):
-  Fingerprint = GenerateAcousticFingerprint(AudioSegment)
-  NearestNeighbors = SearchFingerprintDatabase(Fingerprint, k)
-  for Neighbor in NearestNeighbors:
-    LexicalSimilarity = StringMatch(ASR_Data1, Neighbor.EntityName)
-    AcousticSimilarity = CalculateDistance(Fingerprint, Neighbor.Fingerprint)
-    CombinedScore = (WeightLexical * LexicalSimilarity) + (WeightAcoustic * AcousticSimilarity)
-    Neighbor.Score = CombinedScore
-  ResolvedEntity = FindMaxScoreEntity(Neighbors)
-  return ResolvedEntity
+FUNCTION handleRegionalAd(audioSignal):
+  userProfile = getUserProfile()
+  IF userProfile.purchaseHistory OR userProfile.browseHistory:
+    worldType = determineWorldType(userProfile) // Based on history
+    world = generateWorld(worldType, userProfile)
+    overlayWorld(broadcastMedia, world)
+    userInteraction = waitForUserInteraction(world, 5-15 seconds)
+    IF userInteraction:
+      displayProductDetails(userInteraction.selectedItem)
+    removeWorld(broadcastMedia)
+  ELSE:
+    displayStandardRegionalAd()
+  END
+END
+
+FUNCTION determineWorldType(userProfile):
+  // Algorithm to prioritize world types based on purchase/browse frequency.
+  // Example: If camping gear purchased more than cooking recipes, prioritize camping world.
+  RETURN worldType
+END
+
+FUNCTION generateWorld(worldType, userProfile):
+  // Procedurally generate a 3D/2.5D scene based on worldType and userProfile.
+  // Populate with interactive elements linked to purchasable items.
+  RETURN generatedWorld
+END
 ```
 
-**Potential Extensions:**
+**Hardware/Software Requirements:**
 
-*   **Speaker Diarization Integration:**  Before generating the fingerprint, perform speaker diarization to isolate the speaker's voice and reduce noise.
-*   **Acoustic Context Modeling:**  Consider the acoustic context surrounding the entity mention – e.g., the environment, background noise – to improve fingerprint accuracy.
-*   **Multi-Modal Fusion:** Combine acoustic fingerprints with other modalities – e.g., visual cues from video, contextual information from knowledge graphs – for more robust entity resolution.
+*   Networked storage system (as per patent)
+*   E-commerce system integration
+*   Real-time 3D/2.5D rendering engine (on client device or server)
+*   Companion mobile app (optional, for enhanced interaction)
+*   Speech recognition/voice command processing
+*   User profile management system
+*   Data analytics platform to track user interactions.
