@@ -1,74 +1,52 @@
-# 10511619
+# 9935940
 
-## Adaptive Risk Profile Mirroring & Predictive Sampling
+## Dynamic Query Shaping with Behavioral Biometrics
 
-**Concept:** Expand on the idea of risk classification by dynamically mirroring a network’s risk profile *onto* the data itself, using a lightweight, embedded tagging system.  This allows for incredibly granular, proactive sampling and routing based on a data packet’s *predicted* risk trajectory, not just its initial assessment.
+**Specification:** Implement a system that dynamically alters database query construction based on real-time behavioral biometrics of the user initiating the request. This extends the existing concept of limiting queries to single results by adding a layer of continuous authentication *during* query construction, not just at the initial login.
 
-**Specs:**
+**Components:**
 
-**1. Risk Profile Mirroring (RPM) Layer:**
+*   **Behavioral Sensor Suite:** Captures data points like keystroke dynamics, mouse movement patterns, scroll speed, and typing cadence.  This can be client-side (browser-based) or integrated within dedicated hardware.
+*   **Biometric Profile Database:** Stores established behavioral profiles for each user. These are built through an initial learning phase and continuously updated.
+*   **Anomaly Detection Engine:**  Compares real-time behavioral data to the user's established profile.  Generates an "authenticity score" reflecting the likelihood the current user is the legitimate account holder.
+*   **Query Shaper:**  A component intercepting database queries *before* they are sent.  It modifies query parameters based on the authenticity score.
 
-*   **Implementation:** A small header extension (e.g., 16-32 bytes) added to each network packet. This header isn’t for immediate routing, but for recording a *history* of risk assessments as the packet traverses the network.
-*   **Data Fields:**
-    *   `Originating Risk Score (ORS)`: Initial risk score assigned at the source.
-    *   `Hop Risk Accumulator (HRA)`:  A rolling sum of risk increases/decreases at each hop.  Each router/switch contributes to this, *not* by modifying the score directly, but by appending a signed delta value.
-    *   `Classifier History (CH)`:  A condensed log of which risk classifiers ‘fired’ (were triggered) at each hop. This is a bitfield or a short, compressed list of classifier IDs.
-    *   `Prediction Confidence (PC)`: A score representing the system's confidence in the packet’s risk trajectory prediction. This is dynamically updated based on classifier agreement and network behavior.
-*   **Operation:**
-    *   Source assigns ORS.
-    *   Each hop:
-        *   Applies relevant classifiers.
-        *   Calculates risk delta (positive or negative) based on classifier outcomes.
-        *   Appends delta and classifier IDs to HRA/CH.
-        *   Updates PC based on delta magnitude and classifier consensus.
+**Operation:**
 
-**2. Predictive Sampling Engine (PSE):**
+1.  **Continuous Authentication:** The Behavioral Sensor Suite continuously collects biometric data during user interaction.
+2.  **Authenticity Score Calculation:** The Anomaly Detection Engine calculates an authenticity score.
+3.  **Query Interception:** Before a query reaches the database, the Query Shaper intercepts it.
+4.  **Dynamic Query Modification:**
+    *   **High Authenticity (e.g., > 0.9):**  The query proceeds as normal, potentially with relaxed constraints (e.g., allowing more complex queries where appropriate).
+    *   **Medium Authenticity (e.g., 0.6-0.9):**  The Query Shaper modifies the query to prioritize speed and simplicity. This could involve adding index hints, simplifying complex joins, or limiting the number of returned fields.
+    *   **Low Authenticity (e.g., < 0.6):** The Query Shaper drastically simplifies the query, potentially reducing it to a lookup by a primary key or requiring multi-factor authentication before proceeding. It could also inject “noise” into the query parameters to obfuscate intent.
+5.  **Query Execution:** The modified query is sent to the database.
+6.  **Feedback Loop:** Query execution time and database load are monitored and fed back into the Anomaly Detection Engine to refine the behavioral model and improve accuracy.
 
-*   **Implementation:** A distributed system running alongside network infrastructure.
-*   **Function:**  Analyzes RPM data to predict future risk.
-*   **Algorithm:**
-    *   Uses machine learning (e.g., recurrent neural networks, LSTMs) trained on historical RPM data.
-    *   Input:  RPM header.
-    *   Output:  Probability distribution of future risk levels (e.g., "80% chance of being malicious within 3 hops").
-*   **Dynamic Sampling Rate Adjustment:**
-    *   Based on the predicted risk distribution, adjusts the sampling rate for that packet.  
-    *   High predicted risk = very high sampling rate (full packet capture, deep inspection).
-    *   Low predicted risk = minimal sampling (header inspection only).
-
-**3. Adaptive Routing Policies:**
-
-*   Integration with network routing protocols (e.g., BGP, OSPF).
-*   Routing decisions based on PSE output.
-*   Packets with high predicted risk can be:
-    *   Redirected to dedicated security infrastructure (sandboxes, intrusion detection systems).
-    *   Rate-limited.
-    *   Dropped.
-
-**Pseudocode (PSE - Simplified):**
+**Pseudocode (Query Shaper):**
 
 ```
-function predict_risk(rpm_header):
-    # Load trained ML model
-    model = load_model("risk_prediction_model.h5")
-
-    # Prepare input features
-    features = [rpm_header.originating_risk_score, 
-                rpm_header.hop_risk_accumulator,
-                rpm_header.classifier_history]
-
-    # Predict risk probabilities
-    risk_probabilities = model.predict(features)
-
-    return risk_probabilities
-
-function adjust_sampling_rate(risk_probabilities, base_sampling_rate):
-    # Calculate weighted sampling rate based on predicted risk
-    sampling_rate = base_sampling_rate * (1 + sum(risk_probabilities))
-
-    # Limit sampling rate to maximum value
-    sampling_rate = min(sampling_rate, max_sampling_rate)
-
-    return sampling_rate
+function shapeQuery(query, authenticityScore) {
+  if (authenticityScore > 0.9) {
+    return query; // No modification
+  } else if (authenticityScore >= 0.6) {
+    // Add index hints, simplify joins, reduce fields
+    modifiedQuery = addIndexHint(query, "user_id");
+    modifiedQuery = simplifyJoins(modifiedQuery);
+    modifiedQuery = reduceFields(modifiedQuery, ["id", "username", "email"]);
+    return modifiedQuery;
+  } else {
+    // Simplify to primary key lookup
+    primaryKey = getPrimaryKey(query);
+    modifiedQuery = "SELECT * FROM table WHERE id = " + primaryKey;
+    return modifiedQuery;
+  }
+}
 ```
 
-**Novelty:** The combination of mirroring risk *onto* the packet itself, using a predictive engine, and dynamic sampling represents a significant departure from traditional reactive security models. It allows for proactive mitigation based on *predicted* risk, rather than simply responding to detected threats.  It moves beyond static classification to a dynamic, self-learning system.
+**Potential Benefits:**
+
+*   Enhanced security by adding a continuous authentication layer.
+*   Adaptive performance based on user behavior.
+*   Proactive detection of potential attacks or compromised accounts.
+*   Dynamic optimization of database queries based on real-time conditions.
