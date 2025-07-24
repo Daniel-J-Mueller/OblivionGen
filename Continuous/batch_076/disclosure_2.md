@@ -1,67 +1,70 @@
-# 9405825
+# 10924275
 
-## Dynamic Sentiment-Driven Review Summarization with Temporal Weighting
+## Adaptive Data Tiering with Predictive Pre-Encryption
 
-**Concept:** Extend the existing review excerpt extraction by incorporating a temporal weighting factor, prioritizing more recent reviews and dynamically adjusting summary sentiment based on evolving consumer opinions.
+**Concept:** Expand upon the source data access flexibility described in the patent by introducing *predictive* data tiering coupled with pre-encryption tailored to access patterns *before* requests are received. This significantly reduces latency and improves security, especially for frequently accessed data.
 
-**Specifications:**
+**Specs:**
 
-**1. Temporal Decay Function:**
+*   **Tiered Storage:** Implement a tiered storage system comprising:
+    *   **Fast Tier:** NVMe SSDs – for ultra-low latency, small, frequently accessed blocks.
+    *   **Mid Tier:** SATA SSDs – for moderate latency, medium-sized blocks.
+    *   **Cold Tier:** Object Storage (S3 compatible) – for high latency, large/infrequently accessed blocks.
+*   **Access Pattern Prediction Engine:** Employ a machine learning model to predict future block access based on historical access patterns. Features to consider:
+    *   Time of day
+    *   User/Application accessing data
+    *   Data type/Content
+    *   Sequential/Random access patterns.
+*   **Pre-Encryption Module:**  Based on the predicted access tier and associated security requirements, pre-encrypt data blocks *before* they are stored in any tier.
+    *   Fast Tier: Lightweight encryption (AES-NI optimized) - minimal overhead.
+    *   Mid Tier: Standard AES-256 encryption.
+    *   Cold Tier:  Stronger encryption with key rotation and auditing.
+*   **Transform Fleet Integration:** The existing "transform fleet" architecture will handle the pre-encryption, decryption, and data tiering logic. 
+*   **Data Migration:**  Automated background data migration between tiers based on predicted access patterns and available storage capacity.  A cost function balances migration overhead versus performance gains.
+*   **Metadata Management:** Maintain detailed metadata for each data block:
+    *   Current Tier
+    *   Encryption Key ID
+    *   Access Prediction Score
+    *   Last Access Time
+    *   Block Size
+* **Key Management Service (KMS) Integration:** Integrate with a secure KMS to generate, store, and manage encryption keys. Utilize key hierarchies for granular access control.
+* **Dynamic Key Assignment:**  Assign different encryption keys to different blocks based on access patterns and security requirements. This mitigates the risk of a single key compromise.
 
-*   **Parameter:** `decay_rate` (float, 0.0 - 1.0). Higher values emphasize recent reviews more strongly. Default: 0.95.
-*   **Calculation:** Assign a weight to each review based on its age: `weight = decay_rate ^ (current_time - review_time)`.  `review_time` is the timestamp of the review submission.
-*   **Implementation:** Integrate this weighting into the ranking of reviews within each category (Claims 1, 4, 21).  Modify the "usefulness scores" (Claims 1, 4, 21) by multiplying them by the temporal weight before ranking.
-
-**2.  Sentiment Drift Detection:**
-
-*   **Analysis Window:** Define a sliding time window (e.g., 30 days) to analyze sentiment trends within each category.
-*   **Sentiment Calculation:**  Utilize a sentiment analysis engine (e.g., VADER, TextBlob) to calculate the average sentiment score for reviews within the analysis window.
-*   **Drift Threshold:** Define a threshold (e.g., 0.1 on a -1 to 1 sentiment scale) to detect significant sentiment shifts.
-*   **Dynamic Summary Adjustment:**  If sentiment drift is detected in a category, prioritize excerpts reflecting the *new* sentiment, even if they have lower usefulness scores.  This could involve:
-    *   Temporarily boosting the ranking of excerpts with the new sentiment.
-    *   Dynamically adjusting the `positive/negative` sentiment ratio in the extracted excerpts (Claim 1).
-
-**3.  Multi-Aspect Sentiment Analysis:**
-
-*   **Aspect Extraction:** Employ topic modeling (e.g., LDA, NMF) or keyword extraction to identify key product aspects mentioned in the reviews (e.g., battery life, screen quality, comfort).
-*   **Aspect-Specific Sentiment:**  Determine the sentiment associated with each aspect. For example, a review might be generally positive but express negative sentiment about the product's camera.
-*   **Weighted Summarization:** When generating the summary, prioritize aspects that are most important to the consumer (based on consumer preference data – Claim 4, 21) and reflect the sentiment towards those aspects.
-
-**4. Review Source Weighting**
-
-*   **Source Identification:**  Determine the source of each review (e.g., official website, social media, blog).
-*   **Trust Score:** Assign a trust score to each source based on factors like reputation, verification status, and historical accuracy.
-*   **Weighted Contribution:**  When ranking and selecting excerpts, incorporate the source’s trust score as a multiplier.  Higher trust scores increase the weight of excerpts from that source.
-
-**Pseudocode (Integration into existing system – Claim 1, 4, 21):**
+**Pseudocode (Transform Fleet component):**
 
 ```
-function extract_review_excerpt(item, user_preferences):
+function process_block_request(request):
+  block_id = request.block_id
+  operation = request.operation (read/write)
 
-  reviews = get_all_reviews(item)
-  categories = categorize_reviews(reviews, item)
+  metadata = get_block_metadata(block_id)
 
-  ranked_categories = rank_categories(categories, user_preferences)
+  if metadata is null:
+    // New block – determine initial tier and encryption
+    tier = predict_tier(block_id)
+    key_id = generate_key(tier)
+    metadata = { tier: tier, key_id: key_id }
+    store_block_metadata(block_id, metadata)
 
-  for category in ranked_categories:
-      weighted_reviews = []
-      for review in category.reviews:
-          weight = calculate_temporal_weight(review)
-          weighted_score = review.usefulness_score * weight
-          weighted_reviews.append((review, weighted_score))
+  if operation == "read":
+    if metadata.tier == "fast":
+      // Decrypt directly from fast tier
+      decrypt(data, metadata.key_id)
+      return data
+    else:
+      // Fetch from appropriate tier, decrypt, cache in fast tier
+      data = fetch_from_tier(metadata.tier)
+      decrypt(data, metadata.key_id)
+      cache_in_fast_tier(data, block_id)
+      return data
 
-      weighted_reviews.sort(key=lambda x: x[1], reverse=True)
-
-      # Sentiment Drift Detection
-      drift = detect_sentiment_drift(category.reviews)
-      if drift:
-          boost_new_sentiment_excerpts(weighted_reviews)
-
-      # Select Excerpt
-      excerpt = select_excerpt(weighted_reviews, category.aspects)
-
-      #Display
-      display_excerpt(excerpt)
+  else: // operation == "write"
+    encrypt(data, metadata.key_id)
+    store_in_tier(data, metadata.tier)
+    update_access_pattern(block_id)
+    return success
 ```
 
-This expanded system aims to provide a more dynamic, relevant, and nuanced review summary that reflects evolving consumer opinions and prioritizes key product aspects. The weighting factors provide a mechanism for adapting to changing trends and ensuring that the summary accurately represents the current state of consumer sentiment.
+**Innovation:**
+
+This moves beyond reactive encryption (encrypting on request) to *proactive* encryption tailored to predicted usage.  Caching is also preemptive, eliminating wait times. Combining predictive tiering and encryption allows for optimization of both performance and security, and expands the existing infrastructure with intelligent data placement and security. The dynamic key assignment offers superior security compared to a static key approach.
