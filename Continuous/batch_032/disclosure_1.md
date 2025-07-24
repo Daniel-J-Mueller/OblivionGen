@@ -1,45 +1,58 @@
-# 10848824
+# 9755990
 
-## Adaptive Pre-Fetch Based on Predicted Abandonment Probability
+## Dynamic Resource 'Shadowing' & Predictive Scaling
 
-**Concept:** Enhance user experience by proactively pre-fetching subsequent multimedia segments *not* based on continuous playback, but on a dynamically calculated abandonment probability. This system anticipates likely stream termination points and pre-loads content accordingly, minimizing buffering *during* abandonment rather than attempting uninterrupted playback.
+**Concept:** Extend the resource pool balancing by creating temporary, 'shadow' resource pools based on anticipated *burst* capacity needs derived from customer behavior *patterns*.  Instead of just reacting to current load or forecasted *average* usage, proactively pre-allocate resources that ‘mirror’ likely burst scenarios.
 
-**Specs:**
+**Specification:**
 
-*   **Module 1: Abandonment Probability Engine (APE):**
-    *   **Input:** Real-time stream metrics (bitrate, latency, packet loss, buffering events), user behavior data (historical abandonment rates, content preferences, device type, time of day), and abandonment metadata from the existing system (location, content type, encoding format).
-    *   **Process:** APE utilizes a recurrent neural network (RNN) – specifically a Long Short-Term Memory (LSTM) network – trained on historical abandonment data. The LSTM learns temporal dependencies in the input data to predict the probability of abandonment within a sliding window (e.g., the next 5-10 seconds). Feature importance analysis highlights key drivers of abandonment.
-    *   **Output:** A continuous abandonment probability score (0.0 - 1.0) for each stream.
+**1. Burst Pattern Analysis Module:**
 
-*   **Module 2: Prefetch Controller (PC):**
-    *   **Input:** Abandonment probability score from APE, current segment index, segment duration, available bandwidth, and a 'prefetch horizon' parameter (configurable – e.g., prefetch up to 3 segments ahead).
-    *   **Process:**
-        1.  **Thresholding:** PC applies a configurable abandonment probability threshold. If the probability exceeds the threshold, prefetching is triggered.
-        2.  **Segment Selection:** PC identifies the next N segments (based on the prefetch horizon).
-        3.  **Bandwidth Allocation:** PC dynamically allocates bandwidth for prefetching, prioritizing streams with higher abandonment probabilities and available bandwidth. Utilizes a weighted fair queuing algorithm.
-        4.  **Prefetch Request:** PC issues requests for the selected segments to the content delivery network (CDN).
-    *   **Output:** Prefetch requests.
+*   **Input:** Historical resource usage data per customer/tenant, application-level metrics (transactions/sec, API calls, etc.), time-series data.
+*   **Process:** Employ time-series decomposition (e.g., STL - Seasonal-Trend decomposition using Loess) to identify recurring burst patterns. Use machine learning (clustering, anomaly detection) to categorize burst profiles.  Calculate a 'Burst Likelihood Score' (BLS) for each tenant/application, representing the probability of a burst event occurring within a defined timeframe (e.g., next hour). BLS takes into account seasonality, trend, recent activity, and historical burst frequency/magnitude.
+*   **Output:**  BLS per tenant/application, predicted burst magnitude (resource units), and predicted burst duration.
 
-*   **Module 3: Adaptive Bitrate Selection (ABS):**
-    *   **Input:** Predicted abandonment probability, current bitrate, available bandwidth, and content characteristics.
-    *   **Process:** If the abandonment probability is high, ABS proactively *reduces* the bitrate of pre-fetched segments. This minimizes the amount of data transferred and further reduces buffering risk during abandonment, prioritizing a smoother stop over continued playback.  The bitrate reduction is based on a configurable scale.
-    *   **Output:** Bitrate selection for pre-fetched segments.
+**2. Shadow Pool Provisioning:**
 
-*   **Integration:**
-    *   Integrate APE, PC, and ABS into the existing media player and CDN infrastructure.
-    *   Implement a feedback loop: Monitor actual abandonment events and use this data to retrain the LSTM model in APE, improving prediction accuracy.
-    *   Provide a dashboard for monitoring abandonment rates, prefetch performance, and system health.
+*   **Trigger:** When BLS exceeds a configurable threshold for a tenant/application.
+*   **Process:** 
+    *   Create a 'shadow pool' mirroring the configuration of the primary resource pool. Shadow pools are initially small, containing a fraction of the predicted burst capacity.
+    *   Allocate resources to shadow pools from available capacity (idle resources, resources from lower-priority tenants – subject to SLA).
+    *   Resources in shadow pools are kept 'warm' (minimal overhead) but not actively serving requests until a burst occurs.
+*   **Output:**  Provisioned shadow pools with allocated resources.
 
-**Pseudocode (PC Module):**
+**3. Burst Detection & Routing:**
+
+*   **Process:** Real-time monitoring of resource utilization. When utilization in the primary pool exceeds a threshold, *and* the BLS remains high, traffic is dynamically routed to the corresponding shadow pool.  Use a weighted load balancing algorithm to distribute traffic between primary and shadow pools.
+*   **Output:**  Dynamically routed traffic to shadow pools during bursts.
+
+**4. Shadow Pool Reclamation:**
+
+*   **Process:** Monitor utilization of shadow pools. When utilization falls below a threshold *and* the BLS drops below a threshold, reclaim resources from the shadow pool and return them to the available pool.  Alternatively, scale down the shadow pool to a minimal state for faster future provisioning.
+*   **Output:**  Reclaimed resources from shadow pools.
+
+**Pseudocode (Simplified):**
 
 ```
-function control_prefetch(abandonment_probability, current_segment_index, segment_duration, available_bandwidth, prefetch_horizon):
-  if abandonment_probability > abandonment_threshold:
-    next_segments = get_next_segments(current_segment_index, prefetch_horizon)
-    for segment in next_segments:
-      target_bitrate = determine_target_bitrate(segment, available_bandwidth, abandonment_probability)
-      prefetch_segment(segment, target_bitrate)
-  else:
-    //Continue standard playback/prefetch behavior
-    pass
+// Every X minutes:
+FOR EACH Tenant:
+    BLS = CalculateBurstLikelihoodScore(Tenant.HistoricalData)
+    IF BLS > Threshold:
+        IF ShadowPool Does Not Exist:
+            CreateShadowPool(Tenant.Configuration, PredictedBurstCapacity)
+        ELSE:
+            ScaleShadowPool(PredictedBurstCapacity)
+    ELSE:
+        ScaleShadowPool(MinimalCapacity)  // or Destroy
+
+// Real-time monitoring:
+IF PrimaryPoolUtilization > Threshold AND BLS > Threshold:
+    RouteTrafficToShadowPool(Tenant)
 ```
+
+**Potential Enhancements:**
+
+*   **Multi-Tiered Shadow Pools:** Create multiple shadow pools with varying levels of capacity to handle different burst magnitudes.
+*   **Predictive Shadow Pool Placement:** Strategically place shadow pools in resource zones with available capacity to minimize latency.
+*   **Cost Optimization:** Implement a cost-benefit analysis to determine the optimal size and number of shadow pools.
+*   **Integration with Auto-Scaling:** Seamlessly integrate shadow pools with auto-scaling policies to provide a comprehensive scaling solution.
