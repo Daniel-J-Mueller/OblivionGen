@@ -1,49 +1,46 @@
-# 11399028
+# 9820049
 
-## Dynamic Persona-Driven Smart Home Control
+## Adaptive Multi-Channel Acoustic Scene Reconstruction
 
-**Core Concept:** Extend voice control beyond simple device operation to encompass dynamic, context-aware "personas" influencing smart home behavior. Instead of *just* controlling devices, the system anticipates user needs based on identified personas and proactively adjusts the environment.
+**Concept:** This system aims to reconstruct the full acoustic scene captured by a multi-channel microphone array *before* echo cancellation is applied. This reconstructed scene can then be used for more robust echo cancellation, noise reduction, and even source localization/separation. The patent focuses on synchronizing sample rates *after* signal processing begins. This shifts focus to *before* signal processing, leveraging the inherent redundancy of a multi-channel array.
 
 **Specs:**
 
-*   **Persona Database:** A centralized database storing persona profiles. Each profile contains:
-    *   **Persona Name:** (e.g., "Movie Night," "Focus Mode," "Guest Arrival," "Morning Routine")
-    *   **Trigger Conditions:** (e.g., voice command, time of day, detected activity, sensor input)
-    *   **Device State Presets:** Specific settings for all controllable devices (lights, temperature, entertainment systems, blinds, locks, etc.).
-    *   **Behavioral Rules:**  Complex rules governing device interactions. (e.g., "If someone is watching a movie *and* it gets cold, automatically increase thermostat by 2 degrees").
-    *   **Priority Level:** (High, Medium, Low) Used to resolve conflicts between personas.
-*   **Persona Engine:**
-    *   **Persona Identification:** Uses a combination of:
-        *   **Voice Analysis:** Natural language processing to determine user intent and context.  (e.g., “I’m settling in for a movie” implies “Movie Night” persona).
-        *   **Sensor Data Fusion:** Combining data from various sensors (motion, temperature, ambient light, device usage).
-        *   **Contextual Awareness:** Utilizing calendar events, location data, and time of day.
-    *   **Persona Activation:**  Selects the most relevant persona based on identified conditions.
-    *   **Dynamic Adjustment:**  Modifies device states in real-time according to the active persona's presets and rules.
-*   **User Interface:**
-    *   **Persona Manager:**  Allows users to create, edit, and delete personas.
-    *   **Rule Builder:**  A visual interface for defining complex behavioral rules.
-    *   **Override Controls:** Manual controls for overriding the active persona and adjusting devices directly.
-    *   **Learning Mode:** The system observes user behavior and suggests new personas or adjustments to existing ones.
-*   **API Integration:**
-    *   Open API for third-party developers to create custom personas and integrate with other services.
+*   **Hardware:**
+    *   Multi-channel microphone array (minimum 4 microphones, optimally 8+).
+    *   High-performance processing unit (GPU or dedicated DSP recommended).
+    *   High-bandwidth, low-latency communication bus between microphones and processing unit.
+*   **Software Modules:**
+    *   **Time Difference of Arrival (TDOA) Estimation:** Module estimates TDOA between each microphone pair. Uses a generalized cross-correlation with phase transform (GCC-PHAT) algorithm, but incorporates a dynamic weighting scheme based on signal-to-noise ratio (SNR) for each channel.
+    *   **Scene Geometry Estimation:** Utilizing the TDOA estimates, the module estimates the location and characteristics (e.g., size, reflectivity) of sound sources in the environment. Employs a probabilistic approach (e.g., particle filter) to handle ambiguity and noise.
+    *   **Wavefield Reconstruction:** This module synthesizes the acoustic wavefield at a virtual listening point, based on the estimated source locations and characteristics, and the TDOA information. Uses a boundary element method (BEM) or finite element method (FEM) for accurate wave propagation modeling.
+    *   **Adaptive Filtering & Echo Cancellation:** Traditional adaptive filtering (e.g., LMS, RLMS) is applied to the reconstructed wavefield, *before* it reaches the output device. This allows for a more accurate separation of desired signal from echo, due to the clean reconstruction. The filter coefficients are adjusted based on the error signal between the reconstructed and actual output.
+    *   **Multi-Resolution Analysis:** Employ wavelet transforms or similar techniques to decompose the audio signal into different frequency bands. This allows for separate processing and reconstruction of each band, improving accuracy and robustness.
 
-**Pseudocode (Persona Engine):**
+**Pseudocode (Wavefield Reconstruction - Simplified):**
 
 ```
-function activatePersona(userIntent, sensorData, contextData):
-  // 1. Identify potential personas
-  potentialPersonas = getPersonasMatching(userIntent, sensorData, contextData)
+function reconstructWavefield(sourceLocations, sourceCharacteristics, microphoneData):
+  // microphoneData: array of signals from each microphone
+  // sourceLocations: array of 3D coordinates of sound sources
+  // sourceCharacteristics: array of properties like amplitude, frequency
 
-  // 2. Score each persona based on relevance
-  scoredPersonas = scorePersonas(potentialPersonas, userIntent, sensorData, contextData)
+  wavefield = 0
 
-  // 3. Select the highest-scoring persona
-  activePersona = selectPersona(scoredPersonas)
+  for each source in sourceLocations:
+    // Calculate distance from source to each microphone
+    distances = calculateDistances(source, microphones)
 
-  // 4. Apply the persona's settings to the smart home
-  applyPersonaSettings(activePersona)
+    // Calculate time delays based on distance and speed of sound
+    delays = calculateDelays(distances)
 
-  return activePersona
+    // Generate a signal based on source characteristics and delays
+    sourceSignal = generateSourceSignal(sourceCharacteristics, delays)
+
+    // Add the source signal to the wavefield
+    wavefield += sourceSignal
+
+  return wavefield
 ```
 
-**Novelty:** Existing systems offer basic scene control. This goes beyond that, creating *adaptive* environments. It's less about issuing commands and more about the home *understanding* the user’s needs. The learning mode allows for personalized automation beyond simple scheduling. The ability to extend this through 3rd party developers allows for interesting downstream applications.
+**Innovation:** The core novelty lies in reconstructing the entire acoustic scene *before* traditional echo cancellation. This allows for a 'cleaner' signal to be processed, resulting in more effective echo cancellation and improved audio quality. Further innovation comes from the dynamic weighting and probabilistic estimation employed, handling challenging acoustic environments. This is a departure from the patent’s focus on synchronization *after* processing, and introduces a novel pre-processing step.
