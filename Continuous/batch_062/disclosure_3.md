@@ -1,63 +1,48 @@
-# 10091096
+# 9457544
 
-## Dynamic Resource Weighting via Client-Reported Resource Quality
+**Dynamic Refractive Index Layering for Display Stacks**
 
-**Specification:** Implement a system for dynamically weighting available CDN cache servers based on *real-time* quality metrics reported directly from client devices accessing content.
+**Concept:** Implement a dynamically adjustable refractive index layer *within* the display stack construction, allowing for real-time optimization of light transmission and viewing angles. This moves beyond static adhesive layers to actively manage light behavior.
 
-**Core Concept:** The existing patent focuses on server-side routing decisions based on bandwidth, cost, and susceptibility. This expands that by incorporating *client-experienced* quality, creating a feedback loop for more granular and responsive routing.
+**Specs:**
 
-**Components:**
+*   **Material:** Utilize a microfluidic layer composed of a clear polymer matrix (e.g., PDMS) containing nanoparticles with variable refractive indices (e.g., TiO2, ZrO2). Nanoparticle concentration and distribution are digitally controlled.
+*   **Layer Placement:** Integrate the microfluidic layer *between* the front light component and the display component, replacing or augmenting a traditional LOCA layer.
+*   **Control System:** Employ an array of micro-electromechanical systems (MEMS) actuators to precisely control the flow of different nanoparticle concentrations within the microfluidic channels. A dedicated control circuit (FPGA or similar) handles actuator control based on input from a display sensor and user preferences.
+*   **Sensor Integration:** Integrate a display sensor (ambient light, viewing angle, user gaze) to provide real-time feedback to the control system.
+*   **Power Requirements:** Low-voltage DC power (5V-12V) for MEMS actuators and control circuitry.
+*   **Layer Thickness:** 50-200 microns. Target optical path length adjustments without significant image distortion.
+*   **Refractive Index Range:** Adjustable from 1.38 to 1.53. Corresponds to common OCA/LOCA refractive indices.
+*   **Microfluidic Channel Dimensions:** 10-50 microns wide, spaced 50-100 microns apart.  Optimized for rapid response time and uniform refractive index distribution.
 
-1.  **Client-Side Agent:** A lightweight Javascript or native agent embedded within client applications (web browsers, mobile apps). This agent continuously monitors key performance indicators (KPIs) related to content delivery:
-    *   **Initial Load Time:** Time to first byte/pixel.
-    *   **Buffering Rate:**  (For video/audio) Frequency and duration of buffering events.
-    *   **Perceived Quality:**  (For video/audio)  Reported video quality level (e.g., 1080p, 720p, auto).
-    *   **Error Rate:**  Number of failed content requests or segments.
-    *   **Jitter:**  Variation in latency.
-
-2.  **Quality Metric Aggregation Service:** A server-side component responsible for receiving and aggregating quality metric data from client agents. This service:
-    *   **Time-Series Data Storage:** Stores quality metrics as time-series data, indexed by CDN cache server (IP address), content identifier, and geographic region.
-    *   **Anomaly Detection:** Identifies cache servers exhibiting consistently poor performance based on statistical analysis of received metrics.
-    *   **Weight Calculation:**  Assigns a ‘weight’ to each cache server. Weights are dynamically adjusted based on aggregated quality metrics. Higher weights indicate better performance. Formula Example:  `Weight = BaseWeight * (1 - (AverageBufferingRate + ErrorRate))` (where BaseWeight is a default value, and buffering rate and error rate are normalized).
-
-3.  **Modified DNS Resolution Service:**  The existing patent's DNS server is modified to incorporate server weights into its routing decisions.
-    *   **Weighted Random Selection:** Instead of simply selecting the “best” server, the DNS server uses a weighted random selection algorithm to choose a cache server. Servers with higher weights have a proportionally greater chance of being selected.
-    *   **A/B Testing Integration:** Allows for A/B testing of different weighting algorithms and threshold values to optimize performance.
-    *   **Regional Granularity:** The system should support regional weighting.  Clients in a specific region should prioritize cache servers located in that region, even if those servers have slightly lower weights than servers in other regions.
-
-**Pseudocode (DNS Resolution Service):**
+**Pseudocode (Control System):**
 
 ```
-function resolveDNSRequest(request):
-  contentID = request.contentID
-  clientLocation = request.clientLocation
+// Initialize sensors and actuators
+sensor = initialize_sensor()
+actuator = initialize_actuator()
 
-  availableCacheServers = getAvailableCacheServers(contentID, clientLocation)
+loop:
+    ambient_light = sensor.read_ambient_light()
+    viewing_angle = sensor.read_viewing_angle()
+    user_gaze = sensor.read_user_gaze()
 
-  // Apply regional preference (boost weight of nearby servers)
-  for each server in availableCacheServers:
-    if server.location == clientLocation:
-      server.weight *= 1.2 // Example boost
+    // Calculate desired refractive index based on sensor data
+    desired_refractive_index = calculate_refractive_index(ambient_light, viewing_angle, user_gaze)
 
-  // Calculate total weight
-  totalWeight = sum(server.weight for server in availableCacheServers)
+    // Calculate actuator signals to achieve desired refractive index
+    actuator_signals = calculate_actuator_signals(desired_refractive_index)
 
-  // Generate random number between 0 and totalWeight
-  randomNumber = random.uniform(0, totalWeight)
+    // Apply actuator signals
+    actuator.apply_signals(actuator_signals)
 
-  // Select cache server based on weighted random selection
-  cumulativeWeight = 0
-  for server in availableCacheServers:
-    cumulativeWeight += server.weight
-    if randomNumber <= cumulativeWeight:
-      selectedCacheServer = server
-      break
-
-  return selectedCacheServer.IPAddress
+    delay(10ms) // Update loop frequency
 ```
 
-**Innovation:**
+**Potential Outcomes:**
 
-*   **Client-Centric Optimization:** Moves beyond server-side metrics to directly optimize for the end-user experience.
-*   **Adaptive Routing:**  Provides a more dynamic and responsive routing system that can adapt to changing network conditions and server performance.
-*   **Proactive Problem Detection:**  Identifies and mitigates performance issues *before* they impact a large number of users.
+*   Improved viewing angles and off-axis color uniformity
+*   Dynamic contrast enhancement based on ambient lighting
+*   Adaptive glare reduction
+*   Potential for new display effects (e.g., holographic projections)
+*   Real-time optimization of light throughput to improve power efficiency.
