@@ -1,66 +1,56 @@
-# 9317622
+# 10055740
 
-## Dynamic Content Re-Assembly with Predictive Fragmenting
+## Dynamic Payment Allocation & Predictive Funding
 
-**Concept:** Leverage client-side processing power and network conditions to dynamically re-assemble content fragments *after* initial download, optimizing rendering based on predicted viewing patterns. This extends the original patent’s fragmenting approach by introducing a layer of *post-processing* on the client, adapting to real-time usage.
+**Concept:** A system that not only allows splitting payments across multiple funding sources *during* authorization, but proactively *predicts* optimal funding allocation based on user financial goals and automatically adjusts the split *before* the transaction is even initiated. This goes beyond simply choosing which card to use – it becomes a micro-financial planning tool integrated directly into the payment process.
 
-**Specifications:**
+**Specs:**
 
-**1. Fragment Generation – Enhanced with ‘Influence Maps’:**
+*   **Data Inputs:**
+    *   User-defined financial goals (e.g., “Maximize cashback on travel,” “Pay down credit card debt,” “Build emergency fund”). These would be set via a companion app/platform.
+    *   Real-time account balances & credit limits for all linked funding sources (bank accounts, credit cards, loyalty points programs, crypto wallets, etc.).
+    *   Historical transaction data – categorized spending patterns, merchant preferences, typical transaction amounts.
+    *   Merchant categorization & “reward profile” - i.e., does the merchant offer bonus rewards with specific payment types?
+    *   Predicted future income streams (optional, user-provided or integrated with financial data aggregators).
 
-*   **Influence Map Creation:** During content preparation, analyze the structured language data to build an ‘Influence Map’. This map identifies relationships between content segments (beyond simple byte positioning) – semantic connections, visual dependencies (e.g., images referenced in text), and predicted user interaction probabilities (e.g., which sections are most likely to be viewed next).
-*   **Variable Fragment Sizing:**  Fragments are no longer uniformly sized.  The Influence Map dictates fragment size, prioritizing critical content segments (high influence) with smaller, more immediate fragments. Less important sections receive larger fragments, potentially delaying their full download.
-*   **Content Type Tagging:** Each fragment is tagged with its content type (text, image, video, interactive element) and a ‘Criticality Score’ derived from the Influence Map.
+*   **Core Logic – “Allocation Engine”:**
+    *   A rule-based system combined with a lightweight machine learning model (e.g., a simple neural network or decision tree).
+    *   The ML model is trained on user data to predict the optimal payment split that maximizes progress towards defined financial goals.
+    *   Rules could include:
+        *   Prioritize funding sources with the highest rewards rate for specific merchant categories.
+        *   Allocate excess funds towards debt repayment or savings goals.
+        *   Avoid exceeding credit limits or depleting bank accounts.
+        *   Factor in potential overdraft fees or other penalties.
+    *   The Allocation Engine continuously recalculates the optimal split as user financial data changes.
 
-**2. Client-Side Re-Assembly Engine:**
+*   **User Interface (Mobile App Integration):**
+    *   **Pre-Transaction Preview:** Before completing a purchase, the user is presented with a proposed payment split. Example: "Paying $100 at Grocery Store. Suggested Split: $50 from Chase Sapphire (2x points), $30 from Bank of America Cash Rewards (1% cash back), $20 from Checking Account."
+    *   **Customization:** The user can manually adjust the proposed split or override the automated recommendations.
+    *   **Goal Tracking:** The app displays progress towards defined financial goals, showing how each transaction contributes.
+    *   **“Smart Defaults”:** The user can set default preferences for different merchant categories or transaction types.
 
-*   **Fragment Prioritization:** Upon receiving fragments, the client prioritizes re-assembly based on Criticality Score and predicted viewing location (using heuristics like scrolling direction, mouse movements, or eye-tracking if available).
-*   **Dynamic Re-Ordering:** Fragments aren’t necessarily re-assembled in their original byte order. The engine can dynamically re-order fragments to optimize rendering of the currently visible portion of the content.
-*   **Partial Rendering:**  The client renders content as soon as sufficient fragments for a visible area are available, even if the entire document hasn’t been downloaded.
-*   **Pre-fetching based on Prediction:** Using the Influence Map and user behavior, the client predicts which fragments will be needed next and pre-fetches them in the background.
-*   **Re-fragmentation (Optional):** The client *can* re-fragment received fragments into even smaller chunks for faster initial rendering, particularly on low-bandwidth connections.  This introduces a slight processing cost but can significantly improve perceived latency.
-
-**3. Communication Protocol:**
-
-*   **Fragment Manifest:** The server provides a ‘Fragment Manifest’ alongside the initial request, detailing all fragments, their sizes, Criticality Scores, and dependencies.
-*   **Adaptive Bitrate:**  The server adapts the bitrate and resolution of fragments based on the client’s network connection and device capabilities.
-*   **Request Feedback:** The client sends feedback to the server about fragment download rates, rendering performance, and user interaction patterns, allowing the server to optimize future fragment delivery.
-
-**Pseudocode (Client-Side Re-Assembly Engine):**
+*   **Technical Implementation (Pseudocode):**
 
 ```
-function reassembleContent(fragmentManifest, receivedFragments) {
-  // Sort fragments by Criticality Score (highest first)
-  sortedFragments = sort(receivedFragments, by: "CriticalityScore", descending: true)
+function calculatePaymentSplit(transactionAmount, merchantCategory, fundingSources, userGoals) {
+  // 1. Retrieve real-time account data for all funding sources
+  accountData = getAccountData(fundingSources)
 
-  // Initialize Rendering Buffer
-  renderingBuffer = []
+  // 2. Calculate potential rewards/penalties for each funding source
+  rewardData = calculateRewards(transactionAmount, merchantCategory, accountData)
 
-  // Iterate through sorted fragments
-  for fragment in sortedFragments {
-    // Check if fragment is needed for current viewing location
-    if isFragmentVisible(fragment, currentViewingLocation) {
-      // Add fragment to rendering buffer
-      renderingBuffer.append(fragment)
-      // Render fragment
-      renderFragment(fragment)
-    }
-  }
+  // 3. Apply user-defined goals (e.g., "maximize cashback," "pay down debt")
+  goalWeights = getUserGoalWeights(userGoals)
 
-  // Pre-fetch next fragments based on Influence Map & user behavior
-  prefetchNextFragments(InfluenceMap, userBehavior)
-}
+  // 4. Use ML model to predict optimal split (based on rewards, goal weights, account balances)
+  predictedSplit = mlModel.predict(transactionAmount, rewardData, goalWeights)
 
-function prefetchNextFragments(InfluenceMap, userBehavior) {
-  // Analyze InfluenceMap & userBehavior to predict next fragments
-  predictedFragments = predictNextFragments(InfluenceMap, userBehavior)
-  // Request predicted fragments from server
-  requestFragments(predictedFragments)
+  // 5. Check for constraints (credit limits, account balances) and adjust split if necessary
+  adjustedSplit = applyConstraints(predictedSplit, accountData)
+
+  // 6. Return the optimal payment split
+  return adjustedSplit
 }
 ```
 
-**Potential Applications:**
-
-*   **Interactive eBooks:** Faster loading and rendering of complex eBooks with multimedia content.
-*   **Web Applications:** Improved performance of web applications with dynamically updated content.
-*   **Virtual Reality/Augmented Reality:** Smooth rendering of immersive experiences with high-resolution graphics.
+*   **Security Considerations:** Standard security protocols for financial transactions (encryption, tokenization, multi-factor authentication). User data should be anonymized and aggregated for ML model training.
