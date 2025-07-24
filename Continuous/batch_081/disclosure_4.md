@@ -1,74 +1,78 @@
-# 11030394
+# 9070122
 
-## Dynamic Keyphrase Embedding with Contextual Anchoring
+## Dynamic Gift Card "Boosts" & Micro-Loyalty Integration
 
-**Concept:** Augment keyphrase extraction with a dynamic embedding space, anchored to real-time contextual information. This moves beyond static word/character features to incorporate external knowledge and current trends.
+**Concept:** Leverage the host-managed gift card system not just for static balances, but as a platform for dynamic, short-term "boosts" and micro-loyalty rewards layered *on top* of the core gift card value. This moves beyond simple gift card redemption and turns it into a dynamic loyalty/incentive tool.
 
 **Specifications:**
 
-**1. Contextual Data Ingestion Module:**
+**1. Boost Creation Module (Host-Side):**
 
-*   **Data Sources:** API connections to news feeds (e.g., Google News, NewsAPI), social media trends (Twitter API, Reddit API), and knowledge graphs (Wikidata, DBpedia).
-*   **Real-time Updates:**  Data ingested every 5-15 minutes (configurable).
-*   **Filtering:**  Configurable filters to restrict ingestion to specific topics, industries, or geographic regions.
+*   **Input Parameters:**
+    *   Boost Name (e.g., "Weekend Coffee Boost," "Birthday Treat")
+    *   Boost Type:
+        *   Percentage Boost (e.g., +20% value on next purchase)
+        *   Fixed Amount Boost (e.g., $5 off next purchase)
+        *   Tiered Boost (e.g., Spend $20, get $5 boost)
+    *   Trigger Conditions:
+        *   Time-Based (e.g., valid only on weekends, during specific hours)
+        *   Location-Based (geofencing around merchant locations)
+        *   Transaction-Based (triggered by specific purchase categories or amounts)
+        *   User-Specific (birthday, loyalty tier, etc.)
+    *   Boost Duration (expiry time/date)
+    *   Boost Value/Percentage/Tier Details
+    *   Eligibility Criteria (e.g. minimum gift card balance required)
+*   **Output:** Unique Boost ID, Boost configuration data.
 
-**2. Contextual Embedding Generator:**
+**2.  Boost Application & Redemption Flow (Merchant/Host Interaction):**
 
-*   **Model:** Transformer-based language model (e.g., BERT, RoBERTa, XLNet) fine-tuned on a corpus of contextual data.
-*   **Input:**  Aggregated contextual data (news headlines, social media posts, knowledge graph triples).
-*   **Output:**  Contextual embedding vector representing the current state of the knowledge landscape.
+1.  **Transaction Initiation:** Customer initiates a purchase.
+2.  **Gift Card Scan/ID:** Merchant identifies the gift card.  The system queries the host for active boosts associated with that gift card.
+3.  **Boost Evaluation:** Host evaluates active boosts based on transaction details (time, location, amount, purchase category).
+4.  **Boost Presentation:** Host returns a list of eligible boosts to the merchant’s POS system.
+5.  **Customer Selection:** Merchant presents boosts to the customer. The customer selects a boost to apply.
+6.  **Boost Application:** Host applies the boost, adjusting the transaction amount.  The boost is "consumed" (deducted) from the gift card.
+7.  **Redemption & Balance Update:** Host deducts the final transaction amount from the gift card balance and updates the ledger.
 
-**3. Hybrid Feature Integration:**
+**3. Micro-Loyalty Integration (Host-Side):**
 
-*   **Input:**
-    *   Word-level features (from the existing patent).
-    *   Character-level features (from the existing patent).
-    *   Contextual Embedding Vector (from Step 2).
-*   **Concatenation/Fusion:**  Combine the feature vectors using a learned weighting scheme (e.g., attention mechanism).
+*   **“Spark” Rewards:** Introduce extremely small, instant rewards (e.g., $0.05, $0.10) earned for specific actions (checking in, leaving a review, referring a friend). These “Sparks” are automatically added to the gift card balance.
+*   **Dynamic “Spark” Triggers:** Define triggers for “Spark” rewards through a configuration panel.
+*   **“Spark” Value Assignment:** Control the monetary value of each “Spark” reward.
+*   **“Spark” Redemption Threshold:** Configure a minimum “Spark” balance before the funds are available for redemption.
 
-**4. Keyphrase Scoring & Ranking:**
+**4.  Technical Implementation Notes:**
 
-*   **Model:**  Sequence-to-sequence model (e.g., LSTM, Transformer) with an attention mechanism.
-*   **Input:** Integrated feature vector (from Step 3).
-*   **Output:**  Probability score for each potential keyphrase.
-*   **Ranking:**  Keyphrases are ranked based on their probability scores.
+*   **API Integration:** Robust API for merchant POS integration.
+*   **Real-time Balance Updates:** Ensure real-time synchronization of gift card balances and boost status.
+*   **Security:** Secure transmission and storage of gift card and boost data.
+*   **Reporting & Analytics:** Provide detailed reports on boost usage, “Spark” reward effectiveness, and gift card redemption trends.
+*   **Mobile SDK:** A mobile SDK for in-app “Spark” reward triggers and gift card balance access.
 
-**5. Dynamic Embedding Space Update:**
-
-*   **Online Learning:**  Continuously update the embedding space using a reinforcement learning agent.
-*   **Reward Function:**  Reward the agent for extracting keyphrases that are:
-    *   Relevant to the document.
-    *   Representative of the current context.
-    *   Novel (not already frequently used).
-
-**Pseudocode (Simplified):**
+**Pseudocode (Boost Application):**
 
 ```
-function extract_keyphrases(document, context_data):
+FUNCTION ApplyBoost(giftCardID, transactionAmount, transactionDetails)
+  boosts = HostAPI.GetActiveBoosts(giftCardID)
+  eligibleBoosts = []
+  FOR boost IN boosts
+    IF IsBoostEligible(boost, transactionDetails) THEN
+      eligibleBoosts.Add(boost)
+    ENDIF
+  ENDFOR
 
-  word_features = extract_word_features(document)
-  char_features = extract_char_features(document)
-  context_embedding = generate_context_embedding(context_data)
+  IF eligibleBoosts.Count > 0 THEN
+    //Present eligible boosts to customer
+    selectedBoost = CustomerSelectsBoost(eligibleBoosts)
+    IF selectedBoost != NULL THEN
+      transactionAmount = ApplyBoostToTransaction(transactionAmount, selectedBoost)
+      HostAPI.ConsumeBoost(selectedBoost.ID) //Mark boost as used
+    ENDIF
+  ENDIF
 
-  integrated_features = concatenate(word_features, char_features, context_embedding)
-
-  keyphrase_scores = score_keyphrases(integrated_features)
-
-  ranked_keyphrases = sort(keyphrase_scores, descending=True)
-
-  return ranked_keyphrases
+  HostAPI.RedeemAmount(giftCardID, transactionAmount) //Final deduction
+  RETURN transactionAmount //Final amount charged
+END FUNCTION
 ```
 
-**Hardware Considerations:**
-
-*   GPU acceleration for model training and inference.
-*   Sufficient memory to store large language models and contextual data.
-*   Fast network connectivity for real-time data ingestion.
-
-**Potential Applications:**
-
-*   Real-time news analysis and topic detection.
-*   Dynamic advertisement targeting.
-*   Adaptive content recommendation.
-*   Trend monitoring and forecasting.
-*   Summarization of evolving information landscapes.
+This approach moves beyond simple gift card functionality to create a more engaging, dynamic loyalty ecosystem.  It can incentivize repeat business, gather valuable customer data, and foster stronger brand loyalty.
