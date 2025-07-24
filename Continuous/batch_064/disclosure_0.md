@@ -1,63 +1,55 @@
-# 9942556
+# 11418345
 
-## Dynamic Foveated Streaming with Predictive Rendering
+## Adaptive Journaling with Predictive Recomputation
 
-**Concept:** Expand upon user attention prediction by not just *reducing* encoding quality during lapses, but *predictively rendering* a higher-quality, future viewport based on anticipated gaze, and seamlessly switching when attention returns. This moves beyond conservation to proactive enhancement.
+**Specification:** A system extending the core concept of journaled databases with adaptive recomputation based on predicted data access patterns. This aims to minimize verification overhead while maximizing data integrity.
 
-**Specs:**
+**Core Concept:** Instead of recomputing *all* frontier nodes during version transitions (as implied in claim 12), predict which nodes are *likely* to be accessed in the next version based on historical access logs.  Only recompute those predicted nodes and their dependencies, creating a 'focused' digest.
 
-**1. Gaze Prediction Module:**
+**Components:**
 
-*   **Input:** User input (mouse, controller, touch), historical gaze data (if available, for personalized prediction), scene geometry, object importance (defined by application/content creator – e.g., UI elements, points of interest).
-*   **Algorithm:** Hybrid approach:
-    *   **Short-Term:**  Kalman filter based on recent input trajectory to predict immediate gaze direction.
-    *   **Mid-Term:**  Recurrent Neural Network (RNN) trained on user behavior patterns (e.g., typical scanpaths within a scene type) to anticipate gaze shifts.
-    *   **Long-Term:**  Contextual awareness – if the user is watching a video, anticipate cuts and scene changes. If in a game, predict focus based on gameplay objectives.
-*   **Output:** Probability distribution of likely gaze locations (x, y coordinates on the render target) with associated confidence levels.
+1.  **Access Pattern Analyzer:** Monitors read/write requests to the journal.  Maintains a rolling window of access patterns – which leaf nodes, and which paths to those nodes (interior nodes) are frequently accessed.  Can employ techniques like Markov chains or LSTMs to predict future access.
 
-**2. Multi-Resolution Rendering Pipeline:**
+2.  **Recomputation Planner:**  Uses the output of the Access Pattern Analyzer to generate a recomputation plan.  This plan specifies which frontier nodes (and their parent interior nodes) need to be recomputed for the next version.  The planner must also account for write operations - nodes affected by writes *must* be included.  Prioritize recomputation based on access frequency *and* the cost of recomputation (depth of the node in the tree).
 
-*   **Base Layer:**  Standard resolution rendering for immediate display.
-*   **Foveated Layers (Multiple):**  Render several concentric regions around the predicted gaze locations at *increasing* resolutions. The innermost region is rendered at the highest resolution, progressively decreasing outwards.  The number of layers and resolution step sizes are configurable.
-*   **Rendering Mode:**  Delayed rendering – foveated layers are rendered *in the background* on a separate thread/GPU instance.
+3.  **Focused Digest Generator:**  Recomputes only the nodes identified in the recomputation plan. Generates a 'focused digest' containing the hashes of these recomputed nodes. This digest is significantly smaller than a full recomputation digest, reducing verification overhead.
 
-**3. Attention-Aware Switching System:**
+4.  **Verification Protocol:**  To verify data integrity, the verifier requests the focused digest and the relevant hashes for the requested data path (leaf node and all ancestors).  The system then provides these hashes, which the verifier can use to reconstruct the path and verify its integrity.  If a requested node isn't in the focused digest, the system provides a 'pre-computed' hash from the previous version (assuming it hasn't been modified).
 
-*   **Input:** Output from the Gaze Prediction Module, User Attention Prediction (from provided patent), rendering status of foveated layers.
-*   **Logic:**
-    *   **Attention High:** Seamlessly blend the highest-resolution foveated layer with the base layer as the user’s gaze converges on it.
-    *   **Attention Low:** Freeze rendering of the foveated layers.  Maintain base layer rendering at a reduced quality.
-    *   **Attention Transition:**  Blend between base layer and foveated layer based on the user attention prediction score.
-*   **Blending:** Per-pixel alpha blending to smooth the transition between layers. Utilize temporal anti-aliasing techniques to minimize visual artifacts.
-
-**4. Dynamic Resource Allocation:**
-
-*   **Resource Management:**  Prioritize rendering resources (GPU time, memory) to the predicted gaze region.  Allocate more resources during high attention, less during low attention.
-*   **Scaling:** Dynamically adjust the number of foveated layers and their resolutions based on available resources and predicted gaze confidence.
-
-**Pseudocode (Attention Transition):**
+**Pseudocode (Recomputation Planner):**
 
 ```
-function RenderFrame(attentionScore, predictedGazeX, predictedGazeY):
-    // Render Base Layer (Reduced Quality during low attention)
-    baseLayer = RenderBaseLayer(attentionScore)
+function plan_recomputation(access_logs, write_set, current_journal_tree):
+  predicted_access_paths = analyze_access_logs(access_logs)
+  nodes_to_recompute = set()
 
-    // Render Foveated Layers (in background)
-    foveatedLayers = RenderFoveatedLayers(predictedGazeX, predictedGazeY)
+  # Add nodes affected by writes
+  for entry in write_set:
+    leaf_node = find_leaf_node(entry, current_journal_tree)
+    add_path_to_recompute(leaf_node, current_journal_tree, nodes_to_recompute)
 
-    // Calculate Blend Factor
-    blendFactor = attentionScore
+  # Add predicted access paths
+  for path in predicted_access_paths:
+    add_path_to_recompute(path, current_journal_tree, nodes_to_recompute)
 
-    // Blend Layers
-    finalImage = blendFactor * foveatedLayers + (1 - blendFactor) * baseLayer
+  # Prioritize based on cost (depth) - optional heuristic
+  nodes_to_recompute = sort_by_depth(nodes_to_recompute)
 
-    // Display finalImage
-    DisplayImage(finalImage)
+  return nodes_to_recompute
+
+function add_path_to_recompute(node, journal_tree, recompute_set):
+  while node != None:
+    recompute_set.add(node)
+    node = node.parent
 ```
 
-**Potential Benefits:**
+**Data Structures:**
 
-*   Enhanced visual fidelity in the user’s focus area.
-*   Reduced bandwidth/rendering costs by lowering quality in the periphery.
-*   Proactive rendering minimizes perceived latency during attention shifts.
-*   Personalized experience based on user gaze patterns.
+*   `JournalNode`: Represents a node in the journal tree. Contains hash value, parent pointer, child pointers (if interior node), and data (if leaf node).
+*   `AccessLogEntry`: Records a read or write request. Contains timestamp, node identifier, and operation type.
+
+**Potential Extensions:**
+
+*   **Adaptive Granularity:**  Dynamically adjust the granularity of recomputation.  If access patterns are stable, recompute larger chunks of the tree.  If patterns are volatile, recompute smaller chunks.
+*   **Bloom Filters:** Use Bloom filters to efficiently determine if a node has been modified between versions, reducing the need for full hash comparisons.
+*   **Multi-Version Concurrency Control:**  Allow multiple versions of the journal to coexist, improving concurrency and reducing contention.
