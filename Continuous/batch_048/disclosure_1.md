@@ -1,65 +1,59 @@
-# 11354885
+# 11331587
 
-## Dynamic Inventory Shadow Mapping & Predictive Relocation
+## Dynamic Character Customization via Spectator-Driven Morph Targets
 
-**Concept:** Extend the illumination mapping to not just *detect* high illumination, but to actively predict shadow movement within a materials handling facility and proactively relocate inventory to optimize visibility for automated systems (robots, cameras, scanners) and human pickers.
+**Concept:** Extend the spectator interaction beyond simple audience member representation and user input actions. Allow spectators to *directly* influence the visual appearance of in-game characters – both player-controlled and non-player characters (NPCs) – using a system of morph targets.
 
-**System Specs:**
+**Specs:**
 
-*   **Sensor Suite:**
-    *   Multi-camera system (as per patent base – at least 2 overhead, strategically positioned).
-    *   Ambient Light Sensors: Distributed throughout the facility to measure overall light levels and directionality.
-    *   IMU/Orientation Sensors: Mounted near cameras to accurately track camera angle & orientation in real-time.
-*   **Processing Unit:** Edge computing devices located throughout the facility, communicating with a central server.
-*   **Software Modules:**
-    *   *Enhanced Illumination Mapping:* Utilizes the patent’s foundational illumination map generation but expands to model shadow *volume* instead of just pixel-level illumination. This involves creating a 3D representation of potential shadows based on object geometry (see 'Object Reconstruction' below) and light source direction.
-    *   *Object Reconstruction:*  Leverages multi-view stereo vision to create basic 3D models of inventory items. Doesn’t need to be high-fidelity; approximate bounding boxes or convex hulls are sufficient. The aim is to understand object size and shape for shadow casting.
-    *   *Shadow Propagation Engine:* A physics-based simulation engine that propagates shadows based on simulated light source movement (sun’s trajectory, artificial light adjustments) and object geometry.  Calculates shadow paths and areas of occlusion.
-    *   *Predictive Visibility Analysis:* Assesses the impact of shadows on critical areas of the facility: robot navigation paths, scanner fields of view, picking stations. Quantifies the reduction in visibility.
-    *   *Relocation Recommendation Engine:* Generates recommendations for inventory relocation to minimize shadow interference.  Prioritizes relocation based on the criticality of the affected area and the cost of relocation.
-    *   *Automated Relocation Control:* (Optional) Integrates with automated material handling systems (AMHS) to automatically execute relocation recommendations.
+*   **Morph Target Library:** A pre-defined library of blend shapes/morph targets for all characters in the game. These targets should represent subtle (and not-so-subtle) facial expressions, body modifications (muscle flex, slight height changes, etc.), and accessory additions (temporary tattoos, glowing effects).  A baseline "neutral" state exists for each character.
+*   **Spectator Voting System:**  Integrated within the spectator viewing interface. Spectators can "vote" on which morph targets to apply to a designated character (either a player character they’ve linked to, or a globally designated NPC). Voting could be weighted based on a "spectator influence" score - determined by factors like viewing duration, chat activity, or in-game purchases.
+*   **Real-Time Blending:** The game engine must dynamically blend the morph targets based on the weighted spectator votes. A smoothing algorithm will be necessary to prevent jarring visual changes.
+*   **Character Designation System:** A mechanism to allow players to “open up” their character for spectator influence. This could be a toggleable option or a limited-time “spectator mode” activation.  NPCs may be pre-designated as “spectator influenced” by game designers.
+*   **Influence Limits:** A safety mechanism to prevent extreme or disruptive character modifications.  Maximum blend weight limits for each morph target, and a “veto” system for inappropriate or game-breaking modifications.  A "restore to default" button is also needed.
+*   **Visual Feedback:** The game interface must visually indicate which morph targets are being applied, and by whom (e.g., displaying the usernames of influential spectators near the character).
+*   **Monetization Potential:** "Premium" morph targets could be introduced, unlocked via in-game currency or real-money purchases.  This allows players to create more elaborate or unique character customizations.
 
-**Pseudocode - Relocation Recommendation Engine:**
+**Pseudocode (Simplified):**
 
 ```
-function generate_relocation_recommendations(shadow_map, visibility_analysis_results, inventory_data, amhs_status):
-  # shadow_map: 3D map of predicted shadow coverage
-  # visibility_analysis_results: Areas with low visibility due to shadows
-  # inventory_data: Location, size, and priority of each inventory item
-  # amhs_status: Current status of automated material handling systems
+// Character Structure
+Character {
+  Mesh;
+  MorphTargets[ ]; // Array of blend shapes
+  InfluenceLevel; // 0.0 - 1.0 (How much spectator input affects the character)
+}
 
-  recommendations = []
+// Spectator Voting
+SpectatorVote {
+  MorphTargetID;
+  Weight; // 0.0 - 1.0 (How strongly the spectator wants this target applied)
+}
 
-  for item in inventory_data:
-    if item.location in visibility_analysis_results:
-      # Calculate potential relocation targets (open spaces with good visibility)
-      targets = find_viable_relocation_targets(item.size, amhs_status)
+// Update Character Appearance
+function UpdateCharacterAppearance(Character, SpectatorVotes) {
+  TotalVoteWeight = 0;
+  for each Vote in SpectatorVotes {
+    TotalVoteWeight += Vote.Weight;
+  }
 
-      # Evaluate relocation cost (distance, AMHS availability, etc.)
-      relocation_cost = calculate_relocation_cost(item.location, target)
+  for each MorphTarget in Character.MorphTargets {
+    TargetVoteWeight = 0;
+    for each Vote in SpectatorVotes {
+      if (Vote.MorphTargetID == MorphTarget.ID) {
+        TargetVoteWeight += Vote.Weight;
+      }
+    }
 
-      # Assign a score based on shadow impact and relocation cost
-      score = (shadow_impact_score * weight_shadow) - (relocation_cost * weight_cost)
-
-      recommendations.append((item, target, score))
-
-  # Sort recommendations by score (highest score first)
-  sorted_recommendations = sort(recommendations, key=lambda x: x[2])
-
-  return sorted_recommendations
+    // Normalize and apply influence
+    BlendWeight = (TargetVoteWeight / TotalVoteWeight) * Character.InfluenceLevel;
+    ApplyMorphTarget(MorphTarget, BlendWeight);
+  }
+}
 ```
 
-**Hardware Requirements:**
+**Expansion:**
 
-*   High-resolution cameras with global shutter (to minimize motion blur).
-*   Powerful edge computing devices with GPUs for real-time simulation.
-*   Robust wireless communication infrastructure.
-*   Integration with existing AMHS control systems.
-
-**Potential Benefits:**
-
-*   Increased efficiency of automated material handling systems.
-*   Improved accuracy of inventory scanning and picking.
-*   Reduced labor costs.
-*   Enhanced safety.
-*   Optimized space utilization.
+*   **Procedural Morph Target Generation:** Explore the use of procedural generation to create new morph targets dynamically, based on spectator suggestions.
+*   **AI-Driven Morph Target Suggestion:** An AI could analyze spectator chat and suggest morph targets that align with the current mood or theme of the game.
+*   **“Morph Target Challenges”:**  Introduce in-game challenges that reward players for creating unique and visually appealing character customizations using spectator influence.
