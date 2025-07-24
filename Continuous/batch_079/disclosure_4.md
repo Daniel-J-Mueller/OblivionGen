@@ -1,76 +1,69 @@
-# 11467998
+# 9367252
 
-## Dynamic Packet Reconstruction with Selective Payload Prioritization
+## Adaptive Quorum Based on Replica Latency
 
-**Concept:** The provided patent focuses on low-latency processing by initiating DMA *before* complete reception. This design expands on that concept by introducing a system where packets are *reconstructed* dynamically based on prioritized payload segments, allowing for immediate use of available data even with ongoing transmission. This is particularly useful for streaming applications, real-time analytics, and scenarios where partial data is valuable.
+**Specification:** A system component monitoring inter-replica communication latency, dynamically adjusting quorum size and composition to prioritize low-latency replicas during master election/failover.
 
-**System Specifications:**
+**Rationale:** The provided patent details a system for data replication with a fixed quorum size. Real-world network conditions fluctuate.  A fixed quorum may include slower, less reliable replicas, unnecessarily delaying failover or impacting write consistency. Adapting the quorum to favor fast replicas can significantly improve performance and resilience.
 
-*   **Hardware:**
-    *   Network Interface Card (NIC) with DMA engine (as in the base patent).
-    *   On-NIC Packet Buffer: Dedicated high-speed memory on the NIC for receiving and assembling fragmented or out-of-order packets. Size configurable based on anticipated application needs (e.g., 1MB - 16MB).
-    *   Payload Prioritization Engine: Custom hardware logic (FPGA-based) for identifying and prioritizing payload segments.
-    *   Traffic Shaper: Hardware module for modulating traffic rates based on reconstruction status.
-*   **Software:**
-    *   Host Driver: Modified driver to manage dynamic reconstruction requests and provide prioritization hints.
-    *   Application Programming Interface (API): API for applications to register payload prioritization rules and request partial packet access.
-*   **Data Structures:**
-    *   Packet Reconstruction Table: Table maintained on the NIC mapping packet IDs to reconstruction status and buffer locations.
-    *   Payload Priority List: List maintained by the application, mapping packet IDs and payload offsets to priority levels (High, Medium, Low).
+**Components:**
 
-**Operational Procedure:**
+1.  **Latency Monitor:**  A background process on each node measuring round-trip time (RTT) to all other replicas in the group.  Utilizes periodic pings or incorporation into regular heartbeat messages. Stores historical latency data (e.g., moving average over last 5 minutes) for each replica.
 
-1.  **Initial Reception:** Host initiates packet reception. Initial header and first segment are received. NIC initiates DMA for this segment.
-2.  **Prioritization Request:** Host sends prioritization list to NIC for the packet. This list dictates which payload segments are most important.
-3.  **Dynamic DMA & Reconstruction:** NIC uses prioritization list to guide DMA requests. High-priority segments are fetched first.  As each segment is received, it's appended to the packet buffer.
-4.  **Partial Packet Access:** Host can request access to the reconstructed packet *before* all segments have been received. NIC provides access to the available, reconstructed portion of the packet.
-5.  **Traffic Shaping:** Based on reconstruction status, NIC uses traffic shaping to request more/less data from the host. This can prevent buffer overflows or underutilization.
-6.  **Completion & Notification:** Once all segments are received, the NIC notifies the host.
+2.  **Quorum Manager:** Responsible for initiating and managing master election/failover.  Interacts with the Latency Monitor to determine current replica latency.
 
-**Pseudocode (Host Driver - Requesting Partial Packet):**
+3.  **Dynamic Quorum Algorithm:**
 
-```
-function RequestPartialPacket(packetID, offset, length):
-  // offset/length represent the desired portion of the packet
+    *   **Initial Quorum:** Defined statically (as in the provided patent).
+    *   **Latency Ranking:** The Quorum Manager requests the latest latency rankings from the Latency Monitor.  Replicas are sorted by average latency (lowest to highest).
+    *   **Quorum Adjustment:**
+        *   If the current master fails, the Quorum Manager calculates a dynamic quorum.
+        *   The top *N* replicas (based on latency ranking) are *always* included in the dynamic quorum. *N* is configurable (e.g., majority + 1, or a fixed number like 3).
+        *   If fewer than the required number of replicas are available (due to failure or network issues), the algorithm gracefully degrades, potentially reducing the quorum size and issuing warnings.
+        *   Replica weighting may be introduced – replicas with very low latency have greater 'voting power' in the quorum.
+    *   **Failover Procedure:** The failover procedure is initiated only when the dynamic quorum is established.
+    *   **Continuous Monitoring:** The Latency Monitor continues to track latency, and the dynamic quorum is recalculated upon each failover attempt.
+4.  **Configuration Parameters:**
 
-  // Send request to NIC via PCIe
-  send PCIe_Request(REQ_PARTIAL_PACKET, packetID, offset, length)
+    *   `quorum.initial_size`: The initial, static quorum size.
+    *   `quorum.dynamic_enabled`: Boolean flag to enable/disable dynamic quorum.
+    *   `quorum.top_n`: Number of top-performing replicas always included in the dynamic quorum.
+    *   `quorum.latency_threshold`:  Latency value (in milliseconds) above which a replica is considered 'slow'.
+    *    `quorum.recalculation_interval`: Frequency with which the quorum is recalculated.
 
-  // Wait for NIC to signal data availability
-  waitFor PCIe_Signal(SIGNAL_DATA_READY)
-
-  // Read available data from NIC via DMA
-  read DMA_Buffer(data)
-
-  return data
-```
-
-**Pseudocode (NIC - Processing Partial Packet Request):**
+**Pseudocode (Quorum Manager):**
 
 ```
-function ProcessPartialPacketRequest(packetID, offset, length):
-  // Retrieve packet reconstruction status
-  status = GetPacketStatus(packetID)
-
-  // Check if requested segment is available
-  if (segment_available(packetID, offset, length)):
-    // Access data from packet buffer
-    data = ReadPacketBuffer(packetID, offset, length)
-
-    // Send data to host via DMA
-    SendDMAData(data)
-
-    return success
+function initiateFailover():
+  if dynamicQuorumEnabled:
+    dynamicQuorum = calculateDynamicQuorum()
+    if size(dynamicQuorum) >= requiredQuorumSize:
+      proceedWithFailover(dynamicQuorum)
+    else:
+      logWarning("Insufficient replicas for quorum. Failover aborted.")
   else:
-    // Request additional data from host
-    RequestMoreData(packetID)
+    proceedWithFailover(initialQuorum)
 
-    return failure
+function calculateDynamicQuorum():
+  latencyRankings = LatencyMonitor.getLatencyRankings()
+  topNReplicas = latencyRankings.slice(0, quorum.top_n)
+  dynamicQuorum = topNReplicas
+  // Add additional replicas (if needed) to meet quorum size. Prioritize next lowest latency.
+  while size(dynamicQuorum) < requiredQuorumSize:
+    nextReplica = findNextLowestLatencyReplica(latencyRankings, dynamicQuorum)
+    dynamicQuorum.add(nextReplica)
+  return dynamicQuorum
+
+function findNextLowestLatencyReplica(latencyRankings, existingQuorum):
+  for replica in latencyRankings:
+    if not replica in existingQuorum:
+      return replica
+  return null // or handle the case where no more replicas are available.
 ```
 
-**Potential Applications:**
+**Potential Benefits:**
 
-*   **Real-time Video Streaming:** Prioritize video frames over auxiliary data.
-*   **Network Intrusion Detection:**  Prioritize header information for immediate analysis.
-*   **Financial Trading:** Prioritize market data updates for immediate processing.
-*   **IoT Sensor Networks:** Prioritize critical sensor readings.
+*   Reduced failover latency.
+*   Improved write consistency under variable network conditions.
+*   Increased resilience to slow or failing replicas.
+*   Adaptability to dynamic network topologies.
