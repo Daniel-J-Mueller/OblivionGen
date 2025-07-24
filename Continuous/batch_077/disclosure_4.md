@@ -1,58 +1,50 @@
-# 10355658
+# 10725885
 
-## Dynamic Acoustic Scene Reconstruction & Personalized Audio Morphing
+## Adaptive Resource Partitioning via Predictive Load Balancing
 
-**Concept:** Leverage the AVCL system’s ability to categorize and adjust audio to not just *process* sound, but to *reconstruct* an acoustic scene and then morph it based on user preference or simulated environments. This moves beyond simple volume leveling to active soundscape design.
+**Concept:** Dynamically adjust resource allocations *within* a VM, not just *between* VMs, based on predicted workload shifts. This goes beyond simply migrating a VM to a less loaded host. It surgically adjusts CPU core affinity, memory regions, and even GPU compute units *within* a running VM to optimize performance and prevent internal resource contention.
 
 **Specs:**
 
-1.  **Acoustic Scene Capture Module:**
-    *   Input: Multi-channel audio stream (minimum stereo, ideally 4+ channels)
-    *   Processing: Utilize the existing audio categorization (music, speech, etc.).  Supplement with real-time sound event detection (SED) – identifying specific sounds like “car horn,” “dog bark,” “running water,” etc.  Extend categorization to environmental classes: “indoor – bedroom,” “outdoor – city street,” “concert hall.”
-    *   Output:  A data structure representing the "acoustic scene" -  a weighted list of identified audio categories *and* sound events, with timestamps and estimated spatial location (using inter-channel time differences).
+*   **Hardware:** Requires hardware virtualization extensions (Intel VT-x/AMD-V) capable of dynamic CPU/memory remapping *within* a guest VM. Also necessitates SR-IOV enabled network adapters for fine-grained network bandwidth allocation. GPU support requires virtualized GPU partitioning (e.g., NVIDIA vGPU).
+*   **Software Components:**
+    *   **VM-Aware Profiler:** A lightweight agent running *inside* each VM, collecting detailed performance metrics (CPU instruction types, memory access patterns, I/O operations, GPU utilization) at a micro-level. It uses sampling and lightweight tracing to minimize overhead.
+    *   **Predictive Load Engine (PLE):** A machine learning model (e.g., LSTM neural network) running on the load monitor device (as described in the patent).  The PLE receives data from the VM-Aware Profiler, learns workload patterns, and *predicts* future resource demands within each VM.  Separate models are maintained per VM instance.
+    *   **Dynamic Resource Allocator (DRA):**  A component within the load monitor device. It receives predictions from the PLE and translates them into concrete resource allocation adjustments. DRA interacts directly with the hypervisor to dynamically remap CPU cores, memory pages, and GPU compute units assigned to the VM.
+    *   **Inter-Process Communication (IPC):** A high-bandwidth, low-latency communication channel between the VM-Aware Profiler and the PLE/DRA.  Utilize shared memory for minimal overhead.
 
-2.  **Scene Database & Morphing Profiles:**
-    *   Database: A pre-populated database of acoustic scene “templates” –  baseline acoustic scenes (e.g., "busy cafe," "quiet forest," "rainy night").  These templates are defined by the weighted lists described above.
-    *   Morphing Profiles: User-defined or pre-set “morphing profiles” that define how the current acoustic scene should be altered to resemble a target scene. These profiles specify weighting adjustments to different sound categories/events. Example:  "Reduce traffic noise by 80%, increase bird sounds by 50%."
-
-3.  **Real-time Audio Morphing Engine:**
-    *   Input: Current acoustic scene data, selected morphing profile.
-    *   Processing:
-        *   Calculate desired weighting adjustments based on the morphing profile.
-        *   Apply gain adjustments to individual audio streams (identified categories/events) to achieve the desired weighting. This utilizes the existing AVCL gain curves, but dynamically modifies the curve parameters.
-        *   Employ spatial audio techniques (HRTF filtering, ambisonics) to simulate changes in sound source location and direction.
-        *   Implement “acoustic event insertion” – adding synthesized or pre-recorded sound events to the morphed scene to enhance realism (e.g., adding gentle rain sounds to a quiet indoor scene).
-        *   Use a ‘diffusion’ module to smooth transitions between morphs and to prevent jarring changes in the soundscape.
-    *   Output: Morphed audio stream.
-
-4.  **Personalization & Adaptation:**
-    *   User Profiles: Store user preferences for morphing profiles and soundscape aesthetics.
-    *   Adaptive Learning:  Monitor user interaction (e.g., manual adjustments to the soundscape) and use machine learning to refine morphing profiles and personalize the listening experience.
-    *   Contextual Awareness:  Integrate with external sensors (location, time of day, weather) to automatically adjust the soundscape based on the user’s environment.
-
-**Pseudocode (Morphing Engine Core):**
+**Pseudocode (DRA – Core Allocation Logic):**
 
 ```
-function MorphAudio(currentScene, morphProfile, audioStreams):
-    desiredWeights = CalculateDesiredWeights(currentScene, morphProfile)
-    morphedStreams = []
-    for stream in audioStreams:
-        category = stream.category
-        originalWeight = currentScene.getWeight(category)
-        desiredWeight = desiredWeights.getWeight(category)
-        gainAdjustment = desiredWeight / originalWeight
-        morphedStream = ApplyGain(stream, gainAdjustment)
-        morphedStreams.append(morphedStream)
+function adjust_cpu_affinity(vm_id, predicted_load):
+    current_affinity = get_current_cpu_affinity(vm_id)
+    predicted_hotspots = predicted_load.cpu_hotspots  // List of cores with high predicted utilization
     
-    mixedAudio = MixAudio(morphedStreams)
+    // Calculate the "cost" of moving a thread away from a core
+    // (latency, cache misses, etc.)
+
+    // Calculate the "benefit" of moving a thread to a less loaded core
     
-    return mixedAudio
+    // Prioritize moves based on cost/benefit ratio.
+
+    for each thread in vm_id:
+        if thread.current_core not in predicted_hotspots:
+            // Move thread to a less loaded core.
+            move_thread(thread, best_available_core)
+        else:
+            // Check if there is a significant benefit to moving the thread.
+            if benefit(thread, alternative_core) > cost(thread, alternative_core):
+                move_thread(thread, alternative_core)
 ```
 
-**Potential Applications:**
+**Operation:**
 
-*   Personalized audio experiences for VR/AR.
-*   Noise cancellation and sound masking tailored to specific environments.
-*   Adaptive soundscapes for mental wellness and relaxation.
-*   Simulating realistic audio environments for gaming and entertainment.
-*   Aiding the hearing impaired by selectively enhancing desired sounds.
+1.  The VM-Aware Profiler continuously collects performance data from the guest VM.
+2.  This data is transmitted to the PLE, which uses it to predict future resource demands.
+3.  The PLE sends these predictions to the DRA.
+4.  The DRA dynamically adjusts resource allocations within the VM, remapping CPU cores, memory regions, and GPU compute units to optimize performance and prevent contention.
+5.  The process repeats continuously, allowing the system to adapt to changing workloads in real-time.
+
+**Novelty:**
+
+This approach differs from existing solutions by focusing on *intra-VM* resource optimization, rather than simply migrating VMs between hosts. It allows for more fine-grained control over resource allocation, enabling better performance and resource utilization. The predictive nature of the system allows it to proactively adjust resource allocations before performance degrades.
