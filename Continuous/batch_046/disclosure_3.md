@@ -1,78 +1,66 @@
-# 11954495
+# 12271276
 
-## Adaptive Data Sharding with Predictive Prefetching
+## Dynamic Endpoint Masking & Regional Health Scoring
 
-**Concept:** Extend the coprocessor offload capability to include *dynamic data sharding* and *predictive prefetching* based on query patterns. This moves beyond tuple filtering to proactively prepare data *before* the processor even requests it, minimizing latency and maximizing throughput.
+**Concept:** Enhance failover responsiveness and granularity beyond simple region switching by dynamically masking endpoint identifiers *during* failover and implementing a regional health scoring system that influences routing decisions *before* a full failover event.
 
-**Specifications:**
+**Specs:**
 
-**1. Data Sharding Module:**
+**1. Endpoint Masking Module (EMM):**
 
-*   **Function:** Distributes data chunks across multiple coprocessor instances (or within a single coprocessor with multiple processing units) based on predicted query access patterns.
-*   **Implementation:** 
-    *   Utilizes a rolling window of recent query data to build a query access frequency map.
-    *   Dynamically adjusts shard assignments based on the frequency map – frequently accessed data resides on coprocessors closer to the processor, or replicated across multiple coprocessors.
-    *   Supports multiple sharding strategies (range, hash, list) selected based on data characteristics and query types.
-    *   Metadata management to track data location and shard assignments.
+*   **Function:** Intercepts network packets originating from/destined for a specific region. Modifies the endpoint identifier (IP address, hostname, etc.) based on pre-defined masking rules and current regional health scores.
+*   **Implementation:**  Software module integrated into the first/second computing devices (as described in the patent).  Utilizes a lookup table mapping original endpoint IDs to masked IDs.
+*   **Masking Types:**
+    *   *Full Masking:* Replaces the endpoint ID with a static, pre-configured ID in the failover region. Useful for stateless services.
+    *   *Partial Masking:* Modifies only specific parts of the endpoint ID (e.g., subnet). Useful for maintaining some locality during failover.
+    *   *Dynamic Masking:*  Generates a unique masked ID based on a cryptographic hash of the original ID and a timestamp.  Improves security and reduces replay attacks.
+*   **Configuration:** Masking rules are defined via a central management plane and pushed to all EMM instances.
 
-**2. Predictive Prefetching Engine:**
+**2. Regional Health Scoring (RHS) System:**
 
-*   **Function:** Predicts future data needs based on ongoing query analysis and proactively fetches data into coprocessor caches.
-*   **Implementation:**
-    *   Employs a Markov model or recurrent neural network (RNN) trained on historical query sequences. The model predicts the next data chunk(s) likely to be requested.
-    *   Uses a 'confidence score' associated with each prediction. Prefetching is prioritized based on confidence.
-    *   Implements a cache hierarchy within the coprocessor subsystem. Prefetched data is stored in faster tiers.
-    *   Incorporates 'negative feedback' - if a predicted data chunk is *not* requested, the prediction model is adjusted to reduce similar predictions in the future.
+*   **Metrics:** RHS collects various metrics to assess the health of each region:
+    *   *Latency:* Ping times between regions and to critical services.
+    *   *Packet Loss:* Percentage of packets lost during communication.
+    *   *Resource Utilization:* CPU, memory, and disk usage on computing devices in the region.
+    *   *Application Health:*  Health checks performed on running applications. (HTTP status codes, database connection status)
+*   **Scoring Algorithm:**  A weighted sum of the collected metrics. Weights are configurable via the central management plane.
+*   **Thresholds:**  Pre-defined thresholds for health scores. Scores below a certain threshold trigger alerts and/or initiate failover procedures.
+*   **Proactive Routing:**  RHS can influence routing decisions *before* a full failover event. If a region’s health score is degrading, the system can dynamically reroute a portion of the traffic to a healthier region.
 
-**3. Coprocessor Communication Protocol:**
+**3.  Integration with Existing System:**
 
-*   **Function:** Optimized communication between the processor and coprocessor subsystem, accommodating dynamic data locations and prefetching.
-*   **Implementation:**
-    *   Extends existing communication protocols (e.g., PCIe) with metadata for data location and prefetch status.
-    *   Supports asynchronous data transfers to minimize processor stall.
-    *   Implements a 'data validity' flag to indicate whether data in the coprocessor cache is current.
+*   The EMM and RHS modules are integrated into the first and second computing devices described in the patent.
+*   The first computing device (primary region) uses RHS to monitor regional health and initiates failover based on pre-defined thresholds.
+*   During failover, the first computing device pushes the current RHS data (health scores, masking rules) to the second computing device (failover region).
+*   The second computing device uses the received data to route traffic and apply endpoint masking.
 
-**4. System Architecture**
-
-*   **Processor:** Standard CPU. Responsible for query parsing and high-level logic.
-*   **Coprocessor Subsystem:** Cluster of interconnected coprocessors, each with:
-    *   Data Sharding Module
-    *   Predictive Prefetching Engine
-    *   Local cache and processing units
-*   **Interconnect:** High-bandwidth, low-latency interconnect (e.g. NVLink, PCIe Gen5) between processor and coprocessor cluster.
-*   **Memory Hierarchy:** Multi-tiered memory system within each coprocessor, including:
-    *   Registers
-    *   L1 Cache
-    *   L2 Cache
-    *   DRAM
-
-**Pseudocode (Predictive Prefetching Engine):**
+**Pseudocode (First Computing Device - Failover Initiation):**
 
 ```
-function predict_next_chunk(query_history, model):
-    predicted_chunk = model.predict(query_history)
-    confidence = model.confidence(query_history)
-    return predicted_chunk, confidence
+function checkRegionalHealth() {
+  healthScore = calculateHealthScore();
+  if (healthScore < threshold) {
+    initiateFailover();
+  }
+}
 
-function prefetch_data(chunk_id, cache):
-    if chunk_id not in cache:
-        fetch_data_from_storage(chunk_id)
-        store_in_cache(chunk_id)
-
-function main_loop():
-    query_history = get_latest_queries()
-    predicted_chunk, confidence = predict_next_chunk(query_history, model)
-
-    if confidence > threshold:
-        prefetch_data(predicted_chunk, cache)
-
-    process_current_query()
-    update_query_history(current_query)
+function initiateFailover() {
+  pushRHSDataToFailoverRegion();
+  routeAllTrafficToFailoverRegion();
+}
 ```
 
-**Potential Benefits:**
+**Pseudocode (Second Computing Device - Traffic Routing during Failover):**
 
-*   Significant reduction in query latency.
-*   Increased throughput and scalability.
-*   Improved energy efficiency.
-*   Adaptability to changing workloads.
+```
+function receiveTraffic(packet) {
+  if (packet.endpointIdentifier == originalEndpointIdentifier) {
+    maskedEndpointIdentifier = applyEndpointMasking(originalEndpointIdentifier);
+    routePacketToDestination(maskedEndpointIdentifier);
+  } else {
+    routePacketToDestination(packet.endpointIdentifier);
+  }
+}
+```
+
+**Novelty:** This system moves beyond simple region-based failover to provide more granular control over traffic routing during failover. Dynamic endpoint masking can improve security and reduce the impact of failover on applications. Regional health scoring allows for proactive routing and can prevent full-scale failovers in many cases. It enables a sliding scale of regional engagement, rather than a hard flip.
