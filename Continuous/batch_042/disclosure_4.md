@@ -1,76 +1,49 @@
-# 9698819
+# 11184949
 
-## Adaptive Huffman Tree Pruning for Dynamic Datasets
+## Dynamic Spectrum Allocation via Predictive Interference Mapping
 
-**Concept:** This design focuses on dynamically restructuring the Huffman tree *during* encoding and decoding to optimize for changing data distributions in streaming or dynamic datasets. The existing patent centers on controlled tree building, but doesn't address continuous adaptation *after* initial construction. This allows for far more efficient compression of constantly evolving data.
+**Core Concept:** Extend the DFS channel assessment beyond reactive avoidance of radar, and proactively *shape* spectrum usage based on predicted interference landscapes, incorporating machine learning to anticipate interference *before* it happens. This goes beyond simply choosing the "least busy" channel; it aims to *create* less busy channels.
 
-**Specs:**
+**System Specs:**
 
-1.  **Node Weighting & Decay:** Each leaf node in the Huffman tree will have an associated weight representing the frequency of its symbol. This is standard. *However*, this weight will be subject to *exponential decay* over time.  The decay rate is a configurable parameter (α, 0 < α < 1).  If a symbol isn’t encountered for a certain period, its weight will diminish, potentially moving it lower in the tree or even pruning it entirely.
+*   **Hardware:**
+    *   Tri-band (2.4GHz, 5GHz, 6GHz) capable radios on the device.
+    *   Dedicated, low-power processor core for running the interference prediction model.
+    *   High-precision Time-of-Arrival (ToA) or Time Difference of Arrival (TDoA) module for localization of interfering signals (optional, for enhanced accuracy).
 
-2.  **Pruning Threshold:** A configurable threshold (β) determines when a node (and its subtree) can be pruned.  If a node’s weight falls below β, the subtree is removed, and its symbols are re-allocated based on current frequency. This mechanism frees up space in the tree, but requires careful management to avoid information loss.
+*   **Software/Firmware Components:**
+    *   **Interference Mapping Module:** Continuously scans the spectrum, identifying signal sources (Wi-Fi, Bluetooth, microwave, etc.). Records signal strength, frequency, and estimated location using triangulation or signal fingerprinting.
+    *   **Predictive Interference Model:** A machine learning model (e.g., LSTM, GRU, or Transformer) trained on historical interference data, location data, time of day, day of week, and potentially external data sources (e.g., weather, local events).  The model predicts future interference levels for each frequency band.
+    *   **Dynamic Spectrum Allocation Algorithm:**  This algorithm uses the predictions from the interference model to select the optimal channel for both the primary connection (to the existing AP) and the secondary AP created on the device. It prioritizes channels with the lowest predicted interference *and* considers the potential impact of its own transmissions on other devices.
+    *   **Adaptive Transmission Power Control:** Adjusts the transmission power of both radios based on the predicted interference and the distance to the receiving device.  Lower power is used when possible to minimize interference with other devices.
+    *   **Cooperative Interference Avoidance:** Enables devices to share interference data with each other (via a secure protocol). This creates a "swarm intelligence" effect, allowing devices to collectively avoid interference and optimize spectrum usage.
 
-3.  **Re-Allocation Strategy:** When a subtree is pruned, its symbols need to be re-integrated into the tree.  Several strategies can be implemented:
-    *   **Immediate Re-Insertion:** Symbols are immediately re-inserted into the tree based on their current frequency. This is simple but can cause instability.
-    *   **Deferred Re-Insertion:** Symbols are added to a buffer and re-inserted periodically (e.g., every N symbols). This smooths out fluctuations but introduces latency.
-    *   **Hybrid Approach:** A combination of immediate and deferred re-insertion based on symbol frequency.  High-frequency symbols are re-inserted immediately, while low-frequency symbols are deferred.
-
-4.  **Tree Re-Balancing:**  After pruning and re-allocation, the tree may become unbalanced. A periodic re-balancing operation is required to maintain optimal performance. This involves swapping nodes to minimize the tree height and improve codeword length distribution.
-
-5.  **Encoder/Decoder Synchronization:** A crucial aspect is ensuring that the encoder and decoder remain synchronized. This requires transmitting metadata alongside the compressed data, indicating which nodes have been pruned and how symbols have been re-allocated. This metadata should be minimized to avoid overhead.
-
-**Pseudocode (Encoder):**
-
-```
-function encode(symbol):
-  node = find_node(symbol)
-  if node is null:
-    // Symbol not in tree, add it
-    add_new_node(symbol)
-    node = find_node(symbol)
-  
-  transmit_codeword(node.codeword)
-  
-  update_node_weight(node)
-  
-  decay_all_weights(α) //Apply exponential decay
-  
-  prune_tree(β) //Remove nodes below threshold
-  
-  rebalance_tree()
-  
-  return
-```
-
-**Pseudocode (Decoder):**
+**Pseudocode (Dynamic Spectrum Allocation Algorithm):**
 
 ```
-function decode():
-  codeword = receive_codeword()
-  
-  node = find_node_by_codeword(codeword)
-  
-  symbol = node.symbol
-  
-  update_node_weight(node)
-  
-  decay_all_weights(α)
-  
-  prune_tree(β)
-  
-  rebalance_tree()
+// Input: List of available channels, interference predictions for each channel, current channel
 
-  return symbol
+function selectOptimalChannel(availableChannels, interferencePredictions, currentChannel):
+
+    // Weighting factors (tunable)
+    weightInterference = 0.7
+    weightCurrentChannelProximity = 0.3
+
+    bestChannel = currentChannel
+    bestScore = -Infinity
+
+    for each channel in availableChannels:
+        // Calculate a score based on interference prediction and proximity to current channel
+        interferenceScore = 1 - interferencePredictions[channel] // Lower interference = higher score
+        proximityScore = 1 - abs(channel - currentChannel) // Closer channel = higher score
+
+        totalScore = (weightInterference * interferenceScore) + (weightCurrentChannelProximity * proximityScore)
+
+        if totalScore > bestScore:
+            bestScore = totalScore
+            bestChannel = channel
+
+    return bestChannel
 ```
 
-**Metadata:**
-
-*   Pruned Node List: IDs of pruned nodes.
-*   Re-Allocation Map: Mapping of symbols to new node IDs after re-allocation.
-*   Configuration Parameters: α, β, rebalancing frequency.
-
-**Potential Enhancements:**
-
-*   Adaptive Decay Rate: Dynamically adjust the decay rate α based on data volatility.
-*   Context-Aware Pruning: Prune nodes based on the surrounding data context.
-*   Parallel Tree Management: Implement parallel algorithms for pruning and rebalancing to improve performance.
+**Novelty:** This system moves beyond *reacting* to interference and actively *shapes* the spectrum landscape. The predictive model allows for proactive channel selection, minimizing interference and maximizing throughput.  The cooperative aspect creates a more efficient and resilient network. This isn’t just about DFS; it’s about intelligent spectrum management.
