@@ -1,65 +1,67 @@
-# D959436
+# 11120006
 
-## Modular, Bio-Integrated Scanner Pedestal
+## Distributed Data Shadowing with Predictive Consistency
 
-**Concept:** A pedestal scanner incorporating modular, bio-integrated components allowing for dynamic adjustment of scanning parameters based on the scanned object’s material properties *and* a limited degree of ‘biological response’ monitoring. This isn’t about scanning *living* things in the traditional sense, but detecting subtle changes in surface conductivity/capacitance related to localized environmental effects – imagine detecting moisture levels in organic materials or minor static charge build-up.
+**Concept:** Extend the sequence-based ordering from the patent to allow for *shadowing* of data across storage nodes *before* a transaction commits, coupled with predictive consistency levels. This aims to improve read performance and reduce latency for operations that can tolerate eventual consistency.
 
-**Core Specs:**
+**Specification:**
 
-*   **Pedestal Structure:** Primarily constructed from a lattice-work of carbon nanotube reinforced polymer. This provides high strength with minimal weight and enables internal routing of wires/sensors. Lattice structure should allow for modular component attachment via magnetic locking mechanisms.
-*   **Scanning Head Modularity:** The scanning head is comprised of interchangeable modules. Modules include:
-    *   **LiDAR Module:** Standard LiDAR for basic shape capture.
-    *   **Hyperspectral Imaging Module:** Captures spectral data across a wider range than standard RGB.
-    *   **Capacitive/Conductivity Array Module:** An array of micro-sensors to detect surface conductivity and capacitance. This is the ‘bio-integrated’ element. Sensor density: 1000 sensors/cm².
-    *   **Thermal Imaging Module:** Captures thermal signatures.
-*   **Bio-Integration Layer:** The Capacitive/Conductivity Array Module incorporates a microfluidic layer. This layer *passively* collects minute amounts of surface moisture or condensation. Analysis isn't about *identifying* compounds, but detecting *change* in conductivity/capacitance caused by this moisture.
-*   **Dynamic Parameter Adjustment:**  Software algorithms analyze data from *all* modules in real-time. 
-    *   **Algorithm 1 (Material Identification):** Hyperspectral data is used to broadly identify material types.
-    *   **Algorithm 2 (Scanning Parameter Optimization):** Based on material identification & data from the Capacitive/Conductivity Array, laser intensity, scanning speed, and sensor focus are *dynamically* adjusted.  For example:
-        *   Dark, porous materials: Increase laser intensity, slow scan speed.
-        *   Highly reflective materials: Decrease laser intensity, increase scan speed.
-        *   Moisture-sensitive materials: Lower laser power, increase scan resolution around detected moisture, adjust sensor sensitivity to detect small changes in conductivity.
-*   **Data Output:**  Not just a 3D model, but a layered data set:
-    *   3D Point Cloud
-    *   Material Map (identified materials)
-    *   Conductivity Map (showing surface conductivity variations)
-    *   Moisture Distribution Map (derived from conductivity changes – a heat map indicating localized moisture)
+**1. Shadow Node Selection:**
 
-**Pseudocode (Dynamic Parameter Adjustment):**
+*   Each storage node maintains a configurable 'shadow factor' (SF). This factor defines the number of peer storage nodes to which it will replicate data as shadows.
+*   Shadow node selection is not static. Nodes dynamically choose shadows based on network proximity (latency), load, and data access patterns. A distributed hash table (DHT) manages shadow node mappings.
+*   The transaction coordinator (TC) queries the DHT to identify appropriate shadow nodes *before* sending the initial prepare request.
+
+**2. Predictive Consistency Levels:**
+
+*   Introduce a new dimension to consistency levels beyond standard read/write configurations (strong, eventual, etc.). This new dimension is 'predictive confidence'.
+*   Each read request includes a 'tolerance factor' (TF). This TF represents the acceptable probability of reading stale data.
+*   Shadow nodes track data 'staleness score' (SS). SS is based on the number of committed transactions *since* the shadow copy was created.
+*   Read requests are routed to the shadow node with the lowest SS *that also satisfies the TF*. The SS must be below the TF threshold for the read to proceed.
+
+**3. Transaction Flow Modification:**
+
+*   **Prepare Phase:** The TC sends the prepare request to the primary storage node *and* the selected shadow nodes simultaneously.
+*   **Commit Phase:** If all nodes (primary & shadows) acknowledge the prepare request, the TC sends the commit request.  Shadows update their copies *before* the primary confirms the commit.
+*   **Rollback Phase:** If any node rejects the prepare request, the TC initiates a rollback. Shadows discard their pre-committed changes.
+
+**4. Data Versioning:**
+
+*   Each data element is tagged with a vector clock. This vector clock tracks the source node and the sequence number of the last write.
+*   Shadow nodes compare vector clocks during data replication. If a shadow node has a newer version (higher sequence number), it does *not* overwrite it with an older version. This prevents divergence.
+
+**5. Failure Handling:**
+
+*   If a shadow node fails *during* a transaction, the TC selects a new shadow node and re-sends the prepare request.
+*   If the primary node fails *after* shadows have been updated, the TC promotes one of the shadows to become the new primary.
+
+**Pseudocode (Simplified):**
 
 ```
-function adjustScanParameters(materialType, conductivityData) {
+// Read Request
+function handleReadRequest(dataId, toleranceFactor):
+  shadowNodes = getShadowNodes(dataId)
+  bestShadowNode = null
+  minStalenessScore = infinity
 
-  baseIntensity = 100;  // Default laser intensity
-  baseSpeed = 50;       // Default scanning speed
-  sensorSensitivity = 1; // Default sensor sensitivity
+  for node in shadowNodes:
+    stalenessScore = node.getStalenessScore(dataId)
+    if stalenessScore <= toleranceFactor and stalenessScore < minStalenessScore:
+      minStalenessScore = stalenessScore
+      bestShadowNode = node
 
-  if (materialType == "dark_porous") {
-    intensity = baseIntensity * 1.5;
-    speed = baseSpeed * 0.7;
-  } else if (materialType == "reflective") {
-    intensity = baseIntensity * 0.5;
-    speed = baseSpeed * 1.2;
-  } else {
-    intensity = baseIntensity;
-    speed = baseSpeed;
-  }
-
-  // Analyze conductivity data for moisture
-  moistureLevel = calculateMoistureLevel(conductivityData);
-
-  if (moistureLevel > threshold) {
-    intensity = intensity * 0.8; // Reduce intensity to prevent damage to moisture-sensitive materials
-    sensorSensitivity = sensorSensitivity * 2; // Increase sensor sensitivity to detect subtle changes
-  }
-
-  return {intensity: intensity, speed: speed, sensorSensitivity: sensorSensitivity};
-}
+  if bestShadowNode != null:
+    return bestShadowNode.readData(dataId)
+  else:
+    // Fallback to primary node (higher latency)
+    return primaryNode.readData(dataId)
 ```
 
-**Potential Applications:**
-
-*   **Art Conservation:** Non-destructive analysis of paintings and sculptures, detecting hidden layers or areas of moisture damage.
-*   **Materials Science:** Characterization of new materials, identifying defects or variations in composition.
-*   **Precision Agriculture:** Assessing the health and moisture content of plants.
-*   **Forensic Science:** Analyzing evidence at crime scenes.
+```
+// Commit Phase (Simplified)
+function commitTransaction(transactionData):
+  primaryNode.commit(transactionData)
+  for shadowNode in shadowNodes:
+    shadowNode.commit(transactionData)
+  return true
+```
