@@ -1,66 +1,57 @@
-# 8959430
+# D966418
 
-## Dynamic Keyboard Morphology via Haptic Feedback & AI Prediction
+## Haptic Feedback Zones - Modular Controller
 
-**Concept:** A virtual keyboard that physically *reshapes* its key layout based on predicted input and user haptic feedback, moving beyond simply displaying additional rows. This creates a truly adaptive interface.
+**Concept:** A game controller featuring dynamically reconfigurable haptic feedback zones. Instead of uniform vibration, the controller surface is divided into small, independently controllable haptic actuators. These actuators aren't just on/off; they vary in intensity and frequency. The key is *modular* actuator placement – users can physically reposition or add/remove actuators to customize feedback.
 
 **Specs:**
 
-*   **Display:** High-resolution flexible OLED touchscreen with localized tactile feedback capabilities (micro-actuators beneath the surface).
-*   **Haptic Engine:** An array of precisely controlled micro-actuators capable of simulating key presses, subtle directional guidance, and morphing key shapes.
-*   **AI Prediction Engine:**  A recurrent neural network (RNN) trained on massive text datasets and personalized user input history.  This engine predicts the next most likely characters, words, and even sentence fragments.
-*   **Morphing Algorithm:**  The core of the system. Takes prediction data from the AI Engine and translates it into physical key movements and shape changes.
-*   **User Profiles:** Individual user profiles store typing habits, frequently used phrases, and preferred language models.
+*   **Controller Shell:**  Ergonomic, modular design constructed from a durable, slightly flexible polymer.  Internal grid system for actuator mounting. Dimensions comparable to existing standard controllers.
+*   **Haptic Actuators:** Miniature linear resonant actuators (LRAs) - approximately 1cm x 1cm x 0.5cm.  Each actuator capable of 0-100% intensity, 50-500Hz frequency control. Magnetic mounting system for easy repositioning/removal.  Individual power/data connections via micro-connector grid.
+*   **Actuator Grid:** Internal controller shell contains a recessed grid (5mm spacing) to accommodate actuators. Grid is wired for individual actuator control.
+*   **Magnetic Mounts:** Each actuator includes a small, strong neodymium magnet on one side.  The internal grid is covered with a ferromagnetic material to secure actuators in place.
+*   **Control System:** Microcontroller with dedicated haptic driver.  Connectivity: Bluetooth 5.0, USB-C.
+*   **Software API:**  SDK provided for game developers to define custom haptic patterns for specific in-game events. API allows granular control of individual actuators.  Includes pre-set haptic profiles (e.g., engine rumble, footstep impact, weapon recoil).
+*   **User Interface:** Companion app allows users to remap actuator positions, create custom haptic profiles, and adjust intensity/frequency settings.
 
-**Operation:**
+**Pseudocode (Haptic Feedback Loop):**
 
-1.  **Initial State:** Keyboard displays standard QWERTY layout.
-2.  **Input Detection:** As the user begins typing, the AI Prediction Engine analyzes input and calculates probabilities for subsequent characters.
-3.  **Key Morphing:** Based on prediction probabilities:
-    *   **High Probability:** Keys corresponding to likely next characters *physically rise* slightly, providing a tactile cue and pre-positioning the finger.
-    *   **Medium Probability:** Keys *shift laterally* towards the typing fingers, reducing travel distance.
-    *   **Low Probability:** Keys remain static or subtly retract.
-    *   **Word/Phrase Prediction:** If a full word/phrase is predicted with high confidence, the corresponding keys *briefly illuminate* and provide a distinct haptic pulse to confirm prediction. Acceptance can be achieved by continuing to type or a dedicated gesture.
-4.  **Haptic Feedback Integration:** The haptic engine provides nuanced feedback:
-    *   **Key Press Confirmation:** Simulated click sensation.
-    *   **Prediction Confirmation:** Gentle pulse on predicted key(s).
-    *   **Error Correction:** Subtle vibration if a predicted key is *not* pressed.
-5.  **Dynamic Layout Adjustment:** The algorithm continuously recalculates the layout based on ongoing input, ensuring the keyboard adapts to the user’s typing flow.
-6.  **Personalized Profiles:** User profiles influence prediction accuracy and layout preferences.
+```
+// Game sends event data (e.g., impact location, force)
+function processGameEvent(eventData) {
+  // Map event data to actuator locations and intensity
+  actuatorMap = calculateActuatorPattern(eventData);
 
-**Pseudocode (Morphing Algorithm Core):**
+  // Loop through actuator map
+  for each actuator in actuatorMap {
+    // Get actuator location and intensity
+    location = actuator.location;
+    intensity = actuator.intensity;
+    frequency = actuator.frequency;
 
-```pseudocode
-function morphKeyboard(userInput, predictionData, userProfile) {
-  // predictionData = {key: probability, key2: probability2...}
-  // userProfile = {preferredLayout, sensitivity}
-
-  for each key in keyboardLayout {
-    key.height = baseHeight // Reset to default
-    key.xPosition = baseXPosition
-
-    if (key in predictionData) {
-      probability = predictionData[key]
-
-      // Adjust height based on probability
-      key.height = baseHeight + (probability * heightAdjustmentFactor)
-
-      // Adjust xPosition if key is near likely finger position
-      if (key is within fingerReach) {
-        key.xPosition = baseXPosition - (probability * lateralAdjustmentFactor)
-      }
-    }
+    // Send command to haptic driver
+    hapticDriver.setActuator(location, intensity, frequency);
   }
+}
 
-  //Apply overall sensitivity preferences from userProfile
+// Function to calculate actuator pattern based on game event
+function calculateActuatorPattern(eventData) {
+  pattern = [];
+  //Logic to map game event to actuator pattern
+  //Example:  If eventData.type == "impact"
+  //            pattern.add(new Actuator(impactLocation, impactForce * 0.5, 100));
 
-  //Initiate haptic feedback based on adjusted key positions
+  return pattern;
+}
+
+//Data Structure
+class Actuator{
+    constructor(location, intensity, frequency){
+        this.location = location;
+        this.intensity = intensity;
+        this.frequency = frequency;
+    }
 }
 ```
 
-**Potential Enhancements:**
-
-*   **Gesture Integration:** Allow users to customize key movements and predictions using gestures.
-*   **Multilingual Support:** Dynamically switch between language layouts.
-*   **Contextual Awareness:**  Adapt layout based on the application being used (e.g., code editor, email client).
-*   **AI-Driven Learning:**  Continuously refine prediction accuracy based on user behavior.
+**Innovation:**  This moves beyond generalized vibration to precise, localized haptic feedback. The modularity allows users to tailor the experience to their preferences and the specific game being played. Potential applications extend beyond gaming – virtual reality, surgical training, accessibility devices.
