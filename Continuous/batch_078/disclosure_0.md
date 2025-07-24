@@ -1,75 +1,75 @@
-# 9516105
+# 9936208
 
-## Adaptive Content Prefetching via Predictive User Movement
+## Adaptive Predictive Frame Interpolation with Perceptual Hash Guidance
 
-**Concept:** Leverage predicted user movement (derived from device sensors and historical data) to proactively prefetch content fragments to nearby edge servers *before* the user requests them, minimizing latency and buffering. This builds upon the fractional redundant distribution idea, but shifts the focus from static distribution to dynamic, predictive distribution.
+**Concept:** Leverage the downscaling/upscaling logic already present in the patent, but instead of just reducing power consumption, *predict* future frames based on downscaled representations, enhancing perceived smoothness even with lower overall frame rates. This system will dynamically switch between traditional encoding, predictive interpolation, and even *hallucinated* frames based on perceptual similarity.
 
-**Specs:**
+**System Specs:**
 
-**1. Movement Prediction Module:**
+*   **Core Module:** Predictive Frame Generator (PFG)
+*   **Input:** Raw video stream (variable resolution/frame rate). Image data characteristics.
+*   **Output:** Enhanced video stream (potentially lower overall bit rate with improved perceived quality)
 
-*   **Input:**
-    *   Device Sensor Data (GPS, accelerometer, gyroscope, Wi-Fi scanning).
-    *   User Historical Movement Data (anonymized and aggregated).
-    *   Map Data (road networks, points of interest).
-    *   Time of Day/Week/Year.
-*   **Processing:**
-    *   Kalman Filtering/Particle Filtering to predict user trajectory.
-    *   Hidden Markov Models (HMMs) trained on historical movement data to predict likely routes.
-    *   Machine learning model (e.g., Recurrent Neural Network) to combine sensor data, historical data, and map data for high-accuracy prediction.
-*   **Output:**
-    *   Predicted User Location (latitude, longitude) with confidence interval.
-    *   Predicted Route (sequence of map segments).
-    *   Probability Distribution of Likely Locations (a heatmap indicating the likelihood of the user being in a given area).
+**Modules:**
 
-**2. Content Prefetching Engine:**
+1.  **Perceptual Hash Analyzer (PHA):**
+    *   Calculates perceptual hashes (pHash) for each incoming frame. (e.g., Average Hash, Difference Hash, Wavelet Hash).
+    *   Stores a history of pHashes (buffer size configurable).
+    *   Determines the "similarity score" between the current frame’s pHash and those in the history.
 
-*   **Input:**
-    *   Predicted User Location & Route (from Movement Prediction Module).
-    *   Content Catalog (metadata about available media content).
-    *   Content Popularity Data (aggregated user consumption patterns).
-    *   Available Edge Server Locations & Capacities.
-*   **Processing:**
-    *   Content Recommendation: Identify content likely to be consumed based on location, time, and user preferences.  Utilize collaborative filtering and content-based filtering.
-    *   Content Segmentation: Divide content into smaller, manageable fragments (e.g., 5-10 second video clips, chapters of an audiobook).
-    *   Edge Server Selection: Choose the optimal edge servers based on proximity to predicted user location, available bandwidth, and server load.
-    *   Prefetch Scheduling: Schedule content fragments to be pre-downloaded to selected edge servers. Prioritize content with high predicted demand and low availability on nearby servers.
-*   **Output:**
-    *   Prefetch Requests (specifying content fragments, destination edge servers, and priority).
+2.  **Downscale Module:** (Utilizes existing patent downscaling techniques)
+    *   Accepts raw frame.
+    *   Applies variable downscaling based on image complexity (derived from image data characteristics) and predicted motion.
+    *   Outputs downscaled frame.
 
-**3. Adaptive Bandwidth Allocation:**
+3.  **Motion Estimation Module:**
+    *   Analyzes consecutive downscaled frames to estimate global motion vectors. (Optical flow algorithms)
+    *   Outputs motion vector field.
 
-*   **Input:**
-    *   Real-time Network Conditions (latency, bandwidth, packet loss).
-    *   Edge Server Load.
-    *   Prefetch Request Priority.
-*   **Processing:**
-    *   Dynamic Bandwidth Allocation Algorithm: Adjust bandwidth allocated to prefetch requests based on network conditions and server load. Prioritize high-priority requests and adapt to fluctuating bandwidth availability.
-    *   Congestion Control: Implement congestion control mechanisms to prevent network overload.
-*   **Output:**
-    *   Adjusted Prefetch Rate (controlling the speed at which content fragments are downloaded).
+4.  **Frame Prediction Module:**
+    *   Uses the motion vector field and the downscaled previous frame to *predict* the current frame.
+    *   Generates a predicted frame.
 
-**4. Client-Side Integration:**
+5.  **Hallucination Module:**
+    *   If PHA determines the current frame has *extremely* low similarity to previous frames (indicating significant scene change or rapid action), utilize a generative adversarial network (GAN) trained on similar video content to *hallucinate* an entirely new frame. This is a high-cost operation reserved for extreme cases.
 
-*   **Input:**
-    *   User Request for Media Content.
-    *   Predicted User Location.
-*   **Processing:**
-    *   Proximity Check: Determine the nearest edge server with the requested content.
-    *   Content Retrieval: Download content fragments from the nearest edge server.
-    *   Buffering: Buffer content fragments to minimize latency and ensure smooth playback.
+6.  **Frame Selection Module:**
+    *   Compares the original frame, predicted frame, and hallucinated frame (if generated) based on a perceptual metric (e.g., Structural Similarity Index (SSIM), Learned Perceptual Image Patch Similarity (LPIPS)).
+    *   Selects the "best" frame based on perceptual quality and predicted encoding cost.
 
-**Pseudocode (Client-Side):**
+7.  **Encoding Module:** (Standard video encoder – H.265, AV1, etc.)
+    *   Encodes the selected frame.
+
+**Pseudocode (Frame Selection Module):**
 
 ```
-function requestContent(contentID):
-  predictedLocation = getPredictedLocation()
-  nearestEdgeServer = findNearestEdgeServer(predictedLocation, contentID)
-  if nearestEdgeServer != null:
-    downloadContent(nearestEdgeServer, contentID)
+function select_frame(original_frame, predicted_frame, hallucinated_frame):
+  ssim_original = calculate_ssim(original_frame)
+  ssim_predicted = calculate_ssim(predicted_frame)
+  ssim_hallucinated = calculate_ssim(hallucinated_frame)
+
+  encoding_cost_original = estimate_encoding_cost(original_frame)
+  encoding_cost_predicted = estimate_encoding_cost(predicted_frame)
+  encoding_cost_hallucinated = estimate_encoding_cost(hallucinated_frame)
+
+  if (ssim_predicted > threshold_ssim AND encoding_cost_predicted < encoding_cost_original):
+    return predicted_frame
+  else if (ssim_hallucinated > threshold_ssim AND encoding_cost_hallucinated < encoding_cost_original):
+    return hallucinated_frame
   else:
-    // Fallback to traditional content delivery method
-    downloadContent(defaultServer, contentID)
+    return original_frame
 ```
 
-**Novelty:** This system moves beyond static content distribution to a *proactive*, *predictive* system that anticipates user needs based on movement. Combining movement prediction with fractional redundant distribution enhances the user experience by minimizing latency and buffering. The dynamic bandwidth allocation further optimizes the system’s performance in varying network conditions.
+**Configuration Parameters:**
+
+*   `PHA_history_size`: Number of frames to store in the perceptual hash history.
+*   `threshold_ssIM`: Minimum SSIM score for accepting a predicted or hallucinated frame.
+*   `downscale_factor_dynamic`: Adaptive downscaling factor based on image complexity and motion.
+*   `hallucination_threshold`: Similarity score below which the hallucination module is activated.
+
+**Potential Benefits:**
+
+*   Improved perceived smoothness with potentially lower frame rates.
+*   Reduced bandwidth requirements (by selectively encoding predicted/hallucinated frames).
+*   Enhanced video quality in challenging conditions (e.g., fast motion, low light).
+*   Adaptive power consumption.
