@@ -1,59 +1,71 @@
-# 9788077
+# 10706147
 
-## Adaptive Prediction Refinement – APR
+## Dynamic Cache Partitioning with AI-Driven Prediction
 
-**Concept:** Expand predictive frame (P-frame) utilization beyond simple rendition switching to actively refine image quality *within* a rendition, leveraging inter-frame prediction and localized quality enhancement.
+**Concept:** Implement a dynamic cache partitioning system that leverages machine learning to predict potential side-channel attack vectors *before* they manifest, proactively adjusting cache slice allocations to mitigate risk. This builds on the existing concept of cache slices but introduces intelligent, predictive allocation rather than reactive relocation.
 
-**Rationale:** The patent focuses on switching *between* renditions. This design aims to improve quality *within* a rendition, providing a smoother viewing experience and reducing the perceived need to switch. It addresses potential artifacts in lower-quality renditions by selectively boosting detail where it matters most.
+**Specifications:**
 
-**System Specs:**
+**1. Hardware Requirements:**
 
-*   **Encoding:** Standard video encoding pipeline (H.264, H.265, AV1) with added APR metadata insertion.
-*   **APR Metadata:** Encoded alongside the video stream. Includes:
-    *   `Refinement Level`: Integer indicating the level of detail enhancement applied.
-    *   `Refinement Regions`: List of rectangular regions within the frame where refinement is active.
-    *   `Refinement Strength`: Floating point value indicating the intensity of the refinement process.
-    *   `Prediction Source`: Identifier of a reference frame utilized for refinement (e.g. previous frame number).
-*   **Decoder:** Modified video decoder capable of interpreting APR metadata.
-*   **Refinement Engine:** A dedicated processing unit (GPU/DSP) within the decoder.
+*   **Cache Monitoring Unit (CMU):** Dedicated hardware unit integrated with the shared cache controller. Responsible for:
+    *   Real-time monitoring of cache access patterns (read, write, evictions) for each VM.
+    *   Collection of metadata: VM ID, memory address, timestamp, access type.
+    *   High-speed data transfer to the AI Prediction Engine.
+*   **AI Prediction Engine (AIPE):** A dedicated processing unit (FPGA, dedicated ASIC, or powerful CPU core) responsible for running the machine learning models.
+*   **Reconfigurable Interconnect:**  High-bandwidth, low-latency interconnect between CMU, AIPE, and the cache controller to facilitate rapid communication and reconfiguration.
 
-**Workflow:**
+**2. Software Components:**
 
-1.  **Encoding:** The encoder identifies areas of low visual quality or high detail (e.g. edges, textures) in a P-frame.
-2.  **APR Metadata Generation:** For identified regions, APR metadata is generated, specifying a reference frame (previous frame or other nearby frame) containing more detail. The ‘Refinement Strength’ dictates how much information from the reference frame to blend.
-3.  **P-Frame Transmission:** The P-frame and accompanying APR metadata are transmitted.
-4.  **Decoding & Refinement:**
-    *   The decoder receives the P-frame.
-    *   The refinement engine reads the APR metadata.
-    *   For each refinement region:
-        *   The refinement engine retrieves the corresponding region from the identified reference frame.
-        *   The refinement engine blends the reference region with the P-frame region, using the ‘Refinement Strength’ as a weighting factor.
-        *   The resulting refined region replaces the original P-frame region.
+*   **ML Model:** A recurrent neural network (RNN) or Transformer model trained on historical cache access data.  The model learns to predict:
+    *   Probability of cross-VM cache collisions based on access patterns.
+    *   Likelihood of specific side-channel attack vectors (e.g., Prime+Probe, Flush+Reload).
+    *   “Attack Surface” – A metric representing the overall risk level for each VM.
+*   **Cache Manager:** A software component running within the VMM responsible for:
+    *   Receiving risk predictions from the AIPE.
+    *   Dynamically adjusting cache slice allocations based on the predicted risk levels.
+    *   Implementing policies for allocating and reclaiming cache slices.
+    *   Exposing APIs for monitoring and configuration.
 
-**Pseudocode (Refinement Engine):**
+**3. Operational Flow:**
+
+1.  **Data Collection:** The CMU continuously monitors cache access patterns for each VM and collects relevant metadata.
+2.  **Feature Extraction:**  Metadata is preprocessed and transformed into features suitable for the ML model.  Features might include:
+    *   Cache miss rates per VM.
+    *   Frequency of access to shared memory regions.
+    *   Temporal correlations in access patterns.
+    *   Entropy of memory access distributions.
+3.  **Risk Prediction:** The ML model uses the extracted features to predict the probability of side-channel attacks and the overall “Attack Surface” for each VM.
+4.  **Dynamic Allocation:** The Cache Manager receives the risk predictions and adjusts cache slice allocations accordingly.
+    *   VMs with high predicted risk receive larger cache slice allocations.
+    *   VMs with low predicted risk receive smaller cache slice allocations.
+    *   Allocation adjustments are made in real-time to proactively mitigate risk.
+5.  **Model Retraining:** The ML model is periodically retrained using new data to improve its accuracy and adapt to changing workloads.
+
+**4. Pseudocode (Cache Manager - Allocation Adjustment):**
 
 ```
-function refine_frame(p_frame, apr_metadata):
-  for region in apr_metadata.refinement_regions:
-    reference_frame = apr_metadata.reference_frame
-    reference_region = extract_region(reference_frame, region)
-    p_frame_region = extract_region(p_frame, region)
+function adjust_cache_allocation(vm_id, predicted_risk):
+  current_allocation = get_cache_allocation(vm_id)
+  target_allocation = calculate_target_allocation(predicted_risk)
 
-    refined_region = (1 - apr_metadata.refinement_strength) * p_frame_region + apr_metadata.refinement_strength * reference_region
+  if target_allocation > current_allocation:
+    allocate_additional_slices(vm_id, target_allocation - current_allocation)
+  else if target_allocation < current_allocation:
+    reclaim_slices(vm_id, current_allocation - target_allocation)
 
-    replace_region(p_frame, region, refined_region)
+  log_allocation_change(vm_id, current_allocation, target_allocation)
 
-  return p_frame
+function calculate_target_allocation(predicted_risk):
+  // Scale predicted risk to a cache slice allocation size
+  // Example: linear scaling, logarithmic scaling, etc.
+  target_allocation = predicted_risk * scaling_factor + base_allocation
+  return min(target_allocation, max_allocation)
 ```
 
-**Hardware Requirements:**
+**5. Advanced Considerations:**
 
-*   GPU/DSP capable of performing frame blending and region extraction.
-*   Sufficient memory bandwidth to access reference frames and perform processing.
-
-**Potential Benefits:**
-
-*   Reduced bandwidth requirements by enhancing detail within lower-quality renditions.
-*   Improved perceived visual quality.
-*   Smoother video playback experience, reducing the need for rendition switching.
-*   Adaptable to dynamic network conditions.
+*   **Attack Vector Identification:** Train the ML model to identify *specific* attack vectors being attempted, allowing for more targeted mitigation strategies.
+*   **Adversarial Training:** Incorporate adversarial training techniques to improve the robustness of the ML model against evasion attempts.
+*   **Privacy-Preserving Techniques:** Explore the use of differential privacy or federated learning to protect the privacy of cache access data during model training.
+*   **Hardware Acceleration:** Optimize the ML model and data processing pipeline for execution on dedicated hardware accelerators (e.g., FPGAs, ASICs).
