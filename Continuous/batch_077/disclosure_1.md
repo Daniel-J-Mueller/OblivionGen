@@ -1,62 +1,56 @@
-# 8666846
+# 9769315
 
-**Dynamic Predictive Substitution & Tiered Fulfillment**
+## Adaptive Emotional State Routing
 
-**Concept:** Expand the time-to-fulfill prediction beyond simple item availability to proactively suggest *substitute* items with shorter lead times, presented to the customer *before* order confirmation, and intelligently tier fulfillment strategies based on predicted availability and customer preference.
+**Concept:** Expand the agent selection criteria to include real-time assessment of *user emotional state* via voice analysis, and dynamically route calls to agents possessing complementary emotional profiles. This moves beyond skill-based routing to *emotional resonance* routing, potentially increasing call resolution rates and customer satisfaction.
 
-**Specs:**
+**Specifications:**
 
-*   **Data Inputs:**
-    *   Real-time inventory levels (existing)
-    *   Supplier lead times (existing)
-    *   Historical sales data (existing)
-    *   **New:** Item attribute database (e.g., color, size, material, function – beyond simple SKU). This allows for semantic similarity calculations between items.
-    *   **New:** Customer preference profile (explicitly stated or inferred from purchase history) – including willingness to accept substitutions, preferred brands, and price sensitivity.
-    *   **New:** External data feeds – trending product data, social media mentions (to predict potential supply chain disruptions).
-*   **Substitution Engine:**
-    *   Given an item in the order, identify potential substitutes based on attribute similarity (using a vector space model or similar technique).
-    *   Calculate a “substitution score” based on attribute similarity, price difference, and customer preference.
-    *   Rank potential substitutes.
-*   **Tiered Fulfillment Strategy:**
-    *   **Tier 1 (Immediate):** Items in stock, immediate shipment.
-    *   **Tier 2 (Predictive):** Items not in stock, but predicted to be available within a short timeframe (based on restocking orders, supplier data, and historical patterns). Include estimated availability date.
-    *   **Tier 3 (Substitution):** Items not in stock, with viable substitutes available.  Present substitution options to the customer *before* order confirmation.
-    *   **Tier 4 (Backorder/Delay):** Items not in stock, with no viable substitutes and a long predicted lead time. Clearly indicate the delay to the customer.
-*   **Customer Interface:**
-    *   During the order process, visually indicate the fulfillment tier for each item.
-    *   For Tier 3 items, present the substitution options with images, prices, and a “substitution score.” Allow the customer to accept or reject the substitution.
-    *   Clearly display the estimated delivery date for each item, factoring in the fulfillment tier and shipping time.
-*   **System Architecture:**
-    *   Microservice-based architecture. Separate services for inventory management, supplier data integration, substitution engine, and customer interface.
-    *   API-based communication between services.
-    *   Real-time data streaming using technologies like Kafka or RabbitMQ.
-    *   Machine learning models for predicting availability and calculating substitution scores.
+**1. Emotional State Analysis Module:**
 
-**Pseudocode (Substitution Engine):**
+*   **Input:** Real-time audio stream from incoming call.
+*   **Process:**
+    *   Employ a trained machine learning model (e.g., using spectrograms & recurrent neural networks) to analyze voice features (pitch, tone, speech rate, pauses, energy levels).
+    *   Categorize detected emotional state into a predefined set (e.g., Happy, Neutral, Frustrated, Angry, Sad). Confidence scores for each category are generated.
+    *   Output: Emotional State vector (e.g., \[Happy: 0.1, Neutral: 0.2, Frustrated: 0.6, Angry: 0.1, Sad: 0.0]) & overall "Emotional Intensity" score (sum of confidence scores).
+
+**2. Agent Emotional Profile Database:**
+
+*   Data Points:
+    *   **Baseline Emotional Profile:** Determined via a standardized psychological assessment (e.g., Big Five personality traits) & ongoing performance reviews. Represented as a vector (e.g., \[Calmness: 0.8, Empathy: 0.7, Assertiveness: 0.5]).
+    *   **Dynamic Emotional State:** Continuously tracked via agent self-reporting (brief, regular check-ins via a dedicated interface) & potentially, subtle analysis of their communication during calls (with appropriate privacy safeguards).
+    *   **Emotional Resilience Score:** A metric indicating the agent’s ability to remain calm and effective under pressure.
+
+**3.  Adaptive Routing Algorithm:**
+
+*   **Input:**  User Emotional State vector, User Emotional Intensity score, Agent Emotional Profile Database.
+*   **Process:**
+    1.  Identify a pool of eligible agents based on skill requirements and availability (as defined in the provided patent).
+    2.  Calculate an "Emotional Compatibility Score" for each agent in the pool:
+        *   Emotional Compatibility Score =  `∑ (UserEmotionᵢ * AgentEmotionᵢ)`  (sum of element-wise products of user & agent emotional vectors).
+        *   Adjust for Emotional Intensity: If User Emotional Intensity > threshold, prioritize agents with high “Calmness” or “Empathy” scores.
+        *   Apply weighting factors to different emotional dimensions based on call type (e.g., prioritize Empathy for support calls, Assertiveness for sales calls).
+    3.  Rank agents based on Emotional Compatibility Score (combined with skill & availability factors).
+    4.  Select the top-ranked agent and route the call.
+
+**4.  Real-time Agent Support:**
+
+*   Integrate with agent desktop interface to display User Emotional State (e.g., visual representation of emotional vector, a simple descriptor like “Frustrated”).
+*   Provide agents with real-time coaching tips based on detected emotional state (e.g., "Active listening is crucial," "Use a calm and reassuring tone").
+
+**Pseudocode:**
 
 ```
-function find_substitutes(item_sku, customer_preferences):
-  item_attributes = get_item_attributes(item_sku)
-  candidate_substitutes = query_item_database(item_attributes)
+FUNCTION route_call(user_audio_stream):
+  user_emotional_state = analyze_audio(user_audio_stream)
+  eligible_agents = get_eligible_agents()
 
-  for substitute_sku in candidate_substitutes:
-    substitute_attributes = get_item_attributes(substitute_sku)
-    similarity_score = calculate_attribute_similarity(item_attributes, substitute_attributes)
-    price_difference = calculate_price_difference(item_sku, substitute_sku)
-    preference_score = evaluate_customer_preference(substitute_sku, customer_preferences)
+  FOR agent IN eligible_agents:
+    emotional_compatibility = calculate_compatibility(user_emotional_state, agent.emotional_profile)
+    agent.score = emotional_compatibility + agent.skill_score + agent.availability_score
+  
+  sorted_agents = sort_agents_by_score(agents)
+  selected_agent = sorted_agents[0]
 
-    combined_score = (similarity_score * weight_similarity) + (preference_score * weight_preference) - (price_difference * weight_price)
-
-    substitute_scores[substitute_sku] = combined_score
-
-  sorted_substitutes = sort_substitutes_by_score(substitute_scores)
-
-  return sorted_substitutes
+  route_call_to_agent(selected_agent)
 ```
-
-**Potential Extensions:**
-
-*   Proactive substitution suggestions *before* the customer even adds the item to the cart.
-*   Dynamic pricing adjustments to incentivize substitution.
-*   Integration with social media to identify trending products and predict potential supply chain disruptions.
-*   Automated backorder management with intelligent reordering based on predicted demand.
