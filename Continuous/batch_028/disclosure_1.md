@@ -1,54 +1,65 @@
-# 10057162
+# 11616708
 
-## Dynamic VRF Assignment via Beaconing
+## Network Behavioral Fingerprinting via Correlated Loss & Rate Anomaly Detection
 
-**Specification:** A system for dynamically assigning VRF domains to network devices based on beacon signals. This extends the concept of static MAC-to-VRF mapping by introducing a mechanism for devices to *request* or *advertise* their preferred VRF.
+**System Overview:**
 
-**Components:**
+This system moves beyond simply *estimating* traffic loss and demand. It aims to create a real-time “behavioral fingerprint” for network devices and application flows by analyzing correlated anomalies in packet transmission rates and loss rates. This fingerprint can be used for proactive security, performance optimization, and application-level anomaly detection.
 
-*   **Beaconing Agent:** Software/firmware running on end devices (e.g., servers, IoT devices). Responsible for emitting beacon signals. Beacon signals include a VRF preference identifier.
-*   **Beacon Listener:** Integrated into the VRF router (as described in the provided patent). Captures beacon signals from nearby devices.
-*   **Dynamic MAC-to-VRF Table:** An extension to the existing MAC-to-VRF table, allowing entries to be dynamically added, modified, or removed based on beacon signals.
-*   **VRF Preference Identifier:** A unique identifier representing a specific VRF domain. Could be a VLAN ID, a VRF name, or a custom identifier.
-*   **Timeout Mechanism:** A timer associated with dynamic MAC-to-VRF entries. If a beacon signal is not received from a device within the timeout period, the entry is removed (or reverts to a default VRF).
+**Core Components:**
 
-**Operation:**
+1.  **High-Resolution Data Collection:** Network taps or SPAN ports capture packet-level data. Data is pre-processed to extract per-device (switch/router) and per-flow (5-tuple: source/destination IP/port) packet transmission rates and loss rates.  Crucially, data collection occurs at *very* short intervals (e.g., 10ms – 1ms) to capture transient behavior.
 
-1.  **Beacon Emission:** A device, upon boot or when its VRF requirement changes, emits a beacon signal containing its VRF preference identifier. This beacon can be transmitted via a dedicated beacon protocol (e.g., a low-power radio signal) or piggybacked onto existing network traffic (e.g., as an option in DHCP requests or LLDP advertisements).
+2.  **Baseline Establishment (Adaptive):**  A baseline of ‘normal’ transmission/loss behavior is established for each device and flow.  This baseline isn’t static; it adapts over time using exponentially weighted moving averages (EWMA) and/or Kalman filtering to account for diurnal patterns and gradual shifts in traffic patterns. Separate baselines maintained for different times of day, and days of the week.
 
-2.  **Beacon Capture:** The Beacon Listener on the VRF router captures beacon signals from nearby devices.
+3.  **Correlation Engine:** This is the core innovation.  The engine identifies *correlated* deviations from the established baselines.
+    *   **Inter-Device Correlation:**  Looks for instances where deviations in transmission/loss rates occur *simultaneously* across multiple devices along a known path. This can indicate a widespread attack or a network-level congestion issue.
+    *   **Flow-Level Correlation:**  Identifies correlated anomalies within a specific flow across multiple devices. For example, a sudden increase in loss rate on multiple hops for a specific application might signal a targeted DDoS attack against that application.
+    *   **Temporal Correlation:** Tracks the evolution of anomalies over time.  A slow, gradual increase in loss rate might indicate a developing hardware failure, while a sudden spike could signal a flash flood attack.
 
-3.  **Dynamic Table Update:** The Beacon Listener analyzes the beacon signal and updates the Dynamic MAC-to-VRF Table. If the device’s MAC address is not already present, a new entry is created. If an entry exists, it is updated with the new VRF preference.
+4.  **Anomaly Scoring & Alerting:**  Each correlated anomaly is assigned a score based on the magnitude of the deviation from the baseline, the number of devices/flows affected, and the duration of the anomaly.  Alerts are triggered when the score exceeds a predefined threshold.  Scoring utilizes a bayesian approach.
 
-4.  **Packet Processing:** When the router receives a packet, it first checks if the source MAC address is in the Dynamic MAC-to-VRF Table. If it is, the packet is routed according to the associated VRF. If not, the router falls back to the static MAC-to-VRF table or a default VRF.
+5.  **Behavioral Fingerprint Database:** Stores the historical data of transmission/loss rates, anomaly scores, and associated metadata (timestamps, device IDs, flow IDs, etc.). This database is used for long-term trend analysis and for improving the accuracy of the anomaly detection algorithms. Utilizes a time-series database optimized for rapid retrieval and analysis.
 
-5.  **Timeout and Removal:** The router maintains a timeout timer for each dynamic entry. If a beacon signal is not received from a device within the timeout period, the entry is removed from the Dynamic MAC-to-VRF Table.
+**Pseudocode (Core Correlation Logic):**
 
-**Pseudocode (Beacon Listener):**
+```pseudocode
+// For each device and flow, at each time interval:
+transmission_rate = calculate_transmission_rate()
+loss_rate = calculate_loss_rate()
 
+// Calculate deviation from baseline
+transmission_deviation = transmission_rate - baseline_transmission_rate
+loss_deviation = loss_rate - baseline_loss_rate
+
+// Inter-Device Correlation (Simplified)
+correlation_score = 0
+for each device in path:
+    if (device.transmission_deviation > threshold AND device.loss_deviation > threshold):
+        correlation_score += 1
+
+//Flow Level Correlation (Simplified)
+flow_correlation_score = 0
+for each device in path:
+  if (device.transmission_deviation > flow_threshold AND device.loss_deviation > flow_threshold):
+    flow_correlation_score += 1
+
+//Alerting:
+if (correlation_score > inter_device_threshold OR flow_correlation_score > flow_threshold):
+    generate_alert(device_ids, flow_id, anomaly_type, severity)
 ```
-function processBeacon(beaconSignal) {
-  macAddress = beaconSignal.macAddress
-  vrfPreference = beaconSignal.vrfPreference
 
-  if (dynamicMacToVrfTable.contains(macAddress)) {
-    dynamicMacToVrfTable.update(macAddress, vrfPreference)
-    resetTimeoutTimer(macAddress)
-  } else {
-    dynamicMacToVrfTable.add(macAddress, vrfPreference)
-    startTimeoutTimer(macAddress)
-  }
-}
+**Hardware/Software Requirements:**
 
-function timeoutTimerExpired(macAddress) {
-  dynamicMacToVrfTable.remove(macAddress)
-  // Optionally, log the event or take other actions
-}
-```
+*   High-performance network taps or SPAN ports.
+*   Dedicated server cluster for data processing and analysis.
+*   Time-series database (e.g., InfluxDB, Prometheus).
+*   Machine learning libraries (e.g., TensorFlow, PyTorch).
+*   Real-time alerting and visualization tools.
 
-**Potential Use Cases:**
+**Potential Extensions:**
 
-*   **BYOD Networks:** Allows users to bring their own devices and automatically be assigned to the appropriate VRF based on their device settings.
-*   **IoT Deployments:** Enables flexible VRF assignment for IoT devices, allowing for easy segmentation and security.
-*   **Mobile Networks:** Supports seamless VRF switching for mobile devices as they move between different networks.
-*   **Dynamic Segmentation:** Enables automated network segmentation based on device roles or security policies.
+*   Integration with security information and event management (SIEM) systems.
+*   Automated response actions (e.g., rate limiting, traffic redirection).
+*   Predictive analysis to identify potential network issues before they occur.
+*   Application-aware anomaly detection based on application protocols.
