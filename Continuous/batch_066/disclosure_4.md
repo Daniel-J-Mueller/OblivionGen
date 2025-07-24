@@ -1,68 +1,68 @@
-# 12007406
+# 10282228
 
-## Adaptive Haptic Feedback System for Gait Correction
+## Transactional Data Provenance & Attestation
 
-**System Overview:**
+**Concept:** Extend the log-based transaction system to not only verify constraints *during* transaction commit, but to create a cryptographically verifiable “data provenance” record for *every* data element impacted by a transaction. This provenance record acts as a tamper-proof audit trail and enables attestation of data integrity.
 
-This system expands on the wearable device's ability to detect orientation and applies localized haptic feedback to subtly influence the user’s gait, addressing imbalances or inefficiencies. It aims to provide real-time, personalized gait correction without conscious effort from the user.
+**Specifications:**
 
-**Components:**
+*   **Provenance Log:** A parallel log to the existing transaction log.  This log stores, for each transaction:
+    *   Transaction ID (linking to the primary transaction log)
+    *   Timestamp
+    *   User/Actor ID (initiating the transaction)
+    *   Affected Data Element IDs (unique identifiers for each piece of data – could be row IDs, object keys, etc.)
+    *   Data Element Hash (SHA-256 or similar – of the *previous* state of the data element *before* the transaction)
+    *   Change Signature:  A cryptographic signature of the *delta* (changes) applied to the data element. This could be a digital signature or a Merkle tree root representing the changes.
+    *   Attestation Authority Signature (optional):  A signature by a trusted third party verifying the transaction’s legitimacy.
 
-*   **Wearable Device:** Incorporates the existing accelerometer and orientation detection capabilities.
-*   **Haptic Actuator Array:** An array of miniature, localized haptic actuators (e.g., vibrotactile motors, piezoelectric elements) integrated into a flexible band worn around the lower leg (calf and/or ankle) or incorporated into insole material. The array needs a resolution of at least 3x3 actuators for localized feedback.
-*   **Processing Unit:** A dedicated low-power processor within the wearable device responsible for data analysis, feedback control, and actuator management.
-*   **Biometric Sensor Suite:** Optional integration of additional sensors (e.g., gyroscopes, muscle activity sensors (EMG), pressure sensors) to refine gait analysis and personalize feedback.
+*   **Data Element Tracking:** Each data element must have a mechanism to link it to its provenance records in the Provenance Log. This could be embedded metadata, a sidecar file, or a separate index.
 
-**Functional Specifications:**
+*   **Attestation Service:** A service to verify the integrity of data by reconstructing its history from the Provenance Log. This service would:
+    *   Retrieve the current state of the data element.
+    *   Retrieve the Provenance Log entries for that data element (ordered by timestamp).
+    *   Apply the changes (from the Change Signature) to the initial data state, step-by-step, verifying each signature against the expected hash of the previous state.
+    *   Report any discrepancies or signature failures.
 
-1.  **Gait Phase Detection:** The processing unit analyzes accelerometer and gyroscope data to identify distinct phases of the gait cycle (heel strike, stance, swing).  Biometric data refines this detection if available.
-2.  **Imbalance/Inefficiency Detection:** Using the gait phase information and accelerometer data (and potentially EMG/pressure data), the system detects imbalances or inefficiencies in gait. This could include:
-    *   Asymmetrical weight distribution during stance.
-    *   Excessive pronation/supination.
-    *   Uneven stride length.
-    *   Muscle activation delays or imbalances.
-3.  **Haptic Feedback Pattern Generation:** Based on the detected imbalance/inefficiency, the processing unit generates a specific haptic feedback pattern. The pattern consists of:
-    *   **Actuator Selection:**  Identifies the actuators on the haptic array that correspond to the area requiring correction.
-    *   **Amplitude Control:**  Sets the intensity of the vibration for each actuator.
-    *   **Timing Control:**  Synchronizes the haptic feedback with the specific gait phase.  Feedback is *subtle* – not disruptive – designed to encourage proper muscle activation and biomechanics.
-4.  **Real-time Adjustment:**  The system continuously monitors gait and adjusts the haptic feedback pattern in real-time to optimize correction.
-5.  **Personalization & Learning:**
-    *   The system learns the user’s baseline gait pattern.
-    *   It adapts the haptic feedback patterns based on user response and progress.
-    *   Users can customize feedback intensity and patterns through a companion app.
+*   **API Extensions:**
+    *   `LogTransaction(transaction_data, delta_signature)`:  Extended function to write to both the primary transaction log *and* the Provenance Log.
+    *   `VerifyDataIntegrity(data_element_id)`:  Returns a boolean indicating whether the data element's integrity has been verified from its Provenance Log.
+    *   `GetProvenanceHistory(data_element_id)`:  Returns a list of Provenance Log entries for a given data element.
 
-**Pseudocode (Simplified Feedback Control Loop):**
+**Pseudocode (VerifyDataIntegrity):**
 
-```pseudocode
-//Initialization
-baselineGait = analyzeInitialGaitData();
-feedbackIntensity = userDefinedIntensity;
+```
+function VerifyDataIntegrity(data_element_id):
+  current_data = GetData(data_element_id)
+  provenance_entries = GetProvenanceHistory(data_element_id) // Sorted by timestamp
 
-//Main Loop
-while (deviceActive) {
-  accelerationData = readAccelerometerData();
-  gaitPhase = detectGaitPhase(accelerationData);
-  imbalance = detectImbalance(accelerationData, gaitPhase);
+  if provenance_entries is empty:
+    return true // No history, assume valid
 
-  if (imbalanceDetected) {
-    actuatorPattern = generateActuatorPattern(imbalance, gaitPhase);
-    setActuatorPattern(actuatorPattern, feedbackIntensity);
-  } else {
-    turnOffActuators();
-  }
+  initial_data = GetInitialData(provenance_entries[0]) // Retrieve data from initial hash
 
-  //Adaptive Learning (optional)
-  if (userFeedbackAvailable()) {
-    updateBaselineGait(userFeedback);
-    adjustFeedbackIntensity(userFeedback);
-  }
-}
+  for entry in provenance_entries:
+    expected_hash = hash(initial_data)
+    if entry.expected_hash != expected_hash:
+      print("Hash mismatch")
+      return false
+
+    if not verify_signature(entry.change_signature, initial_data):
+      print("Signature invalid")
+      return false
+
+    initial_data = apply_changes(initial_data, entry.change_signature)
+
+  // Compare reconstructed data with current data
+  if hash(initial_data) != hash(current_data):
+      print("Reconstructed data does not match current data")
+      return false
+
+  return true
 ```
 
-**Potential Applications:**
+**Potential Use Cases:**
 
-*   Rehabilitation after injury (e.g., ankle sprain, stroke).
-*   Correcting gait abnormalities caused by neurological conditions.
-*   Improving athletic performance.
-*   Preventing injuries.
-*   Enhancing comfort during prolonged walking or standing.
+*   **Auditing & Compliance:**  Provide a tamper-proof audit trail for regulatory compliance.
+*   **Data Integrity Validation:**  Detect data corruption or unauthorized modifications.
+*   **Supply Chain Tracking:**  Track the provenance of data throughout a complex supply chain.
+*   **Secure Data Sharing:**  Enable secure data sharing with verifiable integrity guarantees.
