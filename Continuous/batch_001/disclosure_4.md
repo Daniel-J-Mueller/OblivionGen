@@ -1,50 +1,52 @@
-# 12056911
+# 11294599
 
-## Dynamic Outfit Generation with Procedural Texture Application
+## Dynamic Register Allocation for Heterogeneous Execution
 
-**Concept:** Extend the outfit recommendation system to *generate* outfits – not just recommend existing ones. Combine this with procedural texture application to create visually unique outfits even from basic models.
+**Concept:** Expand the register system beyond a fixed association with memory banks. Introduce a dynamic allocation scheme where registers can be ‘borrowed’ and ‘loaned’ between execution components based on data dependency and computational needs, effectively creating a shared, reconfigurable register file.
 
-**Specs:**
+**Specifications:**
 
-1.  **Outfit Graph Database:**  A graph database storing clothing item *components* (sleeves, collars, pant legs, skirt panels, etc.) rather than full items.  Each component has associated:
-    *   3D base mesh.
-    *   Material parameter ranges (color, texture scale, roughness, metallic).
-    *   Connection points (where it can attach to other components).
-    *   Style tags (e.g., "formal", "casual", "bohemian").
+*   **Register Architecture:** Each register maintains metadata – ‘owner’ (execution component ID), ‘data type’, ‘validity flag’. The ‘owner’ indicates which execution component primarily utilizes the register, but this isn't exclusive.
+*   **Allocation Manager:** A dedicated hardware module responsible for managing register allocation. This module utilizes a request/grant protocol.
+*   **Request Protocol:** When an execution component needs a register for a specific data type, it broadcasts a request to the Allocation Manager. The request includes data type, required precision, and estimated usage duration.
+*   **Grant Protocol:** The Allocation Manager evaluates available registers, prioritizing those owned by idle or low-priority execution components. It grants access by updating the register metadata, allowing the requesting component to read/write.  The original owner is *not* immediately stripped of access – co-access is permitted unless a conflict arises.
+*   **Conflict Resolution:** If multiple components attempt to write to the same register concurrently, the Allocation Manager employs a priority scheme (based on execution component priority or a round-robin approach) or signals a stall.
+*   **Data Dependency Tracking:** The system tracks data dependencies between execution components. If Component A produces a result needed by Component B, the Allocation Manager can proactively allocate a register to Component A and automatically grant Component B read access upon completion.
+*   **Register Swapping:**  If a component requires a register type unavailable, the Allocation Manager can initiate a register swap: transfer the contents of a currently occupied register to a temporary storage location, reconfigure the register for the desired data type, and make it available.
+*   **Hardware Implementation:**
+    *   Allocation Manager: Implemented as a finite state machine.
+    *   Register File: Modified to include metadata storage alongside data storage.
+    *   Interconnect: A high-bandwidth interconnect network enabling fast register access and metadata updates.
 
-2.  **Outfit Assembly Engine:** 
-    *   Takes a user-defined style profile (expressed as weighted style tags) as input.
-    *   Uses a graph traversal algorithm to assemble an outfit by:
-        *   Selecting a core item (e.g., a shirt).
-        *   Finding compatible components (sleeves, collars) based on connection points and style tags.  Compatibility is scored and ranked.
-        *   Iteratively adding layers (jacket, accessories) to complete the outfit.
-        *   Randomness is introduced with weighted probabilities to create diverse outfits even with the same style profile.
+**Pseudocode (Allocation Manager):**
 
-3.  **Procedural Texture Generator:**
-    *   For each component in the assembled outfit:
-        *   Generate a procedural texture based on material parameter ranges defined for that component.  Parameters can include:
-            *   Base color (randomly selected within a range).
-            *   Texture pattern (e.g., stripes, polka dots, floral) with adjustable scale, density, and color.
-            *   Roughness and metallic properties.
-            *   Fabric-like details (e.g., weave patterns, stitching)
-        *   Apply the generated texture to the 3D mesh of the component.
+```
+function allocate_register(requesting_component, data_type, duration):
+  available_registers = find_available_registers(data_type)
+  if available_registers is not empty:
+    register = select_best_register(available_registers) //based on owner/priority
+    update_register_metadata(register, owner=requesting_component, valid=True)
+    return register
+  else:
+    //Attempt register swap
+    swapped_register = find_register_for_swap(data_type)
+    if swapped_register is not null:
+      temp_storage = allocate_temp_storage()
+      copy_register_to_temp(swapped_register, temp_storage)
+      reconfigure_register(swapped_register, data_type)
+      update_register_metadata(swapped_register, owner=requesting_component, valid=True)
+      return swapped_register
+    else:
+      signal_stall() //No registers available
+      return null
 
-4.  **State Vector Integration:** Incorporate the existing state vector system.  The state vector represents the user's past preferences. Instead of recommending *from* existing items, the system *adjusts* the procedural texture generation to favor colors, patterns, and styles reflected in the state vector. For example:
-
-```pseudocode
-function generate_texture(component, state_vector):
-    base_color = random_color_in_range(component.color_range)
-    
-    // Influence base color with state vector.
-    color_influence = dot_product(state_vector.color_preference, component.color_range)
-    adjusted_color = base_color + color_influence
-    
-    // Adjust texture parameters based on state vector
-    pattern_scale = state_vector.pattern_preference * component.pattern_scale_range
-    
-    return texture(adjusted_color, pattern_scale)
+function deallocate_register(register):
+  update_register_metadata(register, valid=False)
 ```
 
-5.  **Rendering Pipeline:** A real-time rendering pipeline that can handle dynamic texture generation and rendering of assembled outfits.
+**Potential Benefits:**
 
-**Novelty:**  This moves beyond recommendation to *creation*.  Procedural textures provide infinite visual variety. Integration with the state vector personalizes the generated outfits. This allows for outfits that are truly unique to each user, while still aligning with their preferences.
+*   Increased resource utilization.
+*   Improved performance through reduced data movement.
+*   Greater flexibility in mapping data to execution components.
+*   Adaptability to heterogeneous workloads.
