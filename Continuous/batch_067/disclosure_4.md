@@ -1,84 +1,54 @@
-# 10735597
+# 10078687
 
-## Adaptive Acoustic Zones with Haptic Feedback
+## Probabilistic Data Structure Lifetime Management & Decay
 
-**Concept:** Extend the idea of switching audio streams between devices based on proximity, and introduce user-directed acoustic zoning with haptic reinforcement. Instead of solely *reacting* to user location, allow the user to *define* preferred audio zones within a space, and provide haptic cues to guide movement and reinforce zone boundaries.
+**Concept:** Expand the 'iteration value' concept beyond simple presence/removal flags to incorporate a 'lifetime' or 'decay' factor for entries within the probabilistic data structure. This allows for modeling data that isn't strictly 'present' or 'absent' but has a probability of relevance that diminishes over time.
 
 **Specifications:**
 
-**1. Hardware Components:**
+**1. Data Structure Augmentation:**
 
-*   **Multi-Microphone Array (MMA):** Each device (phone, smart speaker, wearable) will house an MMA for accurate sound source localization and ambient noise cancellation.
-*   **Haptic Transducers:** Integrated into wearable devices (wristband, headphones) capable of delivering localized vibrations.
-*   **Ultra-Wideband (UWB) Anchors:** Strategically placed UWB anchors within the defined environment to enable precise real-time location tracking of both the user and the active audio devices.
-*   **Networked Audio Devices:** Any combination of smart speakers, headphones, phones, or dedicated audio output units capable of networked communication.
-*   **Dedicated Processing Unit:** A localized unit responsible for managing the localized audio configuration.
+*   **Iteration Value Expansion:** Instead of a binary (or even just presence/removal) iteration value, use a floating-point number representing 'relevance'. Higher values indicate greater relevance.
+*   **Decay Rate Parameter:** Each entry will have an associated 'decay rate'. This rate determines how quickly the 'relevance' iteration value decreases over time.
+*   **Timestamping:** Store a 'last updated' timestamp for each entry.
 
-**2. Software & Algorithm Components:**
+**2. Operations:**
 
-*   **Zone Definition Interface:** A mobile app allowing users to visually define acoustic zones within a mapped environment.  Zones can be designated as “primary,” “secondary,” or “exclusionary.”  Primary zones represent areas where the user *wants* to receive audio, secondary zones provide attenuated or altered audio, and exclusionary zones actively suppress audio.
-*   **Real-Time Location Tracking:** UWB anchors track user and audio device locations, providing data to the central processing unit.
-*   **Audio Beamforming & Spatialization:** Algorithms dynamically adjust audio beamforming and spatialization to focus sound within the designated primary zone, attenuating it in secondary and exclusionary zones.  This isn’t merely volume adjustment, but precise control over the sound field.
-*   **Haptic Zone Reinforcement:** When the user approaches or crosses a zone boundary, the haptic transducer provides directional vibrations. The intensity of the vibration corresponds to the degree of zone transition. For example, a stronger vibration when entering a primary zone, a gentle pulse when approaching a boundary, and a rapid pulse when crossing into an exclusionary zone.
-*   **Adaptive Learning Module:** The system learns user preferences over time.  If a user consistently ignores a zone boundary and continues into an exclusionary zone, the system will adjust the haptic feedback or zone definition accordingly.
-*    **Ambient Noise Mapping**: A machine learning model maps the noise profile of the environment, and adapts the audio signal to compensate.
+*   **Add Entry:**  When adding an entry, initialize 'relevance' to a maximum value (e.g., 1.0).  Store the current timestamp as ‘last updated’. The decay rate is a configurable parameter for the entry.
+*   **Refresh Entry:**  An explicit 'refresh' operation resets the 'relevance' to the maximum value and updates the ‘last updated’ timestamp. This is used to counteract decay.
+*   **Query Entry:**  The query operation calculates the current 'relevance' based on the 'last updated' timestamp, the decay rate, and the current time.  The calculation should involve an exponential decay function.  A threshold value determines whether the entry is considered ‘present’ based on its current ‘relevance’.
+*   **Removal (Soft Delete):** Removal isn't a hard deletion. Instead, the decay rate is set to a very high value, causing the ‘relevance’ to rapidly decrease. The entry remains in the data structure but effectively disappears over time.
+*   **Garbage Collection:** Implement a periodic garbage collection process. Entries with a ‘relevance’ below a very low threshold (effectively ‘expired’) are physically removed.
 
-**3. System Operation:**
+**3.  Output Value Generation:**
 
-1.  **Zone Setup:** User uses the app to map the environment and define acoustic zones. This can be done visually on a floorplan or by physically walking the space.
-2.  **Location Tracking:** UWB anchors continuously track the location of the user and active audio devices.
-3.  **Audio Routing & Beamforming:** The system determines the optimal audio routing and beamforming configuration based on the user's location, zone definitions, and ambient noise levels. Audio is dynamically routed to the appropriate device(s) and beamformed to focus sound within the primary zone.
-4.  **Haptic Feedback:** The haptic transducer provides directional vibrations to reinforce zone boundaries.
-5.  **Adaptive Learning:** The system learns user preferences and adjusts the zone definitions and haptic feedback accordingly.
+*   The output value generated for addition or refresh should include the 'relevance' value.
+*   Hashing function should incorporate the 'relevance' value along with the entry itself. This allows the probabilistic data structure to accurately reflect the entry's current ‘relevance’.
 
-**Pseudocode (Core Logic):**
+**4. Pseudocode (Query Operation):**
 
 ```
-// Main Loop
-while (true) {
-    userLocation = getLocation(userDevice);
-    audioDeviceLocations = getLocations(audioDevices);
+function queryEntry(entry, bloomFilter, currentTime):
+    // Retrieve last updated timestamp and decay rate
+    lastUpdated = bloomFilter.getTimestamp(entry)
+    decayRate = bloomFilter.getDecayRate(entry)
 
-    // Determine current zone
-    currentZone = determineZone(userLocation, zones);
+    // Calculate time elapsed
+    timeElapsed = currentTime - lastUpdated
 
-    // Route audio to appropriate device(s)
-    routeAudio(currentZone, audioDeviceLocations);
+    // Calculate current relevance
+    currentRelevance = 1.0 * exp(-decayRate * timeElapsed)
 
-    // Adjust beamforming and spatialization
-    adjustAudio(currentZone, userLocation);
-
-    // Haptic Feedback
-    if (userApproachingZoneBoundary(userLocation, zones)) {
-        hapticFeedback(directionToBoundary, intensity);
-    }
-}
-
-// Function: determineZone
-// Input: user location, zone definitions
-// Output: current zone
-function determineZone(userLocation, zones) {
-  for (zone in zones) {
-    if (isWithinZone(userLocation, zone)) {
-      return zone;
-    }
-  }
-  return "defaultZone";
-}
-
-// Function: isWithinZone
-// Input: user location, zone definition
-// Output: boolean
-function isWithinZone(userLocation, zone) {
-    //Logic to determine zone boundaries based on coordinates
-    //returns true or false
-}
-
+    // Determine presence based on threshold
+    if currentRelevance > presenceThreshold:
+        return True // Entry is considered present
+    else:
+        return False // Entry is considered absent
 ```
 
-**Potential Applications:**
+**5. Potential Applications:**
 
-*   **Open-Plan Offices:** Create personalized acoustic bubbles for focused work.
-*   **Home Entertainment:** Immerse users in sound while minimizing disruption to others.
-*   **Public Spaces:** Deliver targeted audio information to individuals while respecting the auditory environment.
-*   **Accessibility:** Assist visually impaired individuals with spatial awareness.
+*   **Caching:**  Model cache entries that expire over time.
+*   **Fraud Detection:**  Track suspicious activities with a diminishing probability of being relevant as time passes.
+*   **Session Management:**  Manage user sessions with a time-to-live.
+*   **Recommendation Systems:**  Decay the relevance of past user interactions.
