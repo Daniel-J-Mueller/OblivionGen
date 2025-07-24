@@ -1,64 +1,65 @@
-# 7945637
+# 10783901
 
-## Personalized Search Result ‘Evolution’ – Temporal Preference Mapping
+## Dynamic Contextual Skill Stitching
 
-**System Overview:**
+**Concept:** Extend the error recovery mechanism to proactively "stitch" together skills based on inferred user context, *before* an explicit error occurs. This aims to anticipate user needs and streamline complex interactions.
 
-This system extends the event data tracking described in the patent to create a dynamic, evolving representation of a user’s search preferences *over time*. It doesn’t just record *that* a URL was visited, but *when* relative to other URLs, and integrates this data with the user's search query history. This allows for a far more nuanced understanding of user intent, going beyond simple "previously visited" indicators.
+**Specs:**
 
-**Core Components:**
+*   **Contextual Inference Engine:** A module that continuously monitors user interactions (speech, text, past behavior, time of day, location data - with appropriate permissions, of course) to build a dynamic user profile and predict likely intents *beyond* the immediate input. This is separate from the standard ASR/NLU pipeline.
+*   **Skill Graph Database:** A knowledge base mapping skills to contextual factors.  Each skill node contains metadata like:
+    *   Skill Description
+    *   Activation Threshold (Contextual Score - see below)
+    *   Dependencies (other skills that should be loaded concurrently)
+    *   Output Formatting (how data should be presented to the user)
+*   **Contextual Scoring:**  The Inference Engine assigns a "Contextual Score" to each skill based on the current user profile. This score represents the probability that the skill is relevant.  The score is calculated using a weighted sum of relevant contextual factors (e.g., location, time, past behavior, recently discussed topics).
+*   **Proactive Skill Loading:**  When the Contextual Score of a skill exceeds a predefined threshold, the system *proactively* loads and initializes the skill, even before the user explicitly requests it.
+*   **Seamless Handoff:** If the user's subsequent input aligns with the proactively loaded skill, the system seamlessly hands off the interaction without any delay or error recovery process.
+*   **Skill Chain Management:**  If multiple skills are loaded, the system automatically manages the skill chain based on the user’s interaction. This could involve chaining skills together to achieve a more complex task.
+*   **Adaptive Thresholds:**  The activation thresholds for each skill are dynamically adjusted based on user feedback and interaction patterns.
 
-1.  **Temporal Preference Vector (TPV):**  For each user, maintain a vector representing their preference for different ‘content themes’ (determined through NLP analysis of visited URLs and search queries).  The vector's dimensions represent these themes (e.g., ‘AI’, ‘cooking’, ‘historical fiction’). Each dimension’s value represents the *rate of decay* of the user’s interest in that theme.  Higher values mean interest fades faster.
-
-2.  **Decay Function:** A configurable function (exponential, logarithmic, etc.) used to model the decay of interest in a content theme.  This function considers the time since the last interaction with content from that theme.
-
-3.  **Query-URL Theme Mapping:** A module to map both search queries and URLs to their dominant content themes. NLP techniques (topic modeling, keyword extraction) are used.
-
-4.  **Search Result Re-Ranking Engine:**  This component intercepts search results *before* they are presented to the user. It re-ranks results based on the user’s TPV.
-
-**Workflow:**
-
-1.  **Event Data Ingestion:** The system continues to ingest event data (URL visits, search queries) as described in the patent.
-
-2.  **Theme Extraction & Update:**
-    *   For each event (URL visit, search query), extract the dominant content themes.
-    *   Update the user’s TPV.  
-        *   Increase the value of dimensions corresponding to relevant themes.
-        *   Apply the Decay Function to *all* dimensions, reducing values over time. This effectively forgets older interests.
-        *   The magnitude of the increase/decrease is configurable, allowing for calibration.
-
-3.  **Search Query Processing:**
-    *   When a user submits a search query, extract the dominant content themes.
-    *   Calculate a ‘preference score’ for each search result URL based on the similarity between its themes and the user’s TPV.  URLs matching themes with high values in the TPV receive higher scores.
-
-4.  **Search Result Re-Ranking:**
-    *   Re-rank the search results based on the calculated preference scores.  Results with higher scores are presented higher in the results list.
-
-**Pseudocode (Search Result Re-Ranking):**
+**Pseudocode:**
 
 ```
-function reRankSearchResults(searchQuery, searchResults, userTPV):
-  for each url in searchResults:
-    urlThemes = extractThemes(url)
-    preferenceScore = 0
-    for each theme in urlThemes:
-      if theme exists in userTPV:
-        preferenceScore += userTPV[theme] //Value from TPV
-    url.score = preferenceScore
-  searchResults.sort(by: url.score, descending: true)
-  return searchResults
+// Main Loop
+while (true) {
+  userInput = receiveUserInput();
+  userContext = buildUserContext(userInput, pastInteractions, location, time);
+
+  // Calculate Contextual Scores for all Skills
+  for each skill in skillGraph {
+    skill.contextualScore = calculateContextualScore(skill, userContext);
+  }
+
+  // Load Skills with High Contextual Scores
+  for each skill in skillGraph {
+    if (skill.contextualScore > skill.activationThreshold) {
+      loadSkill(skill);
+    }
+  }
+
+  // Process User Input
+  if (loadedSkills.contains(skillMatchingUserInput())) {
+    handleUserInputWithLoadedSkill(userInput);
+  } else {
+    // Standard ASR/NLU Pipeline and Error Recovery (as in original patent)
+    performASR(userInput);
+    performNLU(textData);
+    // ... Error Recovery if needed
+  }
+}
+
+// Function: calculateContextualScore(skill, userContext)
+//   - Returns a weighted sum of contextual factors relevant to the skill.
+//   - Weights are learned through machine learning.
+
+// Function: loadSkill(skill)
+//   - Loads the skill's code and initializes it.
+//   - Starts any necessary background processes.
 ```
 
-**Configuration Parameters:**
+**Potential Use Cases:**
 
-*   **Decay Function Type:** (exponential, logarithmic, linear)
-*   **Decay Rate:** Controls how quickly interests fade.
-*   **Theme Granularity:**  Controls the level of detail in theme extraction.
-*   **TPV Dimension Count:**  Number of content themes represented in the TPV.
-*   **Smoothing Factor:**  Prevents drastic changes in the TPV.
-
-**Potential Extensions:**
-
-*   **Cross-User Preference Modeling:**  Identify users with similar TPVs and leverage their preferences to improve search results for each other.
-*   **Proactive Content Suggestion:**  Based on the user’s TPV, proactively suggest content they might be interested in.
-*   **Personalized News Feed:**  Generate a personalized news feed based on the user’s evolving interests.
+*   **Commute Mode:** When the user is detected to be commuting, proactively load skills related to traffic updates, podcast playback, and hands-free calling.
+*   **Cooking Mode:** When the user is in the kitchen and mentions ingredients, proactively load recipe skills and cooking timers.
+*   **Shopping Mode:** When the user is near a store and has a history of purchases, proactively load relevant product information and offers.
