@@ -1,86 +1,54 @@
-# 9952902
+# 11704099
 
-## Adaptive Resource Profiling with Predictive Pre-Fetching
+## Dynamic Code Similarity via Graph Neural Networks
 
-**Concept:** Extend the resource request logging and analysis to *predict* future resource needs during application use, and proactively pre-fetch those resources. This moves beyond simply identifying *required* resources to anticipating *future* resource demands, dramatically improving application responsiveness and user experience, especially in constrained environments (mobile, IoT).
+**Specification:** A system for determining code similarity that moves beyond simple logic tree comparison and utilizes Graph Neural Networks (GNNs) to learn nuanced code representations. This allows for identification of similar *intent* even with syntactically different code.
 
-**Specifications:**
+**Components:**
 
-**1. Profiling Agent:**
+1.  **Code Parser & Graph Builder:**  Transforms code segments into Abstract Syntax Trees (ASTs). The AST is then converted into a graph representation where:
+    *   Nodes represent code elements (variables, functions, operators, literals).
+    *   Edges represent relationships between elements (control flow, data dependency, function calls). Edge types are crucial (e.g., 'calls', 'uses', 'defines', 'controls').
+2.  **Graph Neural Network (GNN) Encoder:** A GNN model (e.g., Graph Convolutional Network, Graph Attention Network) learns a vector embedding for each node in the code graph. This embedding captures the node's context within the code.  The GNN aggregates information from neighboring nodes to create a richer representation. Multiple GNN layers can be stacked.
+3.  **Graph Pooling Layer:**  Aggregates the node embeddings into a single fixed-size vector representing the entire code segment.  Strategies include global average pooling, global max pooling, or learnable attention-based pooling.
+4.  **Similarity Metric:**  A distance metric (e.g., cosine similarity, Euclidean distance) compares the pooled embeddings of two code segments.  A threshold determines whether the segments are considered a match.
+5.  **Training Data Generation:**  A pipeline to automatically generate training data. This pipeline involves collecting code from open-source repositories, performing semantic analysis, and labeling code segments as similar or dissimilar based on their functionality.  Data augmentation techniques (e.g., variable renaming, code reordering) are used to increase the size and diversity of the training dataset.
 
-*   **Function:** Runs alongside the target application. Intercepts all resource requests (file access, network calls, memory allocations, CPU intensive tasks).
-*   **Data Collection:** Logs resource requests *with* contextual information:
-    *   Timestamp
-    *   Resource Identifier (URI, file path, memory address)
-    *   Resource Type (file, network, memory, CPU)
-    *   Application State (screen, function, user action) – critical for context. This requires integration with the application or OS event stream.
-    *   Resource Size/Demand (bytes transferred, CPU time used)
-*   **Statistical Analysis:**  Employs time-series analysis and machine learning (Markov models, recurrent neural networks – RNNs, Long Short-Term Memory – LSTM) to:
-    *   Identify usage patterns and correlations between application state and resource requests.
-    *   Predict the probability of future resource requests given the current application state.
-    *   Determine optimal pre-fetch timing (how far in advance to request resources).
-*   **Dynamic Thresholds:** Adjusts the "predetermined number of times" threshold (from the original patent) dynamically based on learned usage patterns. Resources used frequently in specific contexts require fewer requests logged to be considered "required".
-
-**2. Prefetching Engine:**
-
-*   **Function:**  Monitors the Profiling Agent's predictions.
-*   **Resource Acquisition:**  Proactively requests resources identified as likely to be needed in the near future.  This can involve:
-    *   Downloading files in the background.
-    *   Allocating memory buffers.
-    *   Spinning up background processes.
-    *   Establishing network connections.
-*   **Caching Layer:** Implements a multi-level caching system:
-    *   In-Memory Cache (fastest access, limited size)
-    *   SSD/Flash Cache (larger capacity, moderate speed)
-    *   Remote Cache (networked storage – for very large or infrequently used resources)
-*   **Resource Prioritization:** Prioritizes resource pre-fetching based on:
-    *   Prediction Confidence (how sure the Profiling Agent is about the request)
-    *   Resource Size (pre-fetch smaller resources first)
-    *   Resource Criticality (essential resources are prioritized)
-
-**3. System Architecture:**
-
-*   **Modular Design:** The Profiling Agent and Prefetching Engine are designed as independent modules, allowing them to be easily integrated into different operating systems and applications.
-*   **API Integration:** Provide APIs for applications to:
-    *   Provide application state information (enhance prediction accuracy).
-    *   Specify resource priorities.
-    *   Control pre-fetching behavior.
-*   **Centralized Management:** A central management server can:
-    *   Collect performance data from all devices.
-    *   Train global prediction models.
-    *   Distribute updated models to devices.
-    *   Monitor pre-fetching effectiveness.
-
-**Pseudocode (Prefetching Engine):**
+**Pseudocode (Simplified):**
 
 ```
-while (true) {
-  resource_predictions = profiling_agent.get_next_resource_predictions();
+function generate_code_embedding(code_segment):
+  ast = parse_code(code_segment)
+  graph = build_graph_from_ast(ast)
+  node_embeddings = GNN_Encoder(graph)
+  code_embedding = Graph_Pooling(node_embeddings)
+  return code_embedding
 
-  for (prediction in resource_predictions) {
-    resource_id = prediction.resource_id;
-    probability = prediction.probability;
+function find_similar_code(query_code, code_database):
+  query_embedding = generate_code_embedding(query_code)
+  similar_codes = []
+  for code in code_database:
+    code_embedding = generate_code_embedding(code)
+    similarity = cosine_similarity(query_embedding, code_embedding)
+    if similarity > similarity_threshold:
+      similar_codes.append(code)
+  return similar_codes
 
-    if (probability > prefetch_threshold) {
-      if (cache.contains(resource_id)) {
-        // Resource already cached – do nothing
-      } else {
-        // Resource not cached – initiate pre-fetch
-        prefetch_result = cache.prefetch(resource_id);
-
-        if (prefetch_result == SUCCESS) {
-          log("Prefetched resource: " + resource_id);
-        } else {
-          log("Prefetch failed for resource: " + resource_id);
-        }
-      }
-    }
-  }
-
-  sleep(prefetch_interval);
-}
+function train_GNN(training_data):
+  model = initialize_GNN()
+  optimizer = initialize_optimizer(model)
+  for epoch in range(num_epochs):
+    for batch in training_data:
+      code_graph, target_similarity = batch
+      predicted_similarity = model(code_graph)
+      loss = calculate_loss(predicted_similarity, target_similarity)
+      optimizer.step(loss)
+  return model
 ```
 
 **Novelty:**
 
-This design extends beyond static resource profiling to *dynamic* and *predictive* resource management. It anticipates resource needs *before* they occur, significantly improving application performance and user experience, especially in resource-constrained environments. The integration of machine learning for prediction and a multi-level caching system further enhances the system's effectiveness. This isn't simply about knowing *what* resources an app needs; it's about knowing *when* it will need them.
+*   **Semantic Understanding:** Unlike the patent's reliance on logical structure, this system emphasizes *semantic* similarity, identifying code with the same purpose even if the syntax differs.
+*   **GNN-Based Representation:** Using GNNs enables the model to learn complex relationships between code elements and capture nuances in code structure.  This is superior to simple hash-based indexing.
+*   **Trainable Model:** The system is designed to be trained on a large dataset of code, allowing it to adapt to different programming languages and coding styles.
+*   **Scalability:** The GNN embedding can be pre-computed for code in the database, enabling fast similarity searches.
