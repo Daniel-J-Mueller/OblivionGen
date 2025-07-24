@@ -1,51 +1,51 @@
-# 9735822
+# 12265905
 
-## Dynamic Metamaterial Tuning via Microfluidics
+## Dynamic Precision Weighting & Activation
 
-**Concept:** Integrate microfluidic channels within the loop antenna structure to dynamically alter the dielectric properties of localized regions, enabling real-time beam steering and frequency tuning.
+**Concept:** Leverage variable precision for weights and activations *during* inference, adapting to the sensitivity of each node in the neural network. This minimizes computational load and power consumption without sacrificing accuracy.
 
-**Specifications:**
+**Specs:**
 
-*   **Antenna Structure:** Utilize the dual-loop antenna described in the patent as a base. Outer and inner loops constructed from a conductive material (copper, silver) deposited on a dielectric substrate (Rogers 4350B).
-*   **Microfluidic Integration:** Etch microchannels (width: 50-200um, depth: 20-100um) *within* the dielectric substrate, specifically between the outer loop element and the ground plane, and between the inner loop element and the ground plane. These channels should run along the length of each loop.
-*   **Fluid Selection:** Employ a microfluidic fluid with a highly tunable dielectric constant. Options include:
-    *   Water-ethanol mixtures (dielectric constant varies with ratio).
-    *   Ferrofluids (dielectric constant controllable with applied magnetic field).
-    *   Ionic liquids (tunable via concentration and temperature).
-*   **Actuation:** Implement micro-pumps and valves to precisely control fluid flow within the microchannels.  Piezoelectric pumps offer compact size and rapid response.
-*   **Control System:** Develop a closed-loop control system incorporating:
-    *   Network analyzer for real-time S-parameter measurements (frequency response, impedance).
-    *   Microcontroller to process measurements and adjust pump/valve settings.
-    *   Algorithm to map pump/valve settings to desired beam steering angle or frequency shift.
-*   **Beam Steering Implementation:** By differentially adjusting fluid levels in channels along the outer loop, induce phase shifts in the radiated electromagnetic waves. This enables electronic beam steering without mechanical components.
-*   **Frequency Tuning Implementation:**  By globally adjusting the dielectric constant of the fluid within *all* channels, alter the resonant frequencies of the antenna.
-*   **Materials Compatibility:** Ensure all materials (antenna metal, substrate, microfluidic materials) are chemically compatible to prevent degradation or corrosion.
-*   **Encapsulation:** Encapsulate the microfluidic system with a protective layer (e.g., PDMS) to prevent leakage and environmental contamination.
-*   **Power Requirements:** Minimize power consumption of the micro-pumps and control system for portable applications. Target <100mW.
-*   **Fabrication:** Utilize microfabrication techniques (photolithography, etching, soft lithography) to create the microfluidic channels and integrate them with the antenna structure.
+*   **Weight Encoding:** Weights are initially stored in a high-precision format (e.g., FP32). A pre-inference analysis phase (calibration) determines the minimum precision needed for each weight *without* impacting the network’s output. Weights are then quantized to this determined precision (e.g., FP16, INT8, or even lower).
+*   **Activation Encoding:**  Activations are dynamically adjusted in precision. Each node tracks its gradient magnitude during a small calibration run. Nodes with low gradient magnitudes (indicating low sensitivity) have their activations reduced to lower precision formats (e.g., INT4). Nodes with high gradient magnitudes retain higher precision (e.g., FP16).
+*   **Hardware Implementation:**
+    *   **Precision Control Units (PCUs):** Dedicated hardware units associated with each node.  PCUs monitor gradient magnitude (or a proxy, like the variance of activation values) and control the precision of activation values.
+    *   **Dynamic Quantization/Dequantization:**  PCUs contain fast quantization and dequantization circuits for activations, operating on-the-fly.
+    *   **Mixed-Precision Arithmetic Units:**  Arithmetic units capable of handling multiple precision formats simultaneously.  This avoids performance bottlenecks from format conversions.
+    *   **Weight Storage:**  Weights are stored in a hierarchical memory system.  Frequently accessed weights (high-precision) are cached in faster memory. Lower-precision weights reside in slower, denser memory.
+*   **Calibration Phase:**
+    1.  Run a small representative dataset through the network.
+    2.  For each weight, record the range of values it produces in the output of its node.
+    3.  Determine the minimum number of bits required to represent this range without significant quantization error.
+    4.  For each node, measure the variance (or gradient magnitude) of its activations.  This serves as a sensitivity metric.
 
-**Pseudocode (Control Algorithm - Beam Steering):**
+**Pseudocode (Node Processing):**
 
 ```
-// Input: Desired Steering Angle (degrees)
-// Output: Pump/Valve Settings for each channel
+function process_node(inputs, weights):
+  // 1. Load Weights (potentially from hierarchical memory)
+  weights = load_weights(weights)
 
-function steerBeam(angle) {
-    targetPhaseShift = calculatePhaseShift(angle); // Based on desired angle and antenna geometry
-    
-    for (each channel) {
-        requiredDielectricChange = targetPhaseShift / (channelLength * dielectricConstantSensitivity);
-        
-        pumpSetting = calculatePumpSetting(requiredDielectricChange);
-        
-        setPumpSetting(channel, pumpSetting);
-    }
-}
+  // 2. Dynamic Activation Precision
+  activation_precision = determine_activation_precision(node_sensitivity) //Based on pre-calculated or runtime sensitivity
 
-function calculatePumpSetting(dielectricChange) {
-    // Calibration curve mapping dielectric change to pump setting
-    // Based on pump characteristics and fluid properties
-}
+  // 3. Quantize Inputs (based on activation_precision)
+  quantized_inputs = quantize(inputs, activation_precision)
+
+  // 4. Compute Dot Product (mixed-precision arithmetic)
+  dot_product = mixed_precision_dot_product(quantized_inputs, weights)
+
+  // 5. Dequantize Dot Product (if necessary)
+  dequantized_dot_product = dequantize(dot_product, activation_precision)
+
+  // 6. Apply Activation Function
+  output = activation_function(dequantized_dot_product)
+
+  return output
 ```
 
-This system allows dynamic control over antenna characteristics, enabling adaptive communication systems and enhanced signal performance. The microfluidic approach offers a compact, low-power, and potentially low-cost alternative to traditional beam steering and frequency tuning methods.
+**Potential Benefits:**
+
+*   Significant reduction in computational complexity and power consumption.
+*   Minimal impact on network accuracy (if implemented carefully).
+*   Adaptability to different network architectures and datasets.
