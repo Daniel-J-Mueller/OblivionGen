@@ -1,80 +1,75 @@
-# 11722412
+# 11417109
 
-## Dynamic Network Topology Prediction & Pre-Provisioning
+## Adaptive Resonance Theory-Driven Predictive Maintenance System
 
-**Concept:** Leverage predictive analytics based on observed connection parameter fluctuations to proactively adjust network topology and pre-provision resources *before* congestion or degradation occurs. This goes beyond reactive adjustment (like the patent) to anticipatory optimization.
+**Concept:** Expand the vehicle-based sensor data analysis beyond event *detection* to proactive *prediction* of component failure, leveraging Adaptive Resonance Theory (ART) neural networks for continual learning and anomaly detection *before* a critical event triggers a response.
 
-**Specs:**
+**Specifications:**
 
-**1. Data Collection & Feature Engineering:**
+**1. Hardware Components:**
 
-*   **Metrics:** Collect not just reception/transmission parameters, but also:
-    *   Round Trip Time (RTT) variations.
-    *   Packet loss rates (per-node and aggregated).
-    *   CPU/Memory usage of nodes (where accessible).
-    *   Application-level data (e.g., video bitrate requests, game state updates – opt-in and anonymized).
-*   **Temporal Resolution:** Collect data at intervals of 10-100ms.
-*   **Feature Extraction:** Create time-series features from collected metrics:
-    *   Moving Averages (various window sizes).
-    *   Standard Deviations.
-    *   Rate of Change.
-    *   Spectral analysis (detecting periodic congestion patterns).
+*   **Edge Computing Unit (ECU):** High-performance embedded system integrated into the vehicle (or retrofitted), responsible for real-time data processing and model execution. Minimum specifications: Quad-core processor, 16GB RAM, 256GB SSD storage. Dedicated Neural Processing Unit (NPU) is highly recommended.
+*   **Sensor Suite:** Existing vehicle sensors (engine, transmission, brakes, steering, etc.) augmented with:
+    *   High-resolution vibration sensors (multiple locations: engine block, wheel hubs, drivetrain).
+    *   Thermal imaging camera focused on critical components (engine, brakes, exhaust system).
+    *   Acoustic emission sensors to detect micro-cracks and stress fractures.
+*   **Communication Module:** Secure, high-bandwidth connection to a central cloud server for model updates and data synchronization (5G or dedicated short-range communication).
 
-**2. Predictive Model Training:**
+**2. Software Architecture:**
 
-*   **Model Type:** Employ a hybrid approach:
-    *   **Long Short-Term Memory (LSTM) Networks:** For capturing long-term dependencies in network behavior.
-    *   **Gaussian Process Regression (GPR):** For providing uncertainty estimates in predictions – critical for risk assessment.
-*   **Training Data:** Use historical network data collected across diverse scenarios (time of day, application mix, user base).
-*   **Output:** Model predicts:
-    *   Probability of congestion on individual links within the next 5-30 seconds.
-    *   Estimated bandwidth demand on each link.
-    *   Optimal network topology changes to minimize predicted congestion.
+*   **Data Acquisition Module:** Collects data from all sensors at a high frequency (e.g., 100Hz). Pre-processes data (noise reduction, filtering, normalization).
+*   **ART Neural Network Module:** Implements a family of ART networks (specifically, ARTMAP) for unsupervised learning and anomaly detection.
+    *   **Category Representation:** Each category within the ART network represents a ‘normal’ operating state of a specific vehicle component.
+    *   **Vigilance Parameter:** Dynamically adjusts the vigilance parameter of the ART network to control the granularity of category creation.  Higher vigilance = more categories, lower vigilance = fewer categories.
+    *   **Real-Time Learning:** Continuously updates the ART network with incoming sensor data.  New data is categorized as either belonging to an existing category or requiring the creation of a new one.
+*   **Anomaly Detection Engine:**  Monitors the activation levels of the ART network.
+    *   **Mismatch Detection:** Detects anomalies when incoming sensor data significantly deviates from established categories (high mismatch score).
+    *   **Predictive Modelling:** Uses historical anomaly data to predict potential component failures.
+*   **Predictive Maintenance Algorithm:** Analyzes predicted failure risks and generates proactive maintenance recommendations.
+    *   **Severity Assessment:** Estimates the severity of potential failures based on anomaly scores and historical data.
+    *   **Remaining Useful Life (RUL) Prediction:** Predicts the remaining useful life of critical components.
+    *   **Maintenance Scheduling:** Recommends optimal maintenance schedules based on predicted RUL and vehicle usage patterns.
+*   **Cloud Integration Module:**
+    *   **Model Synchronization:** Synchronizes ART network models between vehicles and the cloud server.
+    *   **Federated Learning:** Leverages federated learning techniques to improve model accuracy and generalization by aggregating data from multiple vehicles.
+    *   **Data Analytics Dashboard:** Provides a comprehensive data analytics dashboard for monitoring vehicle health and maintenance performance.
 
-**3. Topology Adaptation Engine:**
+**3. Pseudocode (Anomaly Detection Engine):**
 
-*   **Control Plane Integration:**  Integrate with existing network control planes (SDN controllers, network operating systems).
-*   **Pre-Provisioning Actions:** Based on predictions, proactively:
-    *   **Path Rerouting:** Shift traffic to alternate paths with lower predicted congestion.
-    *   **Bandwidth Allocation:** Increase bandwidth allocation on predicted high-demand links.
-    *   **Resource Scaling:** Dynamically scale up resources (e.g., virtual machine instances, network interface bandwidth) in anticipation of increased load.
-    *   **Caching Prefetching:**  Pre-fetch content to edge caches based on predicted user requests.
-*   **Policy Enforcement:** Implement policies to prioritize critical applications or users during congestion.
-*   **Feedback Loop:** Monitor actual network performance after topology changes and use this data to refine the predictive model.
+```pseudocode
+FUNCTION DetectAnomaly(sensorData):
+  // Normalize sensorData
+  normalizedData = Normalize(sensorData)
 
-**Pseudocode (Topology Adaptation Engine):**
+  // Input normalizedData to ARTMAP network
+  category = ARTMAP.predict(normalizedData)
 
-```
-function adaptTopology(predictedCongestion, currentTopology, policies) {
-  // Calculate a 'risk score' based on predictedCongestion and policies.
-  riskScore = calculateRiskScore(predictedCongestion, policies);
+  IF category == NULL: //No matching category
+    // Create new category for this data pattern
+    ARTMAP.learn(normalizedData)
+    anomalyScore = 1.0 //High anomaly score for new patterns
+  ELSE:
+    // Calculate mismatch score between input data and category prototype
+    mismatchScore = CalculateMismatch(normalizedData, category.prototype)
 
-  if (riskScore > threshold) {
-    // Identify potential topology changes to reduce risk.
-    potentialChanges = generateTopologyChanges(currentTopology);
+    // Normalize mismatch score (scale to 0-1)
+    anomalyScore = Normalize(mismatchScore)
 
-    // Evaluate each potential change based on cost and predicted benefit.
-    bestChange = evaluateTopologyChanges(potentialChanges, predictedCongestion);
-
-    // Apply the best change to the network.
-    applyTopologyChange(bestChange);
-
-    // Log the change for monitoring and feedback.
-    logTopologyChange(bestChange);
-  }
-}
-
-function evaluateTopologyChanges(changes, predictedCongestion) {
-  // This function needs to be detailed with weighting of bandwidth cost, latency, hop count
-  // and also has to consider the predicted congestion.
-  // Implement a cost/benefit analysis of each change
-}
-
-function applyTopologyChange(change) {
-  // This function would have to interface with existing SDN controllers etc.
-}
+  //Apply threshold
+  IF anomalyScore > anomalyThreshold:
+      RETURN TRUE //Anomaly Detected
+  ELSE:
+      RETURN FALSE //No anomaly
 ```
 
-**Novelty:**
+**4. Data Flow:**
 
-This goes beyond simple reactive congestion control. By *predicting* network bottlenecks *before* they occur, it allows for proactive optimization, leading to a smoother user experience and more efficient resource utilization. The integration of predictive modeling with topology adaptation is a significant advancement over existing approaches.  The use of GPR to provide confidence intervals on predictions allows for a risk-aware approach to topology changes, minimizing the potential for disruption.
+1.  Sensors collect data in real-time.
+2.  Data is pre-processed by the Data Acquisition Module.
+3.  Pre-processed data is fed into the ART Neural Network Module.
+4.  The Anomaly Detection Engine identifies anomalies and calculates anomaly scores.
+5.  The Predictive Maintenance Algorithm generates maintenance recommendations based on anomaly scores and RUL predictions.
+6.  Maintenance recommendations are displayed to the driver or sent to a service center.
+7.  Sensor data and anomaly information are uploaded to the cloud server for model updates and data analytics.
+
+**Innovation:** This system transitions from reactive event *detection* to proactive component health *prediction*, enabling preventative maintenance and reducing the risk of unexpected failures. The use of ART networks allows for continual learning and adaptation to individual vehicle usage patterns and operating conditions.
