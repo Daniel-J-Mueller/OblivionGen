@@ -1,57 +1,53 @@
-# 11164362
+# 9576299
 
-**Dynamic Cell Morphology & Haptic Feedback Integration**
+## Dynamic Impression-Triggered Loyalty Points
 
-**Concept:** Expand upon the curved cell displays by introducing dynamically morphing cell shapes coupled with localized haptic feedback. Instead of static curves, cells shift and reshape in real-time based on user gaze, interaction, or underlying data.  Combine this with subtle, localized haptic pulses to enhance the sense of depth and interaction.
+**Concept:** Expand attribution beyond simple purchase correlation to create a dynamic loyalty point system triggered *by* impression exposure, rather than solely by purchase. This allows for rewarding customers for engaging with advertising, even if immediate purchase doesn't occur, fostering stronger brand interaction and data collection.
 
-**Specifications:**
+**Specs:**
 
-*   **Morphing Algorithm:** Implement a physics-based simulation for cell deformation. Cells aren't merely scaled or rotated, but *bend* and *flex* under simulated forces. These forces are driven by:
-    *   **Gaze Tracking:** Cells nearest the user’s gaze subtly “bulge” forward, increasing the illusion of proximity.
-    *   **Interaction:**  When a user interacts (e.g., selects) a cell, it exhibits a more pronounced deformation – a ‘ripple’ or ‘pulse’ effect.
-    *   **Data Visualization:**  Cell shape directly represents underlying data.  For example, a stock price graph could be visualized as the height/curvature of a cell.
-*   **Haptic Integration:**  VR headset must have localized haptic actuators (e.g., micro-pneumatic or electroactive polymer).
-    *   Actuators correspond to individual cells or groups of cells.
-    *   Haptic pulses are synchronized with visual cell deformations. A 'bulge' is accompanied by a subtle pressure on the user’s face.
-    *   Variable intensity haptics convey data – stronger pulses for higher values, distinct patterns for different types of events.
-*   **Cell Subdivision Enhancement:** Divide cells into dynamically sized subcells. The subcell size adjusts based on content *and* user focus.  Higher resolution rendering is applied to subcells under direct gaze. This creates a ‘sweet spot’ effect.
-*   **Material Simulation:** Cells should visually *appear* constructed from varying materials – glass, metal, fabric.  Reflections, textures, and light scattering contribute to the realism. A system to simulate different material properties based on the underlying data represented by the cell.
-*   **Spatial Audio Integration:** Cells emit subtly directional audio cues that change based on cell shape and proximity. This further reinforces the 3D illusion.
-
-**Pseudocode (Simplified):**
+*   **Data Inputs:**
+    *   Impression Data: Timestamp, User ID (hashed/tokenized), Merchant ID, Ad Creative ID, Impression Provider Code.
+    *   Transaction Data: Timestamp, User ID (hashed/tokenized), Merchant ID, Transaction Value, Payment Instrument.
+    *   Loyalty Program Data: User ID (hashed/tokenized), Current Point Balance, Tier Level.
+    *   ‘Engagement Weight’ Table:  A configurable table associating Ad Creative IDs with ‘Engagement Weights’ (values 0.0 - 1.0).  Higher weights indicate creatives designed to drive immediate engagement/action.  Weights can be adjusted based on A/B testing and performance metrics.
+*   **System Components:**
+    *   Impression Listener:  Receives impression data streams.
+    *   Transaction Listener: Receives transaction data streams.
+    *   Loyalty Engine:  Processes data, calculates points, updates loyalty accounts.
+    *   Engagement Weight Manager:  Allows administrators to configure and update engagement weights.
+    *   User ID Resolution Service:  Maps various user identifiers to a consistent hashed/tokenized ID.
+*   **Workflow:**
+    1.  Impression Listener receives impression data.
+    2.  User ID Resolution Service resolves the User ID.
+    3.  The system stores the impression event with associated User ID, timestamp, Merchant ID, and Engagement Weight (looked up from the Engagement Weight Table using Ad Creative ID).
+    4.  Transaction Listener receives transaction data.
+    5.  User ID Resolution Service resolves the User ID.
+    6.  System searches for impressions associated with the User ID and Merchant ID within a configurable time window (e.g., 7 days).
+    7.  For each matched impression:
+        *   Calculate points earned: `Points = Transaction Value * Engagement Weight * Point Multiplier`.  `Point Multiplier` is a configurable setting.
+        *   Add calculated points to the user's loyalty account.
+    8.  If no transaction is found, points are still awarded based on impressions if an impression-triggered point threshold is met.
+*   **Pseudocode:**
 
 ```
-// Per-cell update function
-function updateCell(cell, userGazePosition, deltaTime) {
+FUNCTION ProcessImpression(ImpressionData):
+    UserID = ResolveUserID(ImpressionData.UserID)
+    EngagementWeight = GetEngagementWeight(ImpressionData.AdCreativeID)
+    StoreImpression(UserID, ImpressionData.Timestamp, ImpressionData.MerchantID, EngagementWeight)
 
-    // Calculate distance from cell to gaze
-    distance = distanceBetween(cell.position, userGazePosition);
+FUNCTION ProcessTransaction(TransactionData):
+    UserID = ResolveUserID(TransactionData.UserID)
+    Impressions = GetImpressions(UserID, TransactionData.MerchantID, TransactionData.Timestamp)
 
-    // Apply gaze-based deformation
-    deformationMagnitude = map(distance, 0, maxDistance, 0, maxDeformation);
-    cell.applyDeformation(deformationMagnitude);
-
-    // Calculate haptic feedback intensity
-    hapticIntensity = map(deformationMagnitude, 0, maxDeformation, 0, maxHapticIntensity);
-    applyHapticFeedback(cell.hapticActuator, hapticIntensity);
-
-    // Subcell Resolution Adjustment:
-    if(isCellUnderGaze(cell, userGazePosition)){
-        increaseSubcellResolution(cell);
-    } else {
-        decreaseSubcellResolution(cell);
-    }
-}
-
-// Main loop
-for each cell in cellArray {
-    updateCell(cell, userGazePosition, deltaTime);
-}
+    FOR EACH Impression IN Impressions:
+        Points = TransactionData.TransactionValue * Impression.EngagementWeight * PointMultiplier
+        UpdateLoyaltyAccount(UserID, Points)
 ```
 
-**Engineering Considerations:**
-
-*   High frame rate rendering is crucial to maintain the illusion of smooth deformation.
-*   Haptic actuator placement and calibration require precision.
-*   Efficient collision detection is needed to prevent visual artifacts during deformation.
-*   Optimized rendering pipeline for dynamically sized subcells.
+*   **Configurable Parameters:**
+    *   Point Multiplier
+    *   Time Window for Impression Matching
+    *   Impression-Triggered Point Threshold
+    *   Engagement Weight Update Frequency
+    *   User ID Resolution Logic
