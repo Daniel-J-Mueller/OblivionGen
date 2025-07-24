@@ -1,57 +1,49 @@
-# 11521018
+# 10739984
 
-## Dynamic Image-Text "Constellations" & Associative Navigation
+## Adaptive Haptic Feedback System for Input Mode
 
-**Concept:** Extend the core idea of linking image portions to text by creating a dynamic, user-navigable "constellation" of related information *around* the image, not just *attached* to it. This goes beyond simple highlighting or direct links to text snippets.
+**Concept:** Extend the input mode detection to drive a dynamically adjustable haptic feedback system integrated into input devices (keyboard, mouse, trackpad). This system provides subtle physical cues to the user *corresponding* to the detected input mode, enhancing immersion and potentially assisting users with accessibility needs.
 
 **Specs:**
 
-*   **Data Structure:**  A graph database.  Nodes represent either:
-    *   Image Regions (defined by pixel coordinates and semantic segmentation data)
-    *   Textual Concepts (keywords, phrases, sentences, entire documents)
-    *   Relationships: Edges define the strength and type of association between image regions and textual concepts. Types: ‘describes’, ‘implies’, ‘contrasts’, ‘is_part_of’, ‘requires’, ‘suggests’. Strength is a numerical value (0.0 - 1.0) determined by a confidence score from machine learning models.
-*   **Image Analysis Pipeline:**
-    1.  **Semantic Segmentation:**  Identify objects and regions within the image.
-    2.  **Feature Extraction:** Generate vector representations for each segmented region using a Convolutional Neural Network (CNN).
-    3.  **Concept Detection:** From a large language model (LLM) given the image, extract relevant textual concepts associated with the image as a whole.
-    4.  **Relationship Scoring:** Employ a similarity metric (e.g., cosine similarity) between image region vectors and textual concept vectors to generate initial relationship scores. Fine-tune scores using an LLM-based ‘relationship validation’ module.  This module evaluates if the relationship type (e.g., “describes”) is logical given the image and text.
-*   **User Interface:**
-    1.  **Interactive Visualization:** Display the image with semi-transparent nodes overlaid on identified regions. Node size corresponds to confidence level.  Edge thickness/color represents relationship strength/type.
-    2.  **Constellation Navigation:**
-        *   **Hover/Click:**  Highlight associated text and nodes within the constellation.
-        *   **Dynamic Expansion:**  When a user interacts with a node, expand the constellation by revealing related nodes (defined by edge connections). Limit expansion depth to prevent information overload.
-        *   **Textual Pathways:**  Display ‘suggested pathways’ through the constellation based on user interaction history or common exploration patterns.
-    3.  **Cross-Document Linking:** The constellation can span multiple documents.  A node representing a concept can link to relevant sections within other documents, creating a knowledge graph that extends beyond the initial image context.
-*   **Pseudocode – Constellation Expansion:**
+*   **Haptic Actuator Integration:** Input devices (keyboard, mouse, trackpad) incorporate miniature haptic actuators (e.g., voice coil actuators, eccentric rotating mass motors). Actuator placement optimized for tactile feedback without hindering usability.
+*   **Feedback Profiles:**  Define distinct haptic profiles for “Keyboard Mode” and “Pointer Mode.”
+    *   *Keyboard Mode:*  Subtle rhythmic pulsing felt across the device surface. Amplitude and frequency are adjustable.
+    *   *Pointer Mode:*  A “smoothness” profile.  Very subtle vibration damping to create a feeling of fluid movement, or small localized 'clicks' for precise actions.
+*   **Detection Integration:** The existing input mode detection algorithm (from the patent) is modified to trigger haptic profile switching. A dedicated ‘haptic control’ module receives the classification data.
+*   **Dynamic Adjustment:** Implement a ‘comfort’ setting allowing users to adjust haptic intensity. The system also dynamically adjusts intensity based on user activity. If the user is rapidly switching between input methods, the haptic feedback is dampened or temporarily disabled to avoid distraction.
+*   **Accessibility Features:**  Provide options for custom haptic profiles for users with visual impairments. Haptic cues could represent UI elements or actions. An option to *exaggerate* haptic feedback intensity for users who benefit from stronger tactile signals.
+*   **User Profile Storage:** Store user-defined haptic profiles and comfort settings.
+*   **API for Application Control:** An API allowing applications to override the default haptic profiles or trigger specific haptic cues. A game, for example, could provide unique haptic feedback for in-game events.
+
+**Pseudocode (Haptic Control Module):**
 
 ```
-function expandConstellation(selectedNode, expansionDepth) {
-  if (expansionDepth <= 0) {
-    return;
+// Input: classificationData (Keyboard/Pointer), userSettings
+// Output: Actuator Control Signals
+
+function applyHapticFeedback(classificationData, userSettings) {
+  hapticProfile = userSettings.defaultProfile;
+
+  if (classificationData == "Keyboard") {
+    hapticProfile = userSettings.keyboardProfile;
+  } else if (classificationData == "Pointer") {
+    hapticProfile = userSettings.pointerProfile;
   }
 
-  // Get all neighboring nodes (connected by edges)
-  neighbors = getNeighbors(selectedNode);
+  intensity = hapticProfile.intensity * userSettings.globalIntensity;
+  frequency = hapticProfile.frequency;
+  pattern = hapticProfile.pattern;
 
-  // Sort neighbors by relationship strength (descending)
-  neighbors.sort((a, b) => b.relationshipStrength - a.relationshipStrength);
-
-  // Limit the number of expanded nodes (e.g., top 5)
-  expandedNodes = neighbors.slice(0, 5);
-
-  // Recursively expand each expanded node
-  for (node in expandedNodes) {
-    expandConstellation(node, expansionDepth - 1);
-  }
-
-  // Update the UI to display the expanded nodes and connections
-  updateUI();
+  // Apply intensity, frequency, and pattern to actuators
+  controlActuators(intensity, frequency, pattern);
 }
+
+function controlActuators(intensity, frequency, pattern) {
+    //Code to send signals to the haptic actuators
+}
+
+// In main loop of OS/application:
+classificationData = getClassificationData();
+applyHapticFeedback(classificationData, getUserSettings());
 ```
-
-*   **Machine Learning Models:**
-    *   CNN for image feature extraction.
-    *   LLM for concept detection, relationship validation, and potentially generating descriptive text for image regions.
-    *   Graph Neural Network (GNN) to learn node embeddings and improve relationship scoring.
-
-This system aims to move beyond simple image-text linking and create a dynamic, explorable knowledge space surrounding the image. It transforms the image from a static visual element into a gateway to a wealth of associated information.
