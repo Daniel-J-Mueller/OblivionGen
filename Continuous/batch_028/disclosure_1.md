@@ -1,65 +1,85 @@
-# 11616708
+# 10217331
 
-## Network Behavioral Fingerprinting via Correlated Loss & Rate Anomaly Detection
+## Wireless Sensory Hub with Predictive Alerting
 
-**System Overview:**
+**Concept:** Expand the USB dongle’s functionality beyond doorbell alerts to become a localized, learning sensory hub capable of predictive alerting based on environmental data and user behavior.
 
-This system moves beyond simply *estimating* traffic loss and demand. It aims to create a real-time “behavioral fingerprint” for network devices and application flows by analyzing correlated anomalies in packet transmission rates and loss rates. This fingerprint can be used for proactive security, performance optimization, and application-level anomaly detection.
+**Specifications:**
 
-**Core Components:**
+*   **Core Hardware:**
+    *   USB 3.0 Interface for power and data.
+    *   Quad-Core ARM Cortex-A53 processor @ 1.8GHz
+    *   2GB LPDDR4 RAM
+    *   16GB eMMC Flash Storage
+    *   Integrated Wi-Fi 802.11 a/b/g/n/ac (dual-band 2.4/5 GHz)
+    *   Bluetooth 5.2
+    *   Zigbee 3.0
+*   **Sensory Suite (Modular - expandability via USB/Wireless):**
+    *   **Microphone Array (4-element):** Directional audio capture for voice commands, sound event detection (glass break, baby cry, etc.).
+    *   **Passive Infrared (PIR) Motion Sensor:** Standard motion detection.
+    *   **Temperature/Humidity Sensor:** Environmental monitoring.
+    *   **Air Quality Sensor (VOC, CO2):** Measures volatile organic compounds and carbon dioxide levels.
+    *   **Light Sensor:** Ambient light level detection.
+    *   **Vibration Sensor:** Detects structural vibrations (potential intrusion, appliance malfunction).
+*   **LED Indicator:** RGB LED for status indication (alert level, connection status, activity).
+*   **Power:** USB-powered. Optional internal rechargeable battery for limited backup operation.
+*   **Software/Firmware:**
+    *   Linux-based operating system.
+    *   Machine learning models for anomaly detection and predictive alerting.
+    *   API for integration with smart home platforms (IFTTT, Alexa, Google Assistant).
+    *   Local data storage and processing (privacy-focused).
+    *   Secure over-the-air (OTA) firmware updates.
 
-1.  **High-Resolution Data Collection:** Network taps or SPAN ports capture packet-level data. Data is pre-processed to extract per-device (switch/router) and per-flow (5-tuple: source/destination IP/port) packet transmission rates and loss rates.  Crucially, data collection occurs at *very* short intervals (e.g., 10ms – 1ms) to capture transient behavior.
+**Operational Logic (Pseudocode):**
 
-2.  **Baseline Establishment (Adaptive):**  A baseline of ‘normal’ transmission/loss behavior is established for each device and flow.  This baseline isn’t static; it adapts over time using exponentially weighted moving averages (EWMA) and/or Kalman filtering to account for diurnal patterns and gradual shifts in traffic patterns. Separate baselines maintained for different times of day, and days of the week.
+```
+// Initialization
+Connect to Wi-Fi
+Initialize Sensors
+Load ML Models (Anomaly Detection, Predictive Alerting)
+Establish Secure Connection to Cloud (Optional - Data Backup/Remote Access)
 
-3.  **Correlation Engine:** This is the core innovation.  The engine identifies *correlated* deviations from the established baselines.
-    *   **Inter-Device Correlation:**  Looks for instances where deviations in transmission/loss rates occur *simultaneously* across multiple devices along a known path. This can indicate a widespread attack or a network-level congestion issue.
-    *   **Flow-Level Correlation:**  Identifies correlated anomalies within a specific flow across multiple devices. For example, a sudden increase in loss rate on multiple hops for a specific application might signal a targeted DDoS attack against that application.
-    *   **Temporal Correlation:** Tracks the evolution of anomalies over time.  A slow, gradual increase in loss rate might indicate a developing hardware failure, while a sudden spike could signal a flash flood attack.
+// Main Loop
+While (Running) {
+    // Read Sensor Data
+    sensorData = ReadAllSensors()
 
-4.  **Anomaly Scoring & Alerting:**  Each correlated anomaly is assigned a score based on the magnitude of the deviation from the baseline, the number of devices/flows affected, and the duration of the anomaly.  Alerts are triggered when the score exceeds a predefined threshold.  Scoring utilizes a bayesian approach.
+    // Process Data
+    processedData = PreprocessData(sensorData)
 
-5.  **Behavioral Fingerprint Database:** Stores the historical data of transmission/loss rates, anomaly scores, and associated metadata (timestamps, device IDs, flow IDs, etc.). This database is used for long-term trend analysis and for improving the accuracy of the anomaly detection algorithms. Utilizes a time-series database optimized for rapid retrieval and analysis.
+    // Anomaly Detection
+    anomalyScore = AnomalyDetectionModel.Predict(processedData)
 
-**Pseudocode (Core Correlation Logic):**
+    // Predictive Alerting
+    predictedEvent = PredictiveAlertingModel.Predict(processedData, historicalData)
 
-```pseudocode
-// For each device and flow, at each time interval:
-transmission_rate = calculate_transmission_rate()
-loss_rate = calculate_loss_rate()
+    // Alert Triggering
+    If (anomalyScore > threshold OR predictedEvent.probability > threshold) {
+        alertType = DetermineAlertType(anomalyScore, predictedEvent)
+        TriggerAlert(alertType) // LED, Sound, Cloud Notification
+        LogEvent(alertType, sensorData)
+    }
 
-// Calculate deviation from baseline
-transmission_deviation = transmission_rate - baseline_transmission_rate
-loss_deviation = loss_rate - baseline_loss_rate
+    // Historical Data Logging
+    LogHistoricalData(sensorData)
 
-// Inter-Device Correlation (Simplified)
-correlation_score = 0
-for each device in path:
-    if (device.transmission_deviation > threshold AND device.loss_deviation > threshold):
-        correlation_score += 1
+    // ML Model Retraining (Periodic)
+    If (TimeSinceLastRetrain > threshold) {
+        RetrainMLModels(historicalData)
+    }
 
-//Flow Level Correlation (Simplified)
-flow_correlation_score = 0
-for each device in path:
-  if (device.transmission_deviation > flow_threshold AND device.loss_deviation > flow_threshold):
-    flow_correlation_score += 1
-
-//Alerting:
-if (correlation_score > inter_device_threshold OR flow_correlation_score > flow_threshold):
-    generate_alert(device_ids, flow_id, anomaly_type, severity)
+    Sleep(100ms)
+}
 ```
 
-**Hardware/Software Requirements:**
+**Alerting Modes:**
 
-*   High-performance network taps or SPAN ports.
-*   Dedicated server cluster for data processing and analysis.
-*   Time-series database (e.g., InfluxDB, Prometheus).
-*   Machine learning libraries (e.g., TensorFlow, PyTorch).
-*   Real-time alerting and visualization tools.
+*   **Basic:** LED flash, audible tone.
+*   **Contextual:** Based on sensor data and learned user behavior. Example: If the system learns you typically open a window at 7 AM, and the temperature drops rapidly overnight, it might proactively suggest closing the window.
+*   **Predictive:** Based on pattern recognition and forecasting. Example: If the system detects subtle vibrations indicative of a potential water leak, it might alert you *before* visible damage occurs.
 
-**Potential Extensions:**
+**Expandability:**
 
-*   Integration with security information and event management (SIEM) systems.
-*   Automated response actions (e.g., rate limiting, traffic redirection).
-*   Predictive analysis to identify potential network issues before they occur.
-*   Application-aware anomaly detection based on application protocols.
+*   USB ports for connecting external sensors (e.g., carbon monoxide detector, smoke detector).
+*   Wireless connectivity (Zigbee, Z-Wave) for integrating with other smart home devices.
+*   Open API for developers to create custom integrations and applications.
