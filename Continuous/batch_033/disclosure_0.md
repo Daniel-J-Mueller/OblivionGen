@@ -1,64 +1,66 @@
-# 10534655
+# 10696392
 
-## Adaptive Job Prioritization via Predictive Resource Contention
+## Modular Payload & Boom System - Aerial Vehicle
 
-**System Overview:**
-
-This system extends the core concept of resource allocation based on job history by introducing *predictive* resource contention modeling. Instead of solely relying on past *completion* success/failure, the system analyzes historical job *overlap* and resource usage patterns to anticipate potential bottlenecks *before* scheduling. This allows for a more nuanced prioritization, not just favoring historically 'good' users/jobs, but intelligently distributing load to minimize overall system impact.
+**Concept:** Expand the boom functionality beyond housing propulsion. Integrate a standardized payload interface into the boom structure, allowing for rapid reconfiguration of aerial vehicle capabilities.
 
 **Specifications:**
 
-1.  **Resource Contention Profile (RCP) Generation:**
-    *   Each resource type (CPU, Memory, Disk I/O, Network Bandwidth) maintains a historical database of usage during job execution.
-    *   For each time slice (e.g., 5-minute intervals), the system calculates a “contention score” for each resource type. This score represents the level of saturation. (Higher score = greater contention)
-    *   RCPs are generated for each user account and for each job identifier (as in the provided patent).  These profiles track the historical contention *caused* by that user/job.
-    *   RCPs are regularly updated (e.g., hourly, daily) to reflect changing usage patterns.
+*   **Boom Structure:** Redesign booms to be multi-faceted, hexagonal cross-section. Internal space divided into sections: Propulsion housing, Payload bay, and Structural reinforcement.
+*   **Payload Interface:** Develop a universal payload mounting system (UPMS) – a standardized set of electrical and mechanical connectors integrated into the boom's payload bay.  UPMS specs:
+    *   Power: 12V, 24V, 48V DC options, max 1kW per boom.
+    *   Data:  Ethernet (1Gbps), CAN bus, Serial (RS232/485).
+    *   Mechanical:  Quick-release locking mechanism with integrated safety interlocks.  Payload mass limit: 5kg per boom.
+    *   Dimensions: Standardized payload enclosure volume: 200mm x 100mm x 50mm.
+*   **Modular Payload Modules:** Design a library of rapidly swappable payload modules utilizing the UPMS:
+    *   **High-Resolution Camera Module:**  Gimbal stabilized 4K camera with zoom.
+    *   **Lidar Module:**  Short/Long range lidar for mapping/obstacle avoidance.
+    *   **Sensor Pod:**  Combined environmental sensor suite (temperature, humidity, pressure, air quality).
+    *   **Speaker/Intercom Module:**  High-power speaker and two-way intercom.
+    *   **Delivery Module:**  Small cargo bay with automated release mechanism.
+    *   **Emergency Beacon Module:**  High-intensity strobe and emergency communication radio.
+*   **Software Integration:** Develop flight control software integration to:
+    *   Automatically detect connected payload modules.
+    *   Provide a user interface for controlling payload functions.
+    *   Implement safety checks to prevent conflicting payload operations.
+    *   Allow for custom payload scripting and integration.
+*   **Boom Redundancy:** Each boom will integrate a secondary, lower-power propulsion unit. If a primary propulsion unit fails, the secondary unit will automatically engage to maintain stability and allow for controlled descent or return-to-base.
 
-2.  **Job Scheduling Algorithm Enhancement:**
-    *   The existing resource allocation score (based on job history completion) is *combined* with a "Contention Risk Score" (CRS).
-    *   CRS is calculated *predictively* based on the RCPs of the requesting user/job *and* the current system load.
-    *   CRS Formula (pseudocode):
+**Pseudocode (Flight Control Logic - Payload Detection & Activation):**
 
-        ```
-        CRS = α * User_RCP_Score + β * Job_RCP_Score + γ * Current_System_Load
-        ```
+```
+//Initialization
+PayloadDetected[0] = false
+PayloadDetected[1] = false
 
-        *   `α`, `β`, `γ` are configurable weights.
-        *   `User_RCP_Score`: Average historical contention caused by this user.
-        *   `Job_RCP_Score`: Average historical contention caused by this specific job.
-        *   `Current_System_Load`: A real-time measure of overall resource utilization.
-    *   The combined score (Resource Allocation Score + CRS) is used to determine job priority and allocated resources.  Lower scores have higher priority.
+//Loop
+function CheckPayloadStatus():
+    if(UPMS_Port_0_Connected()):
+        PayloadDetected[0] = true
+        PayloadType[0] = ReadPayloadType(UPMS_Port_0)
+    else:
+        PayloadDetected[0] = false
 
-3.  **Dynamic Weight Adjustment:**
-    *   A feedback loop continuously adjusts the weights `α`, `β`, and `γ` based on observed system performance.
-    *   If the system experiences increased contention despite prioritization, the weights for `α` and `β` are increased, giving more weight to historical contention.
-    *   If the system is underutilized, the weights for `α` and `β` are decreased, allowing more jobs to be scheduled.
+    if(UPMS_Port_1_Connected()):
+        PayloadDetected[1] = true
+        PayloadType[1] = ReadPayloadType(UPMS_Port_1)
+    else:
+        PayloadDetected[1] = false
 
-4.  **Resource 'Shadowing' for Predictive Modeling:**
+function ActivatePayload(PayloadNumber, Function, Parameter):
+    if PayloadNumber == 0 && PayloadDetected[0]:
+        ExecutePayloadFunction(PayloadType[0], Function, Parameter)
+    else if PayloadNumber == 1 && PayloadDetected[1]:
+        ExecutePayloadFunction(PayloadType[1], Function, Parameter)
+    else:
+        Log("Payload not detected or invalid number")
 
-    *   During periods of low system load, a small percentage of submitted jobs are run in “shadow mode” using a separate set of resources. This is for accurate contention modelling only.
-    *   These shadow jobs do not affect production workloads.
-    *   Resource usage data from shadow jobs is used to refine the RCPs and improve the accuracy of the CRS predictions.
+//Example activation:
+ActivatePayload(0, "StartRecording", "1080p") //Starts recording on module 0
+```
 
-5. **API Endpoint Extension:**
+**Materials:**
 
-   *   A new API endpoint `/contention_profile/{user_id}` allows monitoring of a user's historical contention contribution.
-   *   This enables administrators to identify users/jobs that consistently create bottlenecks.
-
-**Data Structures:**
-
-*   `ResourceContentionProfile`: A time-series database storing historical resource usage data (CPU, Memory, I/O, Network) associated with users and jobs.
-*   `ContentionRiskScore`: A floating-point value representing the predicted risk of contention for a given job.
-*   `WeightedScore`: A composite score derived from the Resource Allocation Score and ContentionRiskScore.
-
-**Hardware Considerations:**
-
-*   Requires sufficient storage for historical resource usage data.
-*   Benefits from high-speed data processing capabilities for real-time contention prediction.
-
-**Potential Benefits:**
-
-*   Reduced system contention and improved overall performance.
-*   More equitable resource allocation.
-*   Proactive identification of problematic users/jobs.
-*   Enhanced scalability and stability.
+*   Boom Structure: Carbon Fiber Composite
+*   UPMS Connectors: High-Conductivity Aluminum Alloy with Gold Plating
+*   Payload Housings: Lightweight Polymer Blend (PEEK or similar)
