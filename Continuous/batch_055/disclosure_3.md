@@ -1,62 +1,50 @@
-# 12244705
+# 11783831
 
-## Secure Enclave Assisted Dynamic Root of Trust Provisioning
+## Adaptive Frequency Masking for Personalized Assistant Interaction
 
-**Concept:** Leverage the inter-processor communication queue (IPQ) described in the patent not just for cryptographic operations, but to dynamically establish and rotate a Root of Trust (RoT) within a secure enclave, enhancing security against compromised firmware or physical attacks.  This expands the secure compute layer's capabilities beyond simple key generation, toward a more robust and adaptable security posture.
+**Concept:** Extend the selective encryption based on frequency ranges described in claim 3 by dynamically adjusting the masking *based on real-time emotional analysis of the user's voice*. The goal is to prioritize transmission of frequencies crucial for conveying emotional state while further obscuring non-essential data, enhancing both privacy and assistant responsiveness.
 
-**Specs:**
+**System Specifications:**
 
-*   **Hardware:**
-    *   Real-Time Processor (RTP): Primary processor managing I/O and initiating secure operations.  Must support secure boot and attestation.
-    *   Additional Processor (AP):  Secure enclave processor (e.g., Intel SGX, AMD SEV) with dedicated memory and cryptographic capabilities.
-    *   Inter-Processor Communication Queue (IPQ):  High-speed, low-latency queue for secure message passing. Bi-directional communication is critical.
-    *   Tamper-Resistant Hardware Random Number Generator (TRNG): Essential for RoT generation.
-*   **Software:**
-    *   RTP Firmware: Includes a secure bootloader, attestation module, and IPQ client.
-    *   AP Firmware: Contains a secure enclave runtime, RoT manager, and IPQ server.
-    *   RoT Manager:  Software within the secure enclave responsible for RoT generation, storage, rotation, and attestation.
-*   **Protocol:**
-
-    1.  **Initial Boot & RoT Provisioning:**
-        *   RTP performs secure boot and attestation of the AP.
-        *   RTP enqueues a "Generate RoT" request onto the IPQ, including seed material (from TRNG or external source).
-        *   AP dequeues the request and generates a new RoT using the seed and internal algorithms.
-        *   AP enqueues a "RoT Available" message onto the IPQ, including a digitally signed RoT public key.
-        *   RTP verifies the signature and stores the RoT public key securely.
-    2.  **Dynamic RoT Rotation:**
-        *   RTP periodically (or upon security event detection) enqueues a "Rotate RoT" request onto the IPQ.
-        *   AP dequeues the request, generates a new RoT, and securely transitions to the new RoT *without system downtime*.  The transition leverages internal enclave attestation mechanisms.
-        *   AP enqueues a "RoT Rotated" message onto the IPQ, including a digitally signed RoT public key for the new RoT.
-        *   RTP verifies the signature and updates its stored RoT public key.
-    3.  **Attestation & Key Derivation:**
-        *   When establishing a secure connection (as described in the patent), the RTP requests attestation from the AP via the IPQ.
-        *   The AP signs a challenge from the RTP using the *current* RoT and returns the signature via the IPQ.
-        *   RTP verifies the signature, confirming the integrity of the AP and the current RoT.
-        *   A session key is derived using a Key Derivation Function (KDF) based on the RoT, the session challenge, and other relevant parameters.
-
-**Pseudocode (RTP - Enqueue RoT Rotation Request):**
+*   **Components:**
+    *   Device (Voice Capture/Transmission)
+    *   Emotional Analysis Module (EAM) - Local or Cloud-Based
+    *   Frequency Partitioning & Encryption Engine (FPEE)
+    *   Assistant Processing Systems (APS) - Multiple potential targets.
+*   **Data Flow:**
+    1.  User utters a command. Audio data is captured by the device.
+    2.  A portion of the audio data is *immediately* sent to the EAM for real-time emotional state analysis (e.g., detecting anger, joy, sadness, neutrality).  This analysis focuses on prosodic features (pitch, tone, rhythm) rather than semantic content.
+    3.  The EAM outputs an "Emotional Significance Map" (ESM) – a weighted distribution indicating the relative importance of different frequency ranges for conveying emotional state.  Example: `ESM = {0-200Hz: 0.8, 200-800Hz: 0.5, 800-2kHz: 0.2, 2kHz+: 0.1}`.  Values range from 0.0 to 1.0.
+    4.  The FPEE partitions the audio data into multiple frequency bands (e.g., 0-200Hz, 200-800Hz, 800-2kHz, 2kHz+).
+    5.  The FPEE generates multiple encryption keys (K1, K2, K3, K4…), one for each frequency band.  The keys are initially identical.
+    6.  The FPEE *modifies* the encryption keys based on the ESM. Keys corresponding to higher-significance frequency bands (as indicated by the ESM) receive *increased* complexity (e.g., longer key length, stronger algorithm).  Keys for lower-significance bands receive *reduced* complexity.
+    7.  Each frequency band is encrypted using its corresponding modified key.
+    8.  The encrypted frequency bands are combined into a single encrypted audio stream.
+    9.  The encrypted audio stream is sent to the target assistant(s).
+    10. Only the encryption key(s) for the frequencies prioritized by the ESM are sent *initially* to the selected assistant.  Remaining keys are withheld or sent with a delay, giving priority to emotional nuance.
+*   **Key Management:**
+    *   Initial key generation: Device generates a base key.
+    *   Key modification: ESM weights are used to modulate key complexity.
+    *   Selective transmission: Keys corresponding to prioritized frequencies are sent first.
+*   **Adaptive Behavior:**
+    *   If the assistant *requires* higher fidelity audio (as in claim 3), the remaining keys are released.
+    *   If the assistant determines the utterance is irrelevant to its function, no additional keys are sent.
+*   **Pseudocode (Device):**
 
 ```
-function enqueue_rot_rotation_request() {
-  request = create_request(REQUEST_TYPE_ROTATE_ROT, null); // No data needed for rotation
-  send_ipq_message(request);
-  log("Sent RoT rotation request to AP");
-}
+function processAudio(audioData):
+  esm = analyzeEmotion(audioData)
+  frequencyBands = partitionAudio(audioData)
+  keys = generateBaseKeys(len(frequencyBands))
+
+  for i in range(len(frequencyBands)):
+    keys[i] = modifyKeyComplexity(keys[i], esm[i]) // Higher ESM weight -> more complex key
+
+  encryptedBands = encrypt(frequencyBands, keys)
+  encryptedAudio = combineBands(encryptedBands)
+
+  sendEncryptedAudio(encryptedAudio)
+  sendKey(keys[priorityBand]) // Send the key for the highest emotional significance band
 ```
 
-**Pseudocode (AP - Handle RoT Rotation Request):**
-
-```
-function handle_rotate_rot_request() {
-  new_rot = generate_new_root_of_trust();
-  log("Generated new RoT");
-  // Securely transition to new RoT (internal enclave operation)
-  transition_to_new_rot(new_rot);
-  signed_rot_public_key = sign_public_key(new_rot.public_key, current_rot);
-  response = create_response(RESPONSE_TYPE_ROT_ROTATED, signed_rot_public_key);
-  send_ipq_message(response);
-  log("Sent RoT rotated response to RTP");
-}
-```
-
-**Novelty:** This goes beyond simply offloading cryptographic *operations*. It establishes a dynamic security layer where the foundation of trust (RoT) is actively managed and rotated within a secure enclave, increasing resilience against attacks that target firmware or physical compromise. The IPQ becomes the control plane for this dynamic RoT management. It also supports a level of separation of duties and attack surface reduction.
+**Novelty:** This approach goes beyond simple frequency partitioning by dynamically adapting encryption strength based on *emotional context*. It prioritizes transmission of emotionally salient frequencies, potentially improving assistant responsiveness to user intent while maintaining a strong privacy baseline. It also allows for a graduated release of audio fidelity, offering a dynamic trade-off between security and accuracy.
