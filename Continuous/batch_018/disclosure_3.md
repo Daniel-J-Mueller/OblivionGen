@@ -1,72 +1,69 @@
-# 8688837
+# 11032287
 
-## Dynamic Resource Shaping via Client-Side Predictive Prefetching
+## Delegated Policy Synthesis & Dynamic Permission Sculpting
 
-**Concept:** Extend the popularity-based routing to incorporate client-side prediction and proactive resource shaping. Instead of *only* routing based on current popularity, the system anticipates future resource needs based on user behavior and pre-fetches/pre-processes resources accordingly, delivering highly optimized content *before* it's even requested.
+**Concept:** Expand the delegated administrator concept beyond static permission boundaries. Introduce a system where delegated administrators can *synthesize* new permission policies based on pre-approved “policy fragments” and dynamically adjust effective permissions for IAM principals based on contextual factors.
 
-**Specifications:**
+**Specification:**
 
-**I. Client-Side Prediction Module:**
+**1. Policy Fragment Repository:**
 
-*   **Data Collection:**  The client collects data on user interactions: page views, dwell time, scrolling behavior, click patterns, form inputs (with user consent, obviously).
-*   **Behavioral Modeling:** A lightweight, locally-executed machine learning model (e.g., a Markov model, a simple recurrent neural network) predicts the next likely resource request(s). This model is updated continuously with user interaction data.
-*   **Confidence Scoring:** Each prediction receives a confidence score representing the likelihood of the prediction being accurate.
-*   **Resource Request Prioritization:**  Prioritized list of probable resource requests generated with confidence scores.
+*   A centralized repository storing pre-approved, modular policy fragments. These fragments represent common access patterns or specific resource permissions (e.g., "read S3 bucket X", "invoke Lambda function Y", “EC2 instance console access – region Z”).
+*   Each fragment is tagged with metadata: resource type, action, required conditions (e.g., MFA, IP range), risk score, and a "synthesis signature" (identifying allowed combinations with other fragments).
+*   Central administrator controls fragment creation, approval, and versioning.
+*   Fragments can be versioned, and deprecated fragments archived.
 
-**II. Prefetching & Shaping Service (Integrated with CDN):**
+**2. Delegated Policy Synthesis Interface:**
 
-*   **Prefetch Request API:** Client sends a "Prefetch Request" to the CDN, including the prioritized list of probable resources and associated confidence scores.
-*   **Dynamic Resource Shaping:**  Based on confidence scores, the CDN dynamically shapes the resources *before* they are sent. This includes:
-    *   **Compression Level Adjustment:**  Higher compression for lower-confidence resources, lower compression for high-confidence resources (trade-off between bandwidth and CPU on client).
-    *   **Image/Video Resolution Adjustment:** Scale down resolution for lower-confidence resources, maintain/increase resolution for high-confidence resources.
-    *   **Content Simplification:** Reduce complexity of content (e.g., remove animations, reduce polygon count in 3D models) for lower-confidence resources.
-    *   **Partial Rendering:** Pre-render parts of the resource that are likely to be visible (e.g., above-the-fold content).
-*   **Cache Tiering:** Prefetched resources are stored in a separate cache tier optimized for fast access (e.g., in-memory cache).
-*   **Invalidation Protocol:**  Mechanism to invalidate prefetched resources if the user's behavior changes significantly.
+*   A web-based UI for delegated administrators.
+*   Allows administrators to *compose* new permission policies by selecting and combining pre-approved fragments.
+*   The interface presents fragments based on a search/filter, categorized by resource type and action.
+*   A "synthesis engine" validates fragment combinations against the synthesis signatures, preventing the creation of invalid or overly permissive policies.
+*   The UI visually depicts the composed policy and its effective permissions.
+*   Workflow approval system for synthesized policies before deployment.
 
-**III.  Communication Protocol:**
+**3. Contextual Permission Sculpting:**
 
-*   **Prefetch Request Format:**  JSON payload including:
-    *   `user_id`: Anonymous user identifier.
-    *   `resource_list`: Array of resource URLs.
-    *   `confidence_scores`:  Array of corresponding confidence scores (0.0 - 1.0).
-    *   `client_capabilities`: Information about the client's hardware and software (CPU, memory, screen resolution, browser type).
-*   **Response Format:**  JSON payload including:
-    *   `resource_urls`: Modified URLs of the prefetched resources.
-    *   `resource_metadata`: Metadata about the modified resources (compression level, resolution, size).
+*   Extend IAM to incorporate “context keys”. These keys represent real-time factors influencing access decisions (e.g., time of day, user location, device type, data sensitivity level).
+*   Delegated administrators can associate context keys with synthesized policies.
+*   IAM evaluates context keys at runtime.  Policy effects are modified *dynamically* based on context.
+*   Example: Policy grants access to sensitive data, *but only* if the user is accessing from a corporate network and using a managed device.
 
-**Pseudocode (Client-Side):**
+**4.  Dynamic Permission ‘Blending’**
+
+*   Implement a "permission blending" engine.
+*   Blends the effective permissions granted by the synthesized policy, the permission boundary policy, *and* the contextual evaluation.
+*   The blending engine utilizes a prioritized evaluation scheme. Boundary policies offer a baseline, then synthesized permissions are layered on top, finally, contextual factors dynamically adjust the blend.
+
+**Pseudocode (Contextual Evaluation):**
 
 ```
-// Initialize prediction model
-model = loadPredictionModel()
+function evaluatePermission(user, action, resource, context) {
+  boundaryPermissions = getBoundaryPermissions(user);
+  synthesizedPermissions = getSynthesizedPermissions(user);
+  
+  if (!boundaryPermissions.allows(action, resource)) {
+    return false; // Deny if boundary policy blocks
+  }
 
-// Event loop
-while (userIsActive) {
-  // Collect user interaction data
-  interactionData = collectInteractionData()
+  combinedPermissions = boundaryPermissions.intersect(synthesizedPermissions);
+  
+  if (context.location == "Corporate Network" && context.deviceType == "Managed Device") {
+      combinedPermissions.addPermission("accessSensitiveData"); //Dynamically add permission
+  }
 
-  // Update prediction model
-  model.update(interactionData)
-
-  // Predict next likely resources
-  resourceList, confidenceScores = model.predict()
-
-  // Create prefetch request
-  prefetchRequest = createPrefetchRequest(resourceList, confidenceScores)
-
-  // Send prefetch request to CDN
-  prefetchResponse = sendPrefetchRequest(prefetchRequest)
-
-  // Update resource URLs in DOM
-  updateDOMResources(prefetchResponse)
+  if (combinedPermissions.allows(action, resource)) {
+    return true;
+  } else {
+    return false;
+  }
 }
 ```
 
-**Potential Benefits:**
+**Engineering Considerations:**
 
-*   **Reduced Latency:** Resources are available before the user requests them.
-*   **Improved User Experience:** Faster page load times and smoother interactions.
-*   **Bandwidth Optimization:** Dynamic shaping reduces bandwidth consumption.
-*   **Enhanced Scalability:**  Offloads processing to the CDN.
-*   **Proactive Content Delivery:** Anticipates user needs and delivers relevant content.
+*   A robust fragment repository requires a scalable database and efficient indexing.
+*   The synthesis engine needs to be optimized for performance to handle complex fragment combinations.
+*   Context key evaluation should be implemented efficiently to minimize latency.
+*   Auditing and logging are essential for tracking policy changes and access decisions.
+*   The system needs to support granular access control to the fragment repository and synthesis tools.
