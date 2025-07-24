@@ -1,43 +1,96 @@
-# 10754418
+# 10228979
 
-## Dynamic Haptic Feedback & Projected Texture
+## Dynamic Payload Prioritization & Adaptive Partitioning
 
-**Concept:** Extend AR projection onto the body by dynamically altering the *feel* of the projected surface through localized haptic feedback and simulated texture changes. The system would move beyond simply displaying visuals *on* the body to making it *feel* like the content is physically present.
+**Concept:** Expand the virtual partitioning concept to not only distribute load based on *time* to expiration, but also based on *priority* of the payload itself, dynamically adjusting partition size and sweeper worker allocation. This allows for guaranteeing service level agreements (SLAs) for critical timers, even under heavy load.
 
-**Specs:**
+**Specifications:**
 
-*   **Hardware:**
-    *   Array of micro-actuators (piezoelectric or similar) embedded within a flexible, skin-safe material. This material would be worn as a sleeve, glove, or adhered as a temporary tattoo-like application. Density: 100 actuators per 10cm².
-    *   High-resolution, pico-projector capable of projecting onto the flexible material. Minimum resolution: 1920x1080.
-    *   Depth sensor (Time-of-Flight or structured light) for accurate body tracking and surface mapping.
-    *   Processing unit (integrated or tethered) for real-time data processing and actuator control.
-*   **Software:**
-    *   **Surface Mapping & Projection Calibration:** Algorithm to create a dynamic 3D map of the body surface in real-time, accounting for movement and deformation.  The projector would be calibrated to accurately display content onto the mapped surface.
-    *   **Haptic Engine:** A software module that translates visual content into corresponding haptic feedback patterns. This would involve a library of pre-defined haptic "textures" (e.g., smooth, rough, bumpy, sticky) and the ability to create custom patterns.
-    *   **Texture Synthesis:** Algorithm to generate procedural textures based on visual data. For example, if a projected image shows wood grain, the haptic engine would generate a corresponding rough texture on the skin.
-    *   **Contact Detection & Force Feedback:**  Utilize depth sensor data to detect user interaction with the projected surface (e.g., touch, press).  Actuators would provide localized force feedback to simulate the feel of resistance or compliance.
-    *   **AR Content Integration:** SDK for AR application developers to easily integrate haptic feedback and textured surfaces into their experiences.
+**1. Payload Priority Metadata:**
 
-**Pseudocode (Haptic Engine):**
+*   Each timer creation request *must* include a `priority` field (integer scale 1-10, 10 being highest). This value dictates resource allocation and execution precedence.
+*   Priority is a client-configurable parameter, subject to system-wide limits (see section 4).
 
+**2. Partition Types:**
+
+*   Introduce three primary partition types:
+    *   **Critical (Priority 8-10):** Smallest partition size, highest sweeper worker density. Guaranteed SLA. Dedicated resources.
+    *   **Standard (Priority 4-7):** Medium partition size, balanced sweeper worker allocation. Normal priority.
+    *   **Background (Priority 1-3):** Largest partition size, lowest sweeper worker allocation. Best effort execution.
+*   Partitions are dynamically created/destroyed based on incoming request priority distribution.
+
+**3. Dynamic Partition Adjustment:**
+
+*   A “Partition Manager” component continuously monitors the distribution of incoming timer priorities.
+*   The Partition Manager employs the following logic:
+    *   If the ratio of Critical/Standard/Background requests deviates significantly from pre-defined thresholds, the Partition Manager adjusts the number of partitions allocated to each type.
+    *   Adjustments are performed incrementally to minimize disruption.
+    *   Adjustments prioritize maintaining sufficient capacity in the Critical partition.
+
+**4. Priority Throttling & Quotas:**
+
+*   A system-level administrator can configure priority-based quotas per client.
+*   Clients exceeding their allocated priority bandwidth are throttled or rejected.
+*   The throttling mechanism prioritizes requests from higher-priority clients.
+
+**5. Sweeper Worker Coordination & Priority Scheduling:**
+
+*   The “Sweeper Worker Coordinator” now incorporates priority scheduling.
+*   Sweeper workers are assigned to partitions based on partition type (critical, standard, background).
+*   Within a partition, timers with higher priority payloads are processed first.
+*   A “starvation prevention” mechanism ensures that low-priority timers eventually execute.
+
+**6. Pseudocode - Partition Manager:**
+
+```pseudocode
+// Monitor incoming timer requests
+function monitorRequests() {
+  requests = getIncomingTimerRequests();
+  priorityCounts = { "critical": 0, "standard": 0, "background": 0 };
+  for (request in requests) {
+    priority = request.priority;
+    if (priority >= 8) {
+      priorityCounts["critical"]++;
+    } else if (priority >= 4) {
+      priorityCounts["standard"]++;
+    } else {
+      priorityCounts["background"]++;
+    }
+  }
+
+  // Calculate current partition distribution
+  criticalPartitions = getNumberOfPartitions("critical");
+  standardPartitions = getNumberOfPartitions("standard");
+  backgroundPartitions = getNumberOfPartitions("background");
+
+  // Define target ratios
+  targetCriticalRatio = 0.2;
+  targetStandardRatio = 0.5;
+  targetBackgroundRatio = 0.3;
+
+  // Calculate desired number of partitions
+  totalPartitions = criticalPartitions + standardPartitions + backgroundPartitions;
+  desiredCriticalPartitions = totalPartitions * targetCriticalRatio;
+  desiredStandardPartitions = totalPartitions * targetStandardRatio;
+  desiredBackgroundPartitions = totalPartitions * targetBackgroundRatio;
+
+  // Adjust partitions
+  if (criticalPartitions < desiredCriticalPartitions) {
+    createPartition("critical");
+  } else if (criticalPartitions > desiredCriticalPartitions) {
+    destroyPartition("critical");
+  }
+
+  // Repeat for standard and background
+}
+
+// Run monitorRequests() periodically
+setInterval(monitorRequests, 60000); // Every 60 seconds
 ```
-function generateHapticFeedback(visualContent, contactPoint):
-    surfaceData = getSurfaceData(contactPoint) // Get 3D surface data at contact point
-    textureType = determineTextureType(visualContent) // Analyze visual content to determine texture
-    hapticPattern = getHapticPattern(textureType, surfaceData) // Select or generate a haptic pattern
-    
-    if contactDetected(contactPoint):
-        forceFeedbackLevel = calculateForceFeedback(contactPressure, materialProperties)
-        applyForceFeedback(hapticPattern, forceFeedbackLevel)
-    else:
-        applyHapticPattern(hapticPattern) // Apply haptic pattern to actuators
-    return
-```
 
-**Applications:**
+**7. Data Structures:**
 
-*   **Enhanced Gaming:** Feel the texture of in-game objects, the impact of attacks, or the weight of virtual items.
-*   **Medical Training:** Simulate the feel of tissues, organs, or surgical instruments.
-*   **Remote Collaboration:** Experience the texture of objects being manipulated by a remote collaborator.
-*   **Accessibility:** Provide tactile feedback for visually impaired users.
-*   **Fashion & Entertainment:** Create dynamic, interactive clothing with changing textures and patterns.
+*   `TimerRequest`: {`clientId`, `expirationTime`, `payload`, `priority`}
+*   `Partition`: {`type` (critical, standard, background), `capacity`, `currentLoad`}
+
+This design introduces a dynamically adapting system, capable of meeting varying demands, and guaranteeing service for high-priority timers. It’s an extension of the existing virtual partitioning, but adds a layer of intelligence based on payload characteristics.
