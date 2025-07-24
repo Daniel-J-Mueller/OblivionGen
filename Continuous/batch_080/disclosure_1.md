@@ -1,71 +1,59 @@
-# 9697499
+# 10169659
 
-**Dynamic Highlight “Ecosystem” & Collaborative Annotation System**
+## Dynamic Focus Stacking for Enhanced Video Summarization
 
-**Concept:** Expand beyond simple highlight matching to create a dynamic, user-driven “ecosystem” of annotations and insights layered *onto* the digital content itself. This isn't just about finding others who highlighted the same passage; it's about building a collaboratively refined understanding of the material.
+**Concept:** Expand upon the idea of focusing on faces/objects in video, but instead of simply cropping or creating split screens, employ dynamic focus stacking across multiple frames to create a visually striking and informative summary. This goes beyond simply highlighting *where* faces are, and begins to synthesize information about *how* they appear – expression, relative distance, and even subtle movements – to create a more compelling narrative.
 
-**System Specs:**
+**Specs:**
 
-*   **Annotation Types:** Beyond basic highlighting, users can create diverse annotation types:
-    *   *Summaries:* Short-form summaries of highlighted sections.
-    *   *Questions:* Questions raised by the highlighted content.
-    *   *Connections:* Links to external resources (articles, videos, definitions).
-    *   *Disagreements/Counterpoints:*  Allow users to explicitly disagree with existing annotations or offer alternative interpretations (with explanation).
-    *   *Emotional Reactions:* Tagging of emotional responses to specific passages (e.g., “inspiring,” “confusing,” “sad”).
-*   **Annotation Visibility & Filtering:**
-    *   *Community View:*  Display all public annotations for a section, sorted by “helpfulness” (weighted by user reputation/agreement).
-    *   *Personal View:* Filter annotations by annotation type, author, or keyword.
-    *   *Expert View:* (Requires verified credentials)  Display annotations only from verified experts in the relevant field.
-*   **Reputation System:**
-    *   Users gain reputation points based on the "helpfulness" votes of other users for their annotations.
-    *   High-reputation users have greater influence on annotation visibility and can serve as moderators.
-*   **AI-Assisted Annotation:**
-    *   AI suggests potential annotations based on content analysis.
-    *   AI summarizes annotations into concise "knowledge nuggets."
-    *   AI detects conflicting interpretations and flags them for review.
-*   **"Highlight Streams":**  Dynamic, time-sorted feeds of highlights and annotations for specific sections or the entire work.  Users can follow streams of specific people, topics, or expertise.
-*   **"Knowledge Map" Visualization:**  Generate interactive knowledge maps showing connections between highlighted concepts and annotations.  Users can explore the material in a non-linear fashion.
-*   **Content Creator Integration:** Allow content creators to respond to and acknowledge user annotations directly within the system. (e.g., author’s notes, clarifications).
+**1. Data Acquisition & Processing:**
 
-**Pseudocode - Annotation Creation & Display:**
+*   **Input:** Standard video data stream.
+*   **Face/Object Detection:** Utilize existing face/object detection algorithms (as in the provided patent) to identify key entities within each frame.
+*   **Depth Estimation:** Implement a depth estimation algorithm (e.g., using stereo vision principles or monocular depth prediction using AI) to determine the distance of detected faces/objects from the camera.  Accuracy is paramount; consider multi-frame refinement.
+*   **Expression Analysis:**  Integrate facial expression recognition to identify and categorize facial expressions (e.g., happy, sad, angry, neutral).
+*   **Motion Vector Analysis:** Analyze motion vectors within the video to track movement of detected faces/objects.
 
-```
-// Annotation Data Structure
-Annotation {
-  userID: integer;
-  contentID: integer;  // ID of the highlighted content
-  startPosition: integer; //Character/Word position
-  endPosition: integer;
-  annotationType: enum (Summary, Question, Connection, Disagreement, Emotion);
-  annotationText: string;
-  upvotes: integer;
-  downvotes: integer;
-  timestamp: datetime;
-}
+**2. Dynamic Focus Stack Generation:**
 
-// Function: createAnnotation(userID, contentID, startPosition, endPosition, annotationType, annotationText)
-function createAnnotation(userID, contentID, startPosition, endPosition, annotationType, annotationText) {
-  // Validate inputs
-  // Create new Annotation object
-  // Store Annotation in database
-  return Annotation;
-}
+*   **Frame Selection:**  Select a series of frames based on:
+    *   Significant changes in facial expression.
+    *   Notable movement of faces/objects.
+    *   Changes in depth (indicating approaching/receding subjects).
+    *   Priority metrics from the existing patent.
+*   **Depth Map Creation:**  Generate a depth map for each selected frame. This map assigns a depth value to each pixel, representing its distance from the camera.
+*   **Focus Region Definition:** Based on the detected faces/objects and their depth values, define a “focus region” for each frame. This region should encompass the face/object, with a blurred gradient surrounding it to emphasize the subject.
+*   **Stack Composition:**  Create a stacked image by composing the selected frames.
+    *   The 'base' layer is the frame with the highest 'priority metric' (from the existing patent).
+    *   Subsequent frames are blended in based on the change in facial expression, movement, or depth. Larger changes equate to more significant blending. 
+    *   Utilize blending modes (e.g., 'overlay,' 'soft light') to create visually appealing transitions.
+*   **Dynamic Masking:**  Apply a dynamic mask to each frame *before* blending. This mask focuses attention on the face/object while subtly blurring the background.  The mask’s intensity should correspond to the “change” metric – greater change = stronger focus.
 
-// Function: getAnnotations(contentID, startPosition, endPosition, filterOptions)
-function getAnnotations(contentID, startPosition, endPosition, filterOptions) {
-  // Query database for Annotations matching contentID and position range
-  // Apply filterOptions (e.g., annotationType, author, upvotes)
-  // Sort Annotations by helpfulness or timestamp
-  return list of Annotations;
-}
+**3. Summary Generation:**
 
-//Function: displayAnnotations(list of Annotations)
-function displayAnnotations(list of Annotations)
-{
-   //Format and present Annotations to User Interface.
-   //Implement UI elements for Upvotes/Downvotes, author info, etc.
-}
+*   **Temporal Smoothing:** Apply a temporal smoothing filter to the stacked image sequence to reduce jitter and create a more coherent summary.
+*   **Keyframe Extraction:** Extract keyframes from the smoothed sequence based on the magnitude of change in the stacked image.  (Significant changes in the stacked image indicate important moments).
+*   **Output:**  Generate a video summary consisting of the extracted keyframes, displayed with optional captions or annotations.
+
+**Pseudocode (Keyframe Extraction):**
 
 ```
+function extractKeyframes(stackedImageSequence, changeThreshold):
+  keyframeList = []
+  previousFrame = stackedImageSequence[0]
+  keyframeList.append(previousFrame)
 
-**Novelty:** This system goes beyond simple matching and creates a richer, more interactive experience. It's a collaborative knowledge base *built into* the reading experience, promoting deeper understanding and critical thinking. The 'dynamic ecosystem' aspect distinguishes it from static annotation tools. The integration of AI assists and the visual 'knowledge map' add further value.
+  for currentFrame in stackedImageSequence[1:]:
+    frameDifference = calculateFrameDifference(currentFrame, previousFrame)
+    if frameDifference > changeThreshold:
+      keyframeList.append(currentFrame)
+    previousFrame = currentFrame
+
+  return keyframeList
+```
+
+**Possible Enhancements:**
+
+*   **AI-Powered Scene Understanding:** Integrate AI to analyze the scene content and select frames that highlight important events or interactions.
+*   **User Customization:** Allow users to adjust the `changeThreshold` and other parameters to fine-tune the summary generation process.
+*   **3D Reconstruction:**  Leverage depth information to create a 3D reconstruction of the scene, allowing for dynamic camera movements and different viewing angles.
