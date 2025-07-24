@@ -1,76 +1,57 @@
-# 8850002
+# 9471353
 
-## Dynamic Workload-Aware Hashing with Predictive Re-assignment
+## Tenant-Aware Resource Shaping via Predictive Behavioral Analysis
 
-**Concept:** Extend the existing hash-to-target mapping with a predictive component, proactively shifting hash assignments based on anticipated workload fluctuations *before* they impact performance. This moves beyond reactive re-balancing (claims 11-12) to a predictive, anticipatory system.
+**Specification:** A system to proactively adjust resource allocation to tenants within a multi-tenant container based on predicted behavior, anticipating potential faults *before* they manifest. This moves beyond reactive isolation (as described in the provided patent) towards predictive resource *shaping*.
 
-**Specs:**
+**Core Concept:**  Instead of just preventing a tenant’s fault from impacting others, *shape* the tenant's resource access *before* a fault can occur by analyzing historical and real-time behavioral patterns.
 
-1.  **Workload Prediction Module:**
-    *   Input: Real-time metrics (CPU, memory, network I/O) from each computing device, historical workload data (time-series), request type distributions.
-    *   Algorithm: Time-series forecasting (e.g., ARIMA, Prophet) to predict short-term (e.g., 5-15 minute) workload increases/decreases for each device. Also, machine learning models to predict workload based on request type, time of day, user behavior, etc.
-    *   Output: Probability distribution of predicted workload for each computing device.
+**Components:**
 
-2.  **Hash Assignment Policy Engine:**
-    *   Input: Predicted workload distributions from the Workload Prediction Module, current hash-to-target mapping, request rate.
-    *   Policy: A cost function that balances workload distribution (minimizing variance), hash collisions, and re-assignment overhead.  The policy dynamically adjusts the modulo remainder used in the hash mapping (claim 10) *before* a device becomes overloaded.
-    *   Re-assignment Granularity: Not just shifting entire hash ranges (claims 11-12), but *partial* re-assignment based on predicted demand. For example, a range of hash values known to be associated with high-latency tasks could be temporarily shifted to a less loaded device, even if the device's overall workload isn’t critical.
+1.  **Behavioral Profiler:**  
+    *   Monitors each tenant's resource usage (CPU, memory, I/O, network).
+    *   Tracks patterns: request frequency, data access patterns, execution time distributions, error rates, and dependency chains.
+    *   Creates a dynamic behavioral profile for each tenant.  This isn’t just average usage; it’s a multi-dimensional profile capturing variance and correlations.
+    *   Employs machine learning (specifically, time-series analysis and anomaly detection) to predict future resource demands and potential anomalous behaviors.
 
-3.  **Adaptive Hashing Table:**
-    *   Implementation: A distributed hashing table (DHT) is used to store the hash-to-target mapping. This allows for decentralized management and scalability.
-    *   Version Control:  Each hash-to-target mapping is assigned a version number. The DHT maintains multiple versions of the mapping, allowing for smooth transitions during re-assignment.
-    *   Rollback Mechanism:  If a re-assignment proves ineffective (e.g., performance degrades), the system can quickly rollback to the previous version of the mapping.
+2.  **Predictive Resource Allocator:**
+    *   Receives predictions from the Behavioral Profiler.
+    *   Dynamically adjusts resource allocation (CPU shares, memory limits, I/O throttling) for each tenant *before* predicted spikes or anomalies occur.
+    *   Implements a “guard band” –  a buffer of available resources to absorb unexpected bursts or failures. This guard band is dynamically sized based on the confidence level of the Behavioral Profiler's predictions.
+    *   Utilizes a cost function balancing performance (maximizing tenant throughput) and stability (minimizing the impact of faults).
 
-4.  **Request Interception & Redirection:**
-    *   Proxy Layer: A lightweight proxy sits in front of the computing devices.
-    *   Mapping Lookup: The proxy intercepts each request, looks up the target device based on the current hash-to-target mapping, and forwards the request accordingly.
-    *   Version Consistency: The proxy ensures it’s using the latest version of the mapping from the DHT.
+3.  **Adaptive Fault Containment:**
+    *   If a tenant *does* exhibit anomalous behavior despite proactive shaping, a more granular fault containment mechanism activates. This goes beyond simple resource limits.
+    *   Utilizes sandboxing techniques (e.g., lightweight containers or process isolation) to limit the scope of the fault.
+    *   Automatically triggers rollback mechanisms to revert to a known-good state.
 
-**Pseudocode (Hash Assignment Policy Engine):**
+**Pseudocode (Predictive Resource Allocator):**
 
 ```
-function calculate_new_mapping(predicted_workloads, current_mapping, request_rate):
-  // weights for cost function
-  workload_balance_weight = 0.6
-  collision_avoidance_weight = 0.3
-  reassignment_cost_weight = 0.1
+function allocateResources() {
+  for each tenant in tenants {
+    predictedDemand = BehavioralProfiler.predictDemand(tenant);
+    baseAllocation = tenant.defaultAllocation;
+    adjustmentFactor = predictedDemand.spikeFactor; // >1 for anticipated spike, <1 for anticipated lull
 
-  // Calculate cost for current mapping
-  current_cost = calculate_cost(predicted_workloads, current_mapping, workload_balance_weight, collision_avoidance_weight, reassignment_cost_weight)
+    adjustedAllocation = baseAllocation * adjustmentFactor;
 
-  best_mapping = current_mapping
-  best_cost = current_cost
+    // Apply guard band - percentage of total resources available as buffer
+    availableResources = totalResources - allocatedResources;
+    guardBand = availableResources * guardBandPercentage;
 
-  // Iterate through potential mapping adjustments
-  for each possible adjustment in generate_possible_adjustments(current_mapping):
-    new_cost = calculate_cost(predicted_workloads, adjustment, workload_balance_weight, collision_avoidance_weight, reassignment_cost_weight)
-    if new_cost < best_cost:
-      best_cost = new_cost
-      best_mapping = adjustment
+    // Adjust allocation, taking guard band into account
+    finalAllocation = min(adjustedAllocation, finalAllocation + guardBand);
 
-  return best_mapping
-
-function generate_possible_adjustments(current_mapping):
-  // Generates variations of the current mapping.  Could involve:
-  // 1. Shifting hash ranges between devices
-  // 2. Splitting or merging hash ranges
-  // 3. Adjusting the modulo remainder
-  // Limit the number of variations to prevent excessive computation
-
-  // Example:
-  variations = []
-  for i in range(number_of_devices):
-    for j in range(i + 1, number_of_devices):
-      // Create a new mapping where some hash values are shifted from device i to device j
-      new_mapping = create_shifted_mapping(current_mapping, i, j)
-      variations.append(new_mapping)
-
-  return variations
-
-function calculate_cost(predicted_workloads, mapping, workload_balance_weight, collision_avoidance_weight, reassignment_cost_weight):
-  // Calculate the cost based on workload balance, collision avoidance, and reassignment cost.
-  // Use appropriate metrics to quantify each factor.
-  // Return a combined cost value.
+    ResourceAllocator.allocate(tenant, finalAllocation);
+  }
+}
 ```
 
-**Innovation:** Moves beyond *reactive* workload balancing to *proactive* adjustment, minimizing performance impacts and improving resource utilization. The predictive component adds a layer of intelligence and adaptability not present in existing systems.
+**Innovation Highlights:**
+
+*   **Proactive vs. Reactive:**  Shifts from responding to faults to *preventing* them.
+*   **Behavioral Modeling:** Leverages machine learning to understand and predict tenant behavior.
+*   **Dynamic Shaping:** Adjusts resource allocation in real-time based on predicted demands.
+*   **Adaptive Guard Band:** Dynamically sizes the resource buffer based on prediction confidence.
+*   **Cost-Aware Allocation:** Balances performance and stability through a cost function.
