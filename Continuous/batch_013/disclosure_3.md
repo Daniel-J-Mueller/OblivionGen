@@ -1,63 +1,59 @@
-# 11461662
+# 10953551
 
-## Dynamic Subgraph Merging & Splitting
+**Modular, Bio-Inspired Pneumatic Muscle System**
 
-**Specification:** Implement a system for dynamically merging and splitting subgraphs during compilation, guided by real-time performance monitoring during a preliminary 'shadow' execution phase. This moves beyond static subgraph analysis.
+**Concept:** A highly adaptable, modular system of pneumatic actuators mimicking biological muscle arrangements, focusing on distributed force and variable stiffness, moving *beyond* simple bending motions.
 
-**Core Concept:** Instead of pre-defined subgraphs, the system begins with a graph representing the entire neural network.  During a short ‘shadow’ run with representative data (a small batch), the system monitors compute and memory usage *at the operator level*. Based on this live data, it dynamically merges operators into larger subgraphs if they exhibit complementary resource usage patterns (e.g., one is compute-bound, the other memory-bound).  Conversely, it splits operators if they become bottlenecks, even if initially part of a larger subgraph.
+**Specs:**
 
-**Data Structures:**
+*   **Actuator Modules (Muscle Units):**
+    *   Dimensions: 5cm length, 2cm diameter (scalable).
+    *   Construction: A central core of braided, high-strength polymer fibers (e.g., Dyneema). This core provides tensile strength.  Surrounding the core are multiple (6-12) independent, micro-pneumatic chambers formed by a flexible, hyper-elastic membrane (silicone or TPU).
+    *   Chamber Control: Each chamber has an individual micro-fluidic inlet/outlet connected to a central pneumatic manifold.  This allows for precise pressure control of each chamber.
+    *   Sensing: Integrated strain sensors (piezoresistive or capacitive) within the membrane of each chamber provide real-time feedback on chamber expansion and force output.
+*   **Tendons/Attachment Points:**
+    *   Material: Ultra-high-molecular-weight polyethylene (UHMWPE) or similar high-strength, low-friction material.
+    *   Configuration: Each actuator module has multiple (4-6) attachment points for tendons.  Tendons can be connected in parallel or series to create different force/stroke characteristics.
+    *   Quick-Connect Mechanism: Miniature, locking quick-connect fittings at each attachment point for easy reconfiguration of the system.
+*   **Pneumatic Manifold & Control System:**
+    *   Miniature, distributed pneumatic manifold with individual solenoid valves for each actuator chamber.
+    *   Microcontroller-based control system with a real-time operating system.
+    *   Communication: Wireless communication (Bluetooth or Wi-Fi) for remote control and data logging.
+    *   Software:  Open-source software library for controlling the actuators and implementing different control algorithms (e.g., impedance control, force control).
+*   **Modular 'Skeletal' Structure:**
+    *   Lightweight framework constructed from carbon fiber or 3D-printed polymer.
+    *   Mounting points for actuator modules and skeletal elements.
+    *   Designed for flexibility and adaptability.
 
-*   `OperatorNode`:  Represents a single operator in the neural network. Contains:
-    *   `compute_usage`:  Average compute usage during the shadow run.
-    *   `memory_usage`: Average memory usage during the shadow run.
-    *   `latency`: Average execution latency during the shadow run.
-    *   `subgraph_id`: Identifier of the subgraph the operator currently belongs to.
-*   `SubGraph`: Represents a subgraph. Contains:
-    *   `operator_list`: List of `OperatorNode` IDs belonging to the subgraph.
-    *   `total_compute_usage`: Sum of `compute_usage` for all operators.
-    *   `total_memory_usage`: Sum of `memory_usage` for all operators.
-    *   `total_latency`: Sum of `latency` for all operators.
-*   `Graph`: Represents the overall neural network. Contains:
-    *   `operator_map`:  Dictionary mapping operator ID to `OperatorNode`.
-    *   `subgraph_map`: Dictionary mapping subgraph ID to `SubGraph`.
+**Operation:**
 
-**Algorithm:**
+1.  Actuator modules are mounted onto the skeletal structure.
+2.  Tendons are connected to the actuator modules and skeletal elements to define the desired motion.
+3.  The control system regulates the pressure in each actuator chamber, causing the module to expand or contract.
+4.  By coordinating the actuation of multiple modules, complex motions can be achieved.
+5.  Strain sensor feedback is used to maintain precise control and compensate for external disturbances.
 
-1.  **Initialization:** Create `OperatorNode` for each operator in the neural network and assign each to its own initial `SubGraph`.
-2.  **Shadow Execution:** Run a small batch of representative data through the neural network. Monitor `compute_usage`, `memory_usage`, and `latency` for each `OperatorNode`.
-3.  **Subgraph Merging Phase:**
-    *   Iterate through all pairs of adjacent `SubGraph`s.
-    *   Calculate a ‘complementarity score’ based on the ratio of `total_compute_usage` to `total_memory_usage` for each subgraph.  A large difference in ratios indicates potential complementarity.
-    *   If the complementarity score exceeds a threshold:
-        *   Merge the two `SubGraph`s into a single `SubGraph`.
-        *   Update `subgraph_map` and `OperatorNode` to reflect the new subgraph assignment.
-4.  **Subgraph Splitting Phase:**
-    *   Iterate through each `SubGraph`.
-    *   Calculate the ‘bottleneck score’ for each `OperatorNode` within the subgraph: `bottleneck_score = (latency / total_latency) * (compute_usage + memory_usage)`.
-    *   If the `bottleneck_score` exceeds a threshold:
-        *   Split the `SubGraph` into two `SubGraph`s, with the bottleneck operator as the dividing point.
-        *   Update `subgraph_map` and `OperatorNode` to reflect the new subgraph assignments.
-5.  **Iteration:** Repeat steps 3 and 4 for a fixed number of iterations, or until the subgraph configuration stabilizes (i.e., the number of merges/splits falls below a threshold).
-6.  **Compilation:** Compile the neural network based on the final subgraph configuration, applying optimizations appropriate for each subgraph (e.g., compute optimizations for compute-bound subgraphs, memory optimizations for memory-bound subgraphs).
+**Innovation:**
 
-**Pseudocode (Subgraph Merging):**
+*   **Distributed Actuation:**  The use of multiple small actuator chambers, rather than a single large chamber, provides finer control and increased force density.
+*   **Variable Stiffness:** By selectively pressurizing or depressurizing different chambers, the effective stiffness of the actuator can be dynamically adjusted.
+*   **Bio-Inspired Design:**  The modularity and distributed actuation of the system mimic the arrangement of muscles in biological organisms.
+*   **Adaptability:** The system can be easily reconfigured to perform different tasks by changing the arrangement of actuator modules and tendons.
+
+**Pseudocode (basic module control):**
 
 ```
-function merge_subgraphs(subgraph_map, operator_map, merge_threshold):
-  for subgraph_id1, subgraph1 in subgraph_map.items():
-    for subgraph_id2, subgraph2 in subgraph_map.items():
-      if subgraph_id1 != subgraph_id2:
-        # Check if subgraphs are adjacent (e.g., share an operator as input/output)
-        if are_adjacent(subgraph1, subgraph2):
-          complementarity_score = calculate_complementarity(subgraph1, subgraph2)
-          if complementarity_score > merge_threshold:
-            merge_subgraphs(subgraph_id1, subgraph_id2, subgraph_map, operator_map)
+// Module Control Function
+function controlModule(moduleID, pressureSetpoint) {
+    readSensorData(moduleID);
+    calculatePIDOutput(pressureSetpoint, currentPressure);
+    setSolenoidValve(moduleID, PIDOutput);
+}
+
+//Main Control Loop
+while(true){
+    for each module in moduleList {
+        controlModule(module.id, module.setpoint);
+    }
+}
 ```
-
-**Potential Benefits:**
-
-*   Improved compilation speed by reducing the number of static subgraphs.
-*   More accurate identification of compute and memory bottlenecks.
-*   Increased flexibility to adapt to different hardware platforms and model configurations.
-*   Dynamic optimization based on observed runtime behavior.
