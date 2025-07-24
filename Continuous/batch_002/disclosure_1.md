@@ -1,47 +1,47 @@
-# 9158577
+# 9158326
 
-**Dynamic Application Sharding with Predictive Resource Allocation**
+## Secure Hardware State Replication & Rollback
 
-**Concept:** Expand upon the idea of concurrent application versions by introducing *sharding* – dividing a single application into multiple independently scalable instances – and *predictive* resource allocation based on real-time usage patterns.  Rather than simply deploying a second *version* of an application, dynamically create *shards* of the existing application, and scale those shards based on anticipated load.
+**Concept:** Extend the hardware latch/master latch system not just for *preventing* modification, but for securely replicating and rolling back hardware configurations. This builds on the idea of a fixed state until power cycle, adding layers of verification and recovery.
 
 **Specs:**
 
-*   **Shard Manager Component:** A centralized service responsible for creating, monitoring, and terminating application shards.
-*   **Load Prediction Engine:** An AI/ML model trained on historical application usage data (requests per second, resource consumption) and external factors (time of day, day of week, marketing campaigns, etc.). Outputs predicted load for the next X minutes/hours.
-*   **Shard Creation Policy:** Defines rules for shard creation:
-    *   *Trigger Threshold:* Predicted load exceeds a certain threshold.
-    *   *Shard Count:* Number of shards to create. Determined dynamically based on predicted load and resource availability.
-    *   *Shard Configuration:*  Specifies the resources (CPU, memory, network bandwidth) allocated to each shard.
-*   **Traffic Distribution Mechanism:**  A sophisticated load balancer capable of distributing traffic across all active shards based on shard health, load, and proximity to the user.  Can employ weighted round robin, least connections, or more advanced algorithms.
-*   **Health Monitoring:** Each shard reports its health and resource utilization to the Shard Manager.
-*   **Auto-Scaling:**  Based on real-time monitoring and load predictions, the Shard Manager automatically creates or terminates shards to maintain optimal performance and resource utilization.
-*   **Session Affinity:** Maintain user sessions on specific shards to improve performance and reduce latency.
-*   **Rollback Mechanism:** If a new shard encounters errors, automatically redirect traffic back to existing shards and terminate the problematic shard.
-*   **Resource Pooling:** Maintain a pool of pre-configured virtual machines or containers that can be quickly spun up as new shards.
+*   **Hardware Component:** "Configuration Shadow Register" (CSR) – a dedicated register set mirroring critical hardware configuration parameters (e.g., memory timings, PCIe lane assignments, boot order).  This shadow register set is physically separate from the actively used configuration registers.
+*   **CSR Access:** Access to the CSR is restricted. Only the offload engine (as described in the patent) and a designated “Verification Engine” (VE) have write access. Normal system processes have read-only access for comparison.
+*   **Verification Engine (VE):** A dedicated hardware module (FPGA-based or ASIC) responsible for:
+    *   Periodically (or on-demand) reading both active configuration registers *and* the CSR.
+    *   Performing a cryptographic hash (SHA-256 or similar) of both register sets.
+    *   Comparing the hashes.
+    *   Generating an alert if hashes do not match.
+*   **Rollback Mechanism:** If a configuration mismatch is detected (hashes differ) *and* a pre-defined “rollback trigger” is activated (e.g., system instability detected by watchdog timer, operator intervention), the VE initiates a hardware-level configuration restoration. This is done by:
+    *   Directly writing the contents of the CSR to the active configuration registers.
+    *   Asserting a “safe reset” signal to the host computing device to ensure a clean transition.
+*   **Master Latch Extension:** The master latch now controls not only modification prevention, but also the validity of the CSR.  A new bit within the master latch (“CSR Valid”) indicates whether the CSR contains a known-good configuration.  If “CSR Valid” is cleared, the VE will refuse to perform rollback, preventing the use of a corrupted CSR.
+*   **CSR Population:** The CSR is populated during a controlled "golden configuration" phase *before* deployment.  This phase is initiated by the offload engine and requires physical access to the hardware.
 
-**Pseudocode (Shard Manager):**
+**Pseudocode (VE – Configuration Verification):**
 
 ```
-function manageShards():
-  while (true):
-    predictedLoad = loadPredictionEngine.predictLoad()
-    currentShardCount = getShardCount()
+FUNCTION VerifyConfiguration()
+  active_config = ReadActiveConfigurationRegisters()
+  shadow_config = ReadShadowConfigurationRegisters()
+  active_hash = CalculateHash(active_config)
+  shadow_hash = CalculateHash(shadow_config)
 
-    if (predictedLoad > threshold AND currentShardCount < maxShards):
-      numNewShards = calculateNewShards(predictedLoad)
-      for i in range(numNewShards):
-        newShard = createShard(resourceConfiguration)
-        addShard(newShard)
+  IF (active_hash != shadow_hash) THEN
+    LogConfigurationMismatch()
+    IF (RollbackTriggered()) THEN
+      RestoreConfigurationFromShadow()
+      LogConfigurationRestored()
+    ENDIF
+  ENDIF
+END FUNCTION
 
-    elif (predictedLoad < threshold AND currentShardCount > minShards):
-      shardToTerminate = selectShardToTerminate()
-      terminateShard(shardToTerminate)
-      removeShard(shardToTerminate)
-
-    updateLoadBalancerConfiguration() # Ensure traffic distribution is correct
-    sleep(monitoringInterval)
+FUNCTION RestoreConfigurationFromShadow()
+  // Direct hardware write of shadow configuration to active registers
+  WriteActiveConfigurationRegisters(shadow_config)
+  AssertSafeReset()
+END FUNCTION
 ```
 
-**Innovation Details:**
-
-This goes beyond simply running two versions (A/B testing). This aims for *continuous* dynamic scaling of the *application itself* into multiple independent units. It allows for more granular control over resource allocation and potentially better performance under high load. The predictive element is key – proactively scaling *before* load increases, rather than reacting to it.  The emphasis isn't on versioning, but on *instancing*.  It's like creating a dynamically expanding swarm of application servers.
+**Rationale:** This adds a layer of resilience beyond simply preventing unauthorized modification. Even if a configuration drift occurs due to hardware failure or a subtle bug, the system can automatically revert to a known-good state.  The physical separation of the CSR and the controlled population process provide a strong defense against malicious attacks targeting configuration data. The 'safe reset' signal ensures that the rollback is performed cleanly without leaving the system in an unstable state.
