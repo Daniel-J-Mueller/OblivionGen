@@ -1,72 +1,59 @@
-# 11704714
+# 10165036
 
-## Dynamic Query Expansion with Generative Scene Context
+## Dynamic Resource Partitioning via Predictive Execution
 
-**Core Concept:** Augment tail queries not just with *similar* head queries, but with generative contextual scene descriptions derived from predicted user intent, then use these scenes to expand the search space *before* reformulation.
+**Specification:** A system enabling client devices to dynamically partition computational resources – both local and remote – based on *predicted* execution paths of webpage content. This moves beyond simply determining *where* to execute (local vs. remote) to *how much* of each resource to allocate *before* full rendering/execution begins.
 
-**Rationale:** The patent focuses heavily on mapping queries to existing historical data. This design introduces *new* search space based on predicted *situations* a user might be in. This moves beyond simply finding what others searched for, to anticipating needs.
+**Core Concept:** Webpages are analyzed (client-side, pre-rendering) to build an execution dependency graph. This graph isn’t just about function calls, but also estimates *resource intensity* (CPU, memory, network bandwidth) for each node (function/component).  A predictive model (potentially a lightweight ML model residing on the client) uses this graph to forecast resource requirements for *multiple* potential execution paths – branching logic, user interaction variations.  
 
-**System Specs:**
+**System Components:**
 
-1.  **Intent Prediction Module:**
-    *   Input: Tail query (text string).
-    *   Process: Employ a large language model (LLM) fine-tuned for intent classification.  Outputs a probability distribution over pre-defined intent categories (e.g., "gift-giving," "home improvement," "outdoor activity"). Also outputs a ‘scene descriptor prompt’ – a text string summarizing the likely user scenario.
-    *   Output: Intent category probabilities, Scene Descriptor Prompt.
+1.  **Resource Estimator (Client-Side):**  A component within the browser responsible for analyzing webpage code (HTML, JavaScript, CSS) and estimating the resource intensity of each function/component. It utilizes heuristics based on code complexity, data size, and known performance characteristics of common web technologies.  It outputs a probabilistic resource demand curve for each potential execution path.
 
-2.  **Scene Generation Module:**
-    *   Input: Scene Descriptor Prompt.
-    *   Process: Utilize a text-to-image diffusion model (e.g., Stable Diffusion) to generate a representative image of the predicted user scenario. This image acts as a visual 'scene context'.
-    *   Output: Image file (e.g., PNG, JPEG).
+2.  **Predictive Execution Planner (Client-Side):** Uses the probabilistic resource demand curves from the Resource Estimator to generate a resource allocation plan. This plan specifies how much local CPU/memory/bandwidth to reserve, and how much remote processing to request from the network computing provider. The plan accounts for potential contention with other browser tabs/applications.
 
-3.  **Multi-Modal Embedding Space:**
-    *   Creation:  Train a multi-modal embedding model (e.g., CLIP) to map both text queries (head and tail) *and* generated scene images into a common embedding space.
-    *   Process: The embedding space is crucial.  Queries and scenes are represented as vectors.
+3.  **Dynamic Resource Broker (Network Computing Provider):** A server-side component that manages remote processing resources and dynamically allocates them to client devices based on the resource allocation plans. It can scale resources up or down as needed, and prioritize requests based on client priority and available capacity.
 
-4.  **Dynamic Query Expansion:**
-    *   Input: Tail query embedding, scene image embedding.
-    *   Process:
-        1.  Retrieve the *k* nearest neighbor head query embeddings to the tail query embedding.
-        2.  Calculate the cosine similarity between the tail query embedding and the scene image embedding.
-        3.  Expand the initial set of nearest neighbors by adding the *k* nearest neighbor head query embeddings to the scene image embedding.  This introduces contextual relevance beyond direct query similarity.
-        4.  Re-rank the expanded set of head queries based on a weighted combination of cosine similarity to both the tail query and the scene image.
+4. **Execution Orchestrator (Client & Server):** Coordinates execution of components either locally or remotely according to the execution plan. This component handles serialization/deserialization of data, and ensures that components can communicate with each other seamlessly.
 
-5.  **Reformulation & Search:**
-    *   Input: Re-ranked list of head queries.
-    *   Process: Select the top *n* head queries.  Use these to generate a reformulated query.
-    *   Output: Reformulated query.
+**Pseudocode (Client-Side – Predictive Execution Planner):**
 
-**Pseudocode:**
+```
+function generateResourcePlan(executionDependencyGraph):
+  resourceDemandCurves = analyzeGraph(executionDependencyGraph) //Generate resource requirements per node
 
-```python
-def expand_query(tail_query, scene_image, embedding_model, k, n):
-    tail_embedding = embedding_model.encode(tail_query)
-    scene_embedding = embedding_model.encode(scene_image)
+  potentialExecutionPaths = findPossiblePaths(executionDependencyGraph)
+  
+  for path in potentialExecutionPaths:
+    predictedResourceDemand = calculateDemand(path, resourceDemandCurves)
 
-    # Find nearest head query embeddings to tail query
-    tail_neighbors = find_nearest_neighbors(tail_embedding, head_query_embeddings, k)
-
-    # Find nearest head query embeddings to scene image
-    scene_neighbors = find_nearest_neighbors(scene_embedding, head_query_embeddings, k)
-
-    # Combine and re-rank
-    combined_neighbors = tail_neighbors + scene_neighbors
-    ranked_neighbors = re_rank(combined_neighbors, tail_embedding, scene_embedding)
-
-    # Select top n for reformulation
-    top_n_queries = [query for query, score in ranked_neighbors[:n]]
-
-    # Reformulate (implementation detail - could be averaging, etc.)
-    reformulated_query = " ".join(top_n_queries)
-
-    return reformulated_query
+    if predictedResourceDemand.cpu > localCPUThreshold:
+      remoteCPUAllocation[path] = predictedResourceDemand.cpu - localCPUThreshold
+    else:
+      remoteCPUAllocation[path] = 0
+      
+    if predictedResourceDemand.memory > localMemoryThreshold:
+      remoteMemoryAllocation[path] = predictedResourceDemand.memory - localMemoryThreshold
+    else:
+      remoteMemoryAllocation[path] = 0
+      
+  return remoteCPUAllocation, remoteMemoryAllocation
 ```
 
-**Hardware Requirements:**
+**Data Flow:**
 
-*   High-performance GPU for LLM and diffusion model inference.
-*   Large RAM for storing embeddings and model weights.
-*   Fast storage for model and data access.
+1.  Browser loads webpage.
+2.  Resource Estimator analyzes webpage code.
+3.  Predictive Execution Planner generates a resource allocation plan.
+4.  Browser sends a request to the Dynamic Resource Broker, specifying the requested remote resources.
+5.  Dynamic Resource Broker allocates resources and provides a connection to the client.
+6.  Browser begins rendering/executing the webpage, dynamically allocating resources based on the execution plan.
+7.  Execution Orchestrator monitors resource usage and adjusts allocations as needed.
 
-**Novelty:**
+**Innovation:**
 
-This approach moves beyond purely lexical or historical query reformulation.  By generating scene context, it attempts to understand the *situation* driving the query, opening the door to more relevant and anticipatory search results. The combination of multi-modal embeddings and scene-based expansion is a unique contribution.
+*   **Proactive Resource Allocation:** Moves beyond reactive resource allocation to proactively reserve resources based on predicted demand.
+*   **Granular Control:** Enables fine-grained control over resource allocation, optimizing performance and reducing latency.
+*   **Scalability:**  Leverages the scalability of the network computing provider to handle fluctuating resource demands.
+*   **Adaptive Execution:** Allows the system to adapt to changing conditions, such as network congestion or server load.
+* **Client Side Prediction:** Enables prediction without server interaction for speed and privacy.
