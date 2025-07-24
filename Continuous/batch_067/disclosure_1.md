@@ -1,49 +1,70 @@
-# 11079771
+# 10108274
 
-## Autonomous Vehicle Swarm "Choreography" via Predictive Resonance
+**Dynamic Contextual Overlay System**
 
-**System Goal:** Implement a system where autonomous vehicles (AVs) proactively adjust their operational strategies *not* based solely on immediate surroundings or pre-defined routes, but on *predicted* resonant patterns of collective behavior. This aims to achieve emergent, fluid coordination surpassing traditional centralized control or localized negotiation.
+**Concept:** Expand the automatic supplemental content presentation to include *dynamic* overlays triggered not only by device orientation change but also by detected user gaze, detected objects in the environment (via camera), and detected ambient sound. This creates a multi-sensory, context-aware information system layered over the primary content.
 
-**Inspiration:** The patent details coordinating AVs based on strategy modes and operational goals. This design expands on the idea of strategy modes by introducing predictive modeling of collective "swarm" behavior to anticipate conflicts *before* they arise. It's about moving beyond reactive adjustments to proactive "choreography".
+**Specs:**
 
-**Core Concept: "Resonance Fields"**
+*   **Hardware:**
+    *   Device with orientation sensor (accelerometer, gyroscope).
+    *   Front-facing camera with object/facial recognition capabilities.
+    *   Microphone array for ambient sound analysis.
+    *   High-refresh-rate display capable of displaying semi-transparent overlays.
+*   **Software Modules:**
+    *   *Orientation Detection Module:* Identifies device orientation changes (landscape/portrait).
+    *   *Visual Analysis Module:* Processes camera feed to identify objects, faces, and user gaze direction.  Output: Bounding boxes of identified objects, gaze vector, facial expression analysis.
+    *   *Audio Analysis Module:*  Analyzes ambient sound for keywords, music genres, or specific sound events. Output: Detected keywords, genre classification, sound event identification.
+    *   *Contextual Data Fusion Module:* Combines data from all three modules.  Uses weighted algorithms (adjustable via user settings) to prioritize data.
+    *   *Content Recommendation Engine:* Accesses a content database (local or cloud-based).  Based on fused contextual data, recommends relevant supplemental content.
+    *   *Overlay Rendering Engine:*  Responsible for displaying supplemental content as semi-transparent overlays on top of the primary content.  Supports variable opacity and positioning.
 
-Each AV continuously models the predicted future trajectories and strategy modes of neighboring AVs. This creates a localized “Resonance Field” – a probabilistic map representing potential collective behaviors. The field isn't a rigid prediction, but a weighted distribution of possibilities. AVs then adjust their own strategy modes and actions to maximize “constructive resonance” – aligning with the most probable and desirable collective outcomes – and minimize “destructive resonance” – predicted conflicts or inefficiencies.
+*   **Overlay Types:**
+    *   *Orientation-Triggered Overlays:* Similar to the existing patent, triggered by device rotation.
+    *   *Gaze-Triggered Overlays:* When the user looks at a specific object on the screen, an overlay appears with additional information.
+    *   *Object-Triggered Overlays:* If the camera detects a real-world object (e.g., a landmark, product, book cover), an overlay appears with information about it.  Requires image recognition database.
+    *   *Audio-Triggered Overlays:* When the device detects a specific sound (e.g., a song playing in the background), an overlay appears with information about the song or artist.
 
-**System Specifications:**
-
-1.  **Resonance Modeling Unit (RMU):**
-    *   Input: Real-time data from AV sensors (position, velocity, intended trajectory, strategy mode). Historical traffic data. Environmental data (weather, road conditions).
-    *   Process: Utilizes a recurrent neural network (RNN) – specifically, a Long Short-Term Memory (LSTM) network – trained on vast datasets of AV interactions. The LSTM predicts the future behavior of neighboring AVs based on current state. Models are localized; each AV maintains its own prediction of its immediate surroundings.
-    *   Output: A probabilistic map representing predicted future states of neighboring AVs. This map is structured as a grid, with each cell containing a weighted probability distribution of possible AV actions (strategy modes) within that cell at future time steps.
-
-2.  **Resonance Alignment Engine (RAE):**
-    *   Input: Resonance Field from RMU. Operational Goal (defined by a central system or individual AV). Cost function defining desirable collective behaviors (e.g., minimizing collisions, maximizing throughput, reducing energy consumption).
-    *   Process:  A reinforcement learning (RL) algorithm – specifically, a Proximal Policy Optimization (PPO) agent – analyzes the Resonance Field and evaluates different action combinations for the AV. The PPO agent seeks to maximize the cumulative reward based on the Cost Function, considering both short-term and long-term consequences.
-    *   Output:  Recommended adjustments to AV strategy mode and trajectory. These recommendations are presented as probabilistic action vectors, indicating the likelihood of different actions being taken.
-
-3.  **Decentralized Execution Layer (DEL):**
-    *   Input: Probabilistic action vectors from RAE.
-    *   Process:  The AV executes the recommended actions based on a randomized sampling from the probabilistic action vectors. This introduces a degree of stochasticity, preventing rigid coordination and enabling robustness to unforeseen events.  A safety override module continuously monitors the AV’s environment and intervenes if the executed actions pose an immediate risk.
-    *   Output:  Modified AV trajectory and strategy mode.
-
-**Pseudocode (RAE – Resonance Alignment Engine):**
+*   **Pseudocode (Contextual Data Fusion & Content Recommendation):**
 
 ```
-function align_to_resonance(resonance_field, operational_goal, cost_function):
-    policy = PPO agent initialized with operational_goal
-    for time_step in future_horizon:
-        action_probabilities = policy.predict(resonance_field)
-        reward = cost_function(resonance_field, action_probabilities)
-        policy.update(reward)
-    return action_probabilities
+function processContextualData(orientationData, visualData, audioData)
+  context = {}
+
+  if orientationData.orientationChanged:
+    context.orientation = orientationData.newOrientation
+
+  if visualData.objectsDetected:
+    for object in visualData.objects:
+      context[object.name] = object.boundingBox
+
+  if visualData.gazeDetected:
+    context.gaze = visualData.gazeDirection
+
+  if audioData.keywordsDetected:
+    for keyword in audioData.keywords:
+      context[keyword] = audioData.confidence
+
+  return context
+
+function recommendContent(context):
+  // Access content database based on context
+  relevantContent = queryDatabase(context)
+
+  // Prioritize content based on confidence levels/weights
+  sortedContent = sortContent(relevantContent, context)
+
+  return sortedContent[0] // Return top recommendation
 ```
 
-**Novelty & Differentiation:**
+*   **User Settings:**
+    *   Adjust weighting of each sensory input (orientation, vision, audio).
+    *   Enable/disable specific overlay types.
+    *   Select preferred content sources.
+    *   Adjust overlay opacity and position.
 
-This system differs from existing AV coordination methods in several key ways:
-
-*   **Predictive, Not Reactive:**  Focuses on anticipating collective behavior rather than responding to immediate events.
-*   **Emergent Coordination:**  Enables fluid, decentralized coordination without requiring a central authority.
-*   **Resonance-Based Alignment:**  Uses the concept of “resonance” to guide collective behavior, promoting synergy and efficiency.
-*   **Stochastic Execution:** Introduces a degree of randomness to enhance robustness and adaptability.
+*   **Example Use Cases:**
+    *   Watching a cooking video in portrait mode triggers an overlay with ingredient lists and nutritional information.
+    *   Looking at a building through the camera triggers an overlay with historical facts and architectural details.
+    *   Listening to a song triggers an overlay with lyrics and artist biography.
+    *   Rotating the device while reading an article triggers an overlay with related articles and author information.
