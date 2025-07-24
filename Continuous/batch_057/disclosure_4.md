@@ -1,56 +1,48 @@
-# 11939164
+# 9396394
 
-## Dynamic Item Characterization & Predictive Sortation
+## Multi-Spectral Iris Projection & Dynamic Masking
 
-**Concept:** Integrate real-time item characterization *during* singulation to predict optimal sortation destinations *before* items reach the sortation system, minimizing bottlenecks & maximizing throughput.
+**Concept:** Expand the image data fusion beyond simple Laplacian pyramids to create a dynamic, projected iris map. This map isn't a static image, but a constantly updating 3D representation derived from multiple spectral bands, used to enhance feature extraction and combat spoofing.
 
 **Specs:**
 
-*   **Sensor Suite (Integrated into Singulation Conveyors):**
-    *   **3D Camera System:** High-resolution depth sensing to determine item dimensions, orientation, and potential fragility.
-    *   **Weight Sensors:** Integrated into conveyor sections to determine item weight.
-    *   **Spectroscopic Analysis (Optional):**  Near-infrared (NIR) or Raman spectroscopy for material identification (e.g., plastic type, cardboard grade) to inform downstream processing (e.g., recycling streams).
-    *   **RFID/Barcode Scanner:** Standard identification capture integrated with the sensor data stream.
-*   **Edge Computing Unit:**  Embedded processor (e.g., NVIDIA Jetson) to process sensor data in real-time.
-*   **AI/ML Model:** Trained Convolutional Neural Network (CNN) for object recognition, dimension estimation, and material classification.  Reinforcement Learning (RL) for dynamic adjustment of sortation predictions based on system performance.
-*   **Predictive Sortation Algorithm:**
-    1.  Receive raw sensor data during singulation.
-    2.  Process data with the AI/ML model to determine item characteristics (dimensions, weight, material, destination priority).
-    3.  Based on characteristics & current system status (container fill levels, downstream demand), predict the optimal sortation destination (container ID, priority level).
-    4.  Communicate the destination prediction to the sortation system *before* the item arrives.
-*   **Sortation System Integration:**  The sortation system receives the predicted destination & prepares the appropriate container/divert mechanism.
-*   **Dynamic Adjustment:**  Monitor sortation performance (e.g., mis-sort rates, container fill times).  Use RL to refine the prediction model & optimize sortation strategies.
-*   **Data Logging & Analytics:**  Record all sensor data, predictions, & sortation outcomes.  Provide a dashboard for visualizing system performance & identifying areas for improvement.
+*   **Sensor Array:** Utilize a sensor array capturing at minimum: Visible Light (400-700nm), Near-Infrared (700-1000nm), and Shortwave Infrared (1000-1700nm). Consider adding a polarized light sensor.
+*   **Projection System:** Integrate a micro-projector capable of emitting light in the same spectral bands as the sensor array. This projector isn't for *displaying* an image, but for creating structured illumination patterns.
+*   **Structured Illumination Patterns:** Implement algorithms generating dynamic patterns (e.g., coded light, phase shifting) projected onto the iris. These patterns interact with the iris's texture and subsurface features.
+*   **Multi-Spectral Data Acquisition:** Capture images from all sensors *simultaneously* while projecting the structured illumination. This provides a temporal dimension to the data.
+*   **3D Iris Reconstruction:** Utilize data from multiple wavelengths and projection patterns to reconstruct a 3D model of the iris. Algorithms like stereo vision or structured light scanning can be adapted.
+*   **Dynamic Masking:** Generate a dynamic mask based on the 3D model. This mask highlights features crucial for authentication and suppresses noise or artifacts. The mask isn’t fixed but shifts and adapts to lighting conditions and iris movement.
+*   **Feature Vector Generation:** Extract feature vectors from the masked, 3D iris model. Focus on features derived from the interaction between the projected patterns and the iris's texture.
+*   **Spoofing Detection:** Integrate spoofing detection algorithms that analyze the interaction between the projected patterns and the captured images. Real iris tissue will interact with the patterns differently than a fake iris (e.g., lack of subsurface scattering, incorrect refractive index).
+*   **Hardware Integration:** Compact, low-power design suitable for handheld devices or security access points.
 
-**Pseudocode (Predictive Sortation Algorithm):**
+**Pseudocode - Dynamic Mask Generation:**
 
 ```
-FUNCTION predict_sortation_destination(item_sensor_data)
-    item_characteristics = AI_MODEL.process_sensor_data(item_sensor_data)
-    destination = SORTATION_ALGORITHM.determine_optimal_destination(
-        item_characteristics,
-        current_container_fill_levels,
-        downstream_demand_forecast
-    )
-    RETURN destination
-END FUNCTION
+// Input: 3D Iris Model (point cloud), Multi-Spectral Image Data
+// Output: Dynamic Mask (binary image)
 
-FUNCTION determine_optimal_destination(item_characteristics, container_fill_levels, downstream_demand_forecast)
-    // Prioritize containers with available capacity
-    // Consider downstream demand for specific items
-    // Adjust priority based on item fragility (e.g., fragile items to less crowded containers)
-    // Implement a dynamic weighting scheme to balance these factors
+function generateDynamicMask(irisModel, spectralData) {
 
-    best_container = SELECT_CONTAINER(container_fill_levels, downstream_demand_forecast, item_characteristics)
-    RETURN best_container
-END FUNCTION
+  // 1. Calculate surface normals for each point in irisModel.
+
+  // 2. Calculate light intensity at each point based on:
+  //    - Spectral data (wavelength-dependent absorption/reflection)
+  //    - Angle between surface normal and light source (simulated or measured)
+
+  // 3. Identify high-contrast regions (significant light intensity differences).
+  //    - Use a threshold based on statistical analysis of intensity values.
+
+  // 4. Apply morphological operations (erosion, dilation) to refine the mask.
+
+  // 5. Generate a confidence map based on the quality of the 3D reconstruction
+  //    and the consistency of the spectral data.
+
+  // 6. Combine the binary mask and the confidence map to create the final
+  //    dynamic mask.  Higher confidence = more weight in the mask.
+
+  return dynamicMask
+}
 ```
 
-**Potential Benefits:**
-
-*   Increased throughput
-*   Reduced bottlenecks
-*   Improved sortation accuracy
-*   Optimized container utilization
-*   Enhanced system adaptability to changing demand
-*   Proactive adjustments to account for product variability
+**Innovation Rationale:** Current iris recognition relies heavily on 2D image processing, making it vulnerable to high-resolution spoofing attacks. This system moves beyond 2D to capture a true 3D representation of the iris, enhancing security and accuracy. The dynamic mask further improves performance by focusing feature extraction on the most informative regions. The interaction between projected patterns and the iris texture provides a unique biometric signature that is difficult to replicate.
