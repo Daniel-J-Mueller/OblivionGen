@@ -1,62 +1,70 @@
-# 11663058
+# 12205601
 
-## Event Source Profiling & Adaptive Bloom Filter Granularity
+## Adaptive Fingerprinting Based on Perceptual Audio Event Detection
 
-**Concept:** Enhance the bloom filter system by profiling event sources to dynamically adjust the granularity of filtering applied to each. Some sources may generate high-volume, predictable events, while others produce rare, complex events. A 'one-size-fits-all' bloom filter approach isn’t optimal. This system builds source profiles and adapts filter settings accordingly.
+**System Specifications:**
 
-**Specifications:**
+*   **Hardware:** Existing audio/video processing pipeline with access to decoded audio streams. Dedicated hardware accelerator for fast event detection (optional, but recommended).
+*   **Software:**  Audio analysis library (e.g., Librosa, Essentia), Machine Learning framework (e.g., TensorFlow, PyTorch), Fingerprinting algorithm implementation.
 
-**1. Source Profiler Module:**
+**Innovation Description:**
 
-*   **Data Collection:** Each event source reports (or has automatically collected) metadata with each event: source ID, event type ID, event complexity score (calculated based on data payload size/structure), event rate (events/second).
-*   **Statistical Analysis:** The profiler maintains a running average of event rates, complexity, and type distributions for each source.  Uses exponential smoothing to give more weight to recent data.
-*   **Source Classification:** Classifies sources into tiers (e.g., High-Volume/Low-Complexity, Medium-Volume/Medium-Complexity, Low-Volume/High-Complexity) based on the statistical analysis.  Tier boundaries are configurable.
-*   **Output:** Generates a Source Profile object containing: Source ID, Tier, Average Event Rate, Average Complexity Score, Event Type Distribution.
+Instead of uniformly fingerprinting decoded audio/video, the system dynamically adjusts fingerprinting granularity based on detected *perceptual audio events*.  These events aren't necessarily specific *sounds*, but represent changes in the *perceptual* character of the audio – things a human would notice.
 
-**2. Adaptive Bloom Filter Manager:**
+**Operational Details:**
 
-*   **Bloom Filter Allocation:** Maintains a pool of bloom filters with varying sizes and false positive rates.  Larger filters reduce false positives but consume more memory.
-*   **Tier-Based Filter Assignment:**  Assigns a bloom filter to each source based on its assigned Tier:
-    *   **High-Volume/Low-Complexity:** Small, highly optimized bloom filter with a higher false positive rate.  Fast processing is prioritized.
-    *   **Medium-Volume/Medium-Complexity:** Medium-sized bloom filter with a balanced false positive rate and processing speed.
-    *   **Low-Volume/High-Complexity:** Large, highly accurate bloom filter with a lower false positive rate. Accuracy is prioritized, as the cost of false positives is higher.
-*   **Dynamic Adjustment:** Monitors event rates and complexity scores in real-time. If a source's behavior changes significantly (e.g., high-volume source suddenly sends complex events), the system automatically re-allocates a bloom filter with appropriate characteristics.
-*   **Filter Update Mechanism:**  Similar to the original patent, updates are propagated to the event sources. However, the update message includes the new bloom filter *and* a signal indicating the new filter characteristics (size, false positive rate).
+1.  **Perceptual Event Detection:**
+    *   Analyse the audio stream for features like spectral centroid, spectral flux, zero-crossing rate, rhythmic patterns, and harmonicity.
+    *   Employ a machine learning model (trained on a diverse dataset of audio) to classify segments of audio into 'event' categories (e.g., 'speech start', 'music transition', 'loud impact', 'silence').
+    *   A "perceptual significance" score is assigned to each event. (Higher score = more noticeable change).
 
-**3. Event Source Adaptation:**
+2.  **Adaptive Fingerprinting:**
+    *   **High Significance Events:** The audio segment *surrounding* a high-significance event undergoes *high-resolution* fingerprinting. This means a larger number of feature vectors are extracted and hashed, providing a more robust and precise fingerprint.
+    *   **Low Significance Events/Stable Audio:** During stable or low-significance segments, a *lower-resolution* fingerprinting scheme is used. Fewer feature vectors are extracted, reducing computational load.  The fingerprinting may also use a more lossy compression of features.
+    *   **Dynamic Adjustment:** The fingerprinting resolution adapts *in real-time* as the audio stream is processed.
 
-*   **Filter Reception:** Event sources receive updated bloom filters and associated characteristics.
-*   **Filter Switching:** Event sources seamlessly switch to the new filter.
-*   **Resource Allocation:** Event sources allocate resources (memory, CPU) dynamically based on the size of the received filter.
+3.  **Fingerprint Compilation:**
+    *   The system compiles a 'tiered' fingerprint. It includes both high-resolution fingerprints for significant events and lower-resolution fingerprints for stable segments.
+    *   Metadata indicates the resolution level of each fingerprint segment.
 
-**Pseudocode (Adaptive Bloom Filter Manager):**
+**Pseudocode:**
 
 ```
-function assign_bloom_filter(source_id):
-  source_profile = get_source_profile(source_id)
-  tier = classify_source(source_profile)
+// Input: Decoded audio stream
+// Output: Tiered fingerprint & metadata
 
-  if tier == "HighVolumeLowComplexity":
-    filter = get_bloom_filter("small", "high_false_positive")
-  elif tier == "MediumVolumeMediumComplexity":
-    filter = get_bloom_filter("medium", "balanced_false_positive")
-  elif tier == "LowVolumeHighComplexity":
-    filter = get_bloom_filter("large", "low_false_positive")
-  else:
-    filter = get_bloom_filter("default", "balanced_false_positive")
+function adaptiveFingerprinting(audioStream) {
 
-  return filter
+  tieredFingerprint = []
+  metadata = []
+  currentSegment = audioStream.getNextSegment()
 
-function monitor_source_behavior(source_id):
-  # collect event statistics (rate, complexity)
-  # if statistics deviate significantly from historical data:
-  #   reclassify_source(source_id)
-  #   new_filter = assign_bloom_filter(source_id)
-  #   send_updated_filter(source_id, new_filter)
+  while (currentSegment != null) {
+    perceptualEvent = detectPerceptualEvent(currentSegment)
+    significanceScore = perceptualEvent.getSignificanceScore()
+
+    if (significanceScore > threshold) {
+      // High-resolution fingerprinting
+      highResFingerprint = generateHighResFingerprint(currentSegment)
+      tieredFingerprint.append(highResFingerprint)
+      metadata.append({"resolution": "high", "timestamp": currentSegment.timestamp})
+    } else {
+      // Low-resolution fingerprinting
+      lowResFingerprint = generateLowResFingerprint(currentSegment)
+      tieredFingerprint.append(lowResFingerprint)
+      metadata.append({"resolution": "low", "timestamp": currentSegment.timestamp})
+    }
+
+    currentSegment = audioStream.getNextSegment()
+  }
+
+  return tieredFingerprint, metadata
+}
 ```
 
-**Additional Considerations:**
+**Potential Benefits:**
 
-*   **Bloom Filter Chaining:**  For sources with highly variable event types, consider chaining multiple bloom filters, each specialized for a particular event type.
-*   **Source-Specific Updates:**  Updates to the bloom filter can be targeted to specific sources, reducing unnecessary network traffic.
-*   **Feedback Loop:**  Implement a feedback loop where event sources report false positives to the Bloom Filter Manager, allowing it to fine-tune filter parameters.
+*   **Improved Accuracy:** High-resolution fingerprinting of salient audio events enhances matching accuracy.
+*   **Reduced Computational Load:** Lower-resolution fingerprinting of stable segments reduces processing demands.
+*   **Robustness:** Tiered fingerprinting provides a balance between detail and efficiency.  More tolerant to distortions.
+*   **Adaptive Streaming:** Enable fingerprinting only when changes occur to minimize bandwidth overhead for remote devices.
