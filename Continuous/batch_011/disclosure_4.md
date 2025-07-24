@@ -1,71 +1,45 @@
-# 11029059
+# 10791132
 
-## Modular Bio-Integrated Cooling System
+## Adaptive Packet Fingerprinting with Behavioral Anomaly Detection
 
-**Concept:** Expand the passive cooling concept to incorporate bio-integration, leveraging plant transpiration for enhanced cooling and air purification within enclosed environments. The system utilizes a modular, layered approach, integrating plant growth with the vane-based air channeling of the original patent.
+**Concept:** Extend the existing packet encapsulation and distribution system to incorporate real-time behavioral analysis of network traffic *within* the encapsulated payload *before* forwarding to analysis hosts. This moves beyond simple signature-based detection to identify anomalies based on how a packet *behaves* during a short observation window.
 
-**System Specs:**
+**System Specifications:**
 
-*   **Module Dimensions:** 1m x 1m x 0.5m (scalable). Units connect edge-to-edge.
-*   **Frame Material:** Lightweight, recycled plastic composite. Perforated for airflow.
-*   **Vane Structure:**  Modified from patent – horizontally extending, perforated vanes.  Vane angle adjustable via integrated micro-servo motors controlled by a central unit.
-*   **Planting Medium:** Hydroponic/Aeroponic system – layered felt/mesh substrate for root growth, pre-seeded with fast-growing, high-transpiration plants (e.g., pothos, spider plants, ferns).  Nutrient solution reservoir and automated delivery system.
-*   **Water Management:**  Collected condensate from vanes (as per patent) is *recirculated* to the plant hydroponic system. Overflow routed to external drainage/storage. Humidity sensors regulate recirculation rate.
-*   **Airflow Control:**  Micro-servo-controlled vanes adjust airflow based on temperature, humidity, and CO2 levels. Algorithm prioritizes maximized plant transpiration cooling *and* efficient air purification.
-*   **Lighting:** Integrated LED grow lights with adjustable spectrum. Powered by renewable energy source (solar/wind).
-*   **Sensors:** Temperature, humidity, CO2, light intensity, nutrient levels, water levels. Data transmitted to central control unit.
-*   **Control Unit:**  Raspberry Pi-based system. Runs AI algorithm that optimizes cooling, airflow, and plant health. Remote access via web interface/mobile app.
-*   **Modular Connectivity:**  Units connect via magnetic locking mechanism *and* data/power transfer cables. Facilitates easy expansion/reconfiguration.
-*   **Biofilm Integration:** Encourage the growth of beneficial biofilms on the vane surfaces to further enhance air purification and nutrient cycling.
-
-**Pseudocode (Control Algorithm):**
+*   **Enhanced Network Switch/Encapsulation Module:** The switch receives packets as before. However, *before* encapsulation, a dedicated 'Behavioral Observation Engine' (BOE) module analyzes the initial packets of a flow.
+*   **Behavioral Observation Engine (BOE):**
+    *   **Feature Extraction:** Extracts features from the first N packets (configurable - default N=10) of a flow. Features include:
+        *   Inter-Arrival Times: Time differences between consecutive packets.
+        *   Packet Size Variation: Standard deviation of packet sizes.
+        *   TCP Flag Combinations: Frequency of specific TCP flag combinations (SYN, ACK, FIN, RST).
+        *   Payload Entropy: Measure of randomness within the packet payload.
+    *   **Baseline Creation:** Establishes a baseline 'behavioral profile' based on these features. This profile is a statistical representation of 'normal' behavior for that source-destination pair.
+    *   **Anomaly Scoring:** For subsequent packets, the BOE calculates an 'anomaly score' by comparing the packet's features to the established baseline. Higher scores indicate greater deviation from normal behavior.
+*   **Encapsulation with Anomaly Score:** The BOE *embeds* the anomaly score *within* the encapsulated packet header, alongside the existing source/destination information. This score travels with the packet to the analysis host.
+*   **Analysis Host Modification:** Analysis hosts receive encapsulated packets *with* the embedded anomaly score. They use this score as a *pre-filter*, prioritizing investigation of packets with high anomaly scores. This significantly reduces the load on analysis resources, as they can focus on the most suspicious traffic.
+*   **Dynamic Baseline Adjustment:** The analysis hosts can also send feedback to the switch regarding baseline accuracy. This allows the switch to dynamically adjust the baselines for specific flows, improving anomaly detection accuracy over time.
+*   **Pseudocode (Switch-side):**
 
 ```
-// Define thresholds
-TEMP_THRESHOLD = 25C
-HUMIDITY_THRESHOLD = 60%
-CO2_THRESHOLD = 800ppm
+function process_packet(packet):
+  flow = get_flow(packet.source, packet.destination)
+  if flow.baseline_exists():
+    anomaly_score = calculate_anomaly_score(packet, flow.baseline)
+  else:
+    anomaly_score = 0 # Initial packet, no baseline yet
+    #Begin baseline creation with N initial packets
+  encapsulated_packet = encapsulate(packet, anomaly_score)
+  send_to_analysis_host(encapsulated_packet)
 
-// Main loop
-while (true) {
-
-  // Read sensor data
-  temp = readTemperature()
-  humidity = readHumidity()
-  co2 = readCO2()
-
-  // Adjust vane angles
-  if (temp > TEMP_THRESHOLD) {
-    increaseVaneAngle(maximizeAirflowThroughPlants)
-  } else if (humidity > HUMIDITY_THRESHOLD) {
-    decreaseVaneAngle(reduceMoistureBuildup)
-  }
-
-  if (co2 > CO2_THRESHOLD) {
-    optimizeVaneAngle(maximizeAirflowThroughPlants) // Enhanced air exchange for CO2 reduction
-  }
-
-  // Monitor water levels and nutrient levels
-  if (waterLevelLow()) {
-    activatePump(refillReservoir)
-  }
-
-  if (nutrientLevelLow()) {
-    activateDispenser(addNutrients)
-  }
-
-  //Log Data to database
-  logData(temp, humidity, co2, waterLevel, nutrientLevel, vaneAngles)
-  delay(10 seconds)
-
-}
+function calculate_anomaly_score(packet, baseline):
+  # Extract features from the packet
+  features = extract_features(packet)
+  # Calculate the distance between the packet's features and the baseline features
+  distance = calculate_distance(features, baseline.features)
+  # Normalize the distance to obtain an anomaly score (0-1)
+  anomaly_score = normalize(distance, baseline.standard_deviation)
+  return anomaly_score
 ```
 
-**Potential Applications:**
-
-*   Data centers
-*   Greenhouses
-*   Indoor farms
-*   Living walls
-*   Office buildings
-*   Residential HVAC systems.
+*   **Hardware Considerations:** Requires a dedicated FPGA or ASIC on the network switch to perform the real-time feature extraction and anomaly scoring. A high-speed interconnect between the FPGA/ASIC and the switch’s main processor is crucial.
+*   **Security Implications:**  Anomaly score itself can be manipulated. Implement cryptographic signing/verification of the anomaly score at the switch before encapsulation to prevent tampering.
