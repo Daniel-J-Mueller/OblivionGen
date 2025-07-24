@@ -1,71 +1,68 @@
-# 9338592
+# 7991650
 
-## Dynamic Data Expiration & Proactive Zone Prediction
+## Personalized Recommendation "Echo" System
 
-**Concept:** Leverage historical data patterns and predictive modeling to anticipate areas where crowdsourced data will become stale *before* it happens, and proactively suppress data collection in those zones. This moves beyond simply reacting to sufficient data, and anticipates data decay.
+**Concept:** Extend the performance-based billing and recommendation weighting to incorporate a "recommendation echo" system. This allows for indirect performance attribution and a more nuanced understanding of recommendation influence, especially for complex user journeys or when multiple recommenders contribute to a single conversion.
 
-**Specs:**
+**Specifications:**
 
-*   **Data Historian:** A component storing historical data submissions (location, communication node data, timestamps) with associated metadata (device type, signal strength, accuracy). This isn't just raw data storage, but a schema designed for time series analysis.
-*   **Predictive Model:** A machine learning model trained on the Data Historian. The model predicts data staleness probability for geographic zones based on factors like:
-    *   Time since last submission.
-    *   Mobility patterns in the zone (derived from historical location data).
-    *   Communication node type (some nodes are more prone to change – temporary installations, etc.).
-    *   Environmental factors (weather, events that disrupt signal propagation).
-*   **Staleness Threshold:** A configurable parameter defining the acceptable probability of data staleness. This allows tuning the system’s sensitivity to data accuracy.
-*   **Proactive Suppression Zones:** Geographic areas identified by the Predictive Model as exceeding the Staleness Threshold.
-*   **Dynamic Map Data:** Map data transmitted to devices indicating Proactive Suppression Zones. This data includes:
-    *   Zone boundaries.
-    *   Estimated validity duration.
-    *   Suppression level (e.g., complete suppression, reduced reporting frequency).
-*   **Adaptive Reporting:** Devices receiving Dynamic Map Data adjust their reporting behavior accordingly.
-*   **Feedback Loop:** Real-time data submissions from devices are used to refine the Predictive Model, improving its accuracy over time.
+**I. Data Collection & Event Tracking:**
 
-**Pseudocode (Device Side):**
+*   **Enhanced Event Data:** Beyond user selections/purchases directly attributable to a recommendation (as in the source patent), track a wider range of user interactions. This includes:
+    *   Time spent viewing recommended items.
+    *   Scrolling depth on recommendation lists.
+    *   Items added to wishlists or “saved for later” lists after viewing a recommendation.
+    *   Searches performed *after* viewing a recommendation (capture search terms).
+    *   Clicks on related items/categories *after* viewing a recommendation.
+*   **“Echo” Event Identification:** Implement a time-based “echo window”. If a user performs any of the above actions *within* this window (e.g., 24-72 hours) *after* viewing a recommendation, tag that action as an “echo event”.
+*   **User Journey Mapping:** Build a system to map user journeys, connecting initial recommendations to subsequent actions, even if those actions don’t directly involve the originally recommended item. This requires a unique session ID or user identifier.
 
-```
-onReceiveMapData(mapData) {
-  suppressionZones = mapData.getSuppressionZones()
-  validityDuration = mapData.getValidityDuration()
+**II. Echo Weighting Algorithm:**
 
-  // Store suppression zones and validity duration locally
-}
+*   **Base Performance Metric:** Maintain the original performance metric based on direct conversions/selections.
+*   **Echo Score Calculation:** Assign weights to different echo event types. For example:
+    *   Direct Conversion: 100%
+    *   Purchase of a related item: 30%
+    *   Item added to wishlist: 10%
+    *   Search for a related term: 5%
+*   **Decay Function:** Implement a decay function within the echo window. The longer the time between the initial recommendation and the echo event, the lower the weight assigned. (e.g., Exponential decay).
+*   **Echo Score Aggregation:** For each recommender, aggregate the weighted echo scores across all users and time periods.
+*   **Combined Performance Metric:** Calculate a combined performance metric = (Direct Conversion Weight * Direct Conversion Score) + (Echo Weight * Echo Score).
 
-onLocationUpdate() {
-  if (isWithinSuppressionZone(currentLocation, suppressionZones)) {
-    // Apply suppression rules
-    if (suppressionLevel == COMPLETE) {
-      // Do not send data
-    } else if (suppressionLevel == REDUCED) {
-      // Reduce reporting frequency
-    }
-  } else {
-    // Report data as usual
-  }
-}
+**III. Recommender Weight Adjustment:**
 
-//Background task to refresh map data periodically or on significant location change
-refreshMapData() {
-  requestMapDataFromServer()
-}
-```
+*   **Dynamic Weighting:** Use the combined performance metric to dynamically adjust the weights assigned to different recommenders.
+*   **Exploration/Exploitation Balancing:** Incorporate an exploration/exploitation mechanism. Occasionally give lower-weighted recommenders a chance to be featured more prominently to gather more data and assess their potential. (e.g., Epsilon-Greedy algorithm).
+*   **Segment-Specific Weighting:** Allow for segment-specific weighting. Recommenders that perform well for specific user segments (e.g., based on demographics, interests) should be given higher weights for those segments.
 
-**Pseudocode (Server Side):**
+**IV. Pseudocode (Weight Adjustment):**
 
 ```
-//Scheduled task to generate and distribute map data
-generateMapData() {
-  //Analyze historical data to predict staleness probabilities for zones
-  zoneStaleness = predictZoneStaleness(historicalData)
+// Input: recommender_id, direct_conversion_score, echo_score, segment_id
+// Output: adjusted_weight
 
-  //Identify zones exceeding staleness threshold
-  suppressionZones = identifySuppressionZones(zoneStaleness, stalenessThreshold)
+function adjust_recommender_weight(recommender_id, direct_conversion_score, echo_score, segment_id):
+  // Define weights for direct conversion and echo score
+  direct_conversion_weight = 0.7
+  echo_weight = 0.3
 
-  //Generate dynamic map data
-  mapData = createMapData(suppressionZones, validityDuration)
+  // Calculate combined performance score
+  combined_score = (direct_conversion_weight * direct_conversion_score) + (echo_weight * echo_score)
 
-  //Distribute map data to devices
-}
+  // Get segment-specific weight modifier (default = 1)
+  segment_modifier = get_segment_modifier(recommender_id, segment_id)
+
+  // Apply segment modifier
+  weighted_score = combined_score * segment_modifier
+
+  // Normalize weights across all recommenders for the segment
+  adjusted_weight = normalize_weight(recommender_id, weighted_score)
+
+  return adjusted_weight
 ```
 
-**Novelty:** This approach shifts from *reactive* suppression (responding to sufficient data) to *proactive* suppression, anticipating data decay and minimizing unnecessary data transmission *before* the data becomes stale. Leveraging machine learning allows the system to adapt to changing environments and optimize data collection efficiency. It's a predictive, adaptive system for managing crowdsourced data freshness.
+**V. Infrastructure Considerations:**
+
+*   **Real-time Data Processing:** Requires a real-time data processing pipeline to capture and analyze user interactions. (e.g., Kafka, Spark Streaming).
+*   **Scalable Data Storage:** Requires a scalable data storage solution to store event data and performance metrics. (e.g., Cassandra, Hadoop).
+*   **Machine Learning Platform:** Requires a machine learning platform to train and deploy the weight adjustment algorithms. (e.g., TensorFlow, PyTorch).
