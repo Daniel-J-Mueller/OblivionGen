@@ -1,90 +1,55 @@
-# 8721409
+# 11810556
 
-## Modular, Bio-Integrated Cooling System with Predictive Dampening
+## Dynamic Skill Chaining with Predictive Action Suggestions
 
-**Concept:** A distributed cooling system utilizing a network of modular units incorporating bio-integrated sensing and predictive dampening algorithms to optimize airflow and reduce energy consumption. Units are designed for scalability within various environments – from individual server racks to entire data centers or large commercial buildings.
+**Concept:** Expand the interactive content framework to allow for *predictive* chaining of skills based on contextual analysis of user interaction *before* explicit requests are made. Instead of waiting for a spoken input after interactive content is presented, the system proactively suggests potential actions or follow-up skills based on the content and inferred user intent.
 
-**I. Hardware Specifications – Modular Unit (MU)**
+**Specs:**
 
-*   **Dimensions:** 30cm x 30cm x 15cm (scalable – MU’s connect adjacently).
-*   **Housing:** Recycled aluminum alloy with bio-polymer coating for thermal conductivity and moisture resistance.
-*   **Air Intake:** Variable geometry intake with integrated particulate filter (HEPA standard).
-*   **Air Exhaust:** Louvered exhaust with noise dampening features.
-*   **Cooling Core:** Microchannel heat exchanger utilizing a closed-loop, dielectric fluid (e.g., fluorocarbon) for efficient heat transfer.
-*   **Micro-Fluidic Pump:** Miniature, low-power pump circulating dielectric fluid.
-*   **Sensors:**
-    *   Wet Bulb Temperature Sensor (integrated with external weather data feed).
-    *   Dry Bulb Temperature Sensor.
-    *   Airflow Sensor (measuring intake and exhaust volume).
-    *   Pressure Sensor (monitoring system resistance).
-    *   VOC (Volatile Organic Compound) Sensor – detects air quality and adjusts filtration.
-    *   Bio-Sensor Array – measures airborne microbial load (bacteria, fungi – for predictive maintenance and air purification)
-*   **Actuators:**
-    *   Variable Geometry Air Intake Damper – controlled by predictive algorithm.
-    *   Micro-Fluidic Pump Speed Control.
-    *   Integrated LED UV-C Sanitization Module (activated based on bio-sensor readings).
-*   **Communication:** Wireless Mesh Network (802.11ax) for inter-MU communication and central system integration. Power over Ethernet (PoE) for power delivery and data communication.
+**1. Contextual Intent Engine:**
 
-**II. System Architecture – Distributed Network**
+*   **Input:** Audio data (user speech), ASR data, NLU data, output data from the first skill, user account data, historical interaction data (for this user, and aggregated anonymized data).
+*   **Processing:**
+    *   Utilize a transformer-based model trained on a large corpus of conversational data and skill metadata.
+    *   Analyze the semantic meaning of the currently presented content (the "second content" in the patent).
+    *   Infer potential user intents *beyond* direct requests. For example, if the second content is a restaurant review, potential intents might be: "make a reservation," "get directions," "see the menu," "read more reviews," or "find similar restaurants."
+    *   Rank these potential intents based on probability.
+    *   Generate a "suggestion vector" representing the top N potential intents and associated skill requirements.
+*   **Output:** Suggestion vector, confidence score for each suggestion.
 
-*   **MU Deployment:** Units arranged in a modular grid surrounding heat-generating equipment (server racks, electronic components).
-*   **Zonal Control:** MUs grouped into “zones” managed by a local controller. Zones adapt to specific thermal load requirements.
-*   **Central Control System:** Cloud-based platform receiving data from all MUs. Platform utilizes machine learning algorithms for predictive cooling optimization.
-*   **Data Inputs:**
-    *   Real-time MU sensor data (temperature, airflow, pressure, VOCs, bio-load).
-    *   External Weather Data (temperature, humidity, solar radiation).
-    *   Equipment Thermal Load Profiles (historical data, predictive models).
-    *   Energy Pricing Data (dynamic adjustment based on grid conditions).
+**2. Predictive UI Component (Device-Side):**
 
-**III. Predictive Dampening Algorithm – Pseudocode**
+*   **Input:** Suggestion vector from the Contextual Intent Engine.
+*   **Processing:**
+    *   Dynamically generate a UI overlay (visual, auditory, or haptic) presenting the top N suggestions to the user.  This could be as simple as a row of icons representing available actions, or more sophisticated such as a context-aware voice prompt ("You can also reserve a table, get directions, or see the menu.").
+    *   Prioritize UI elements based on confidence scores.
+    *   Implement a “quick action” mechanism – allowing the user to activate a suggestion with a single tap/voice command, bypassing the need for a full spoken request.
+*   **Output:** Interactive UI overlay.
+
+**3. Skill Orchestration Module (Server-Side):**
+
+*   **Input:** User selection from the Predictive UI Component (or, if no selection, a standard spoken request).
+*   **Processing:**
+    *   If a suggestion was selected, directly invoke the corresponding skill without further NLU processing.
+    *   If a standard spoken request was received, process it as before.
+    *   Implement a "skill chaining" mechanism - allowing skills to hand off control to other skills in a pre-defined or dynamically determined sequence. For example, if the user makes a reservation, the system could automatically suggest “Would you like me to add this to your calendar?” and invoke a calendar skill.
+*   **Output:** Invoked skill, associated data.
+
+**Pseudocode (Skill Orchestration Module):**
 
 ```
-// Variables:
-WetBulbTemp = Wet Bulb Temperature (External)
-DryBulbTemp = Dry Bulb Temperature (External)
-EquipmentLoad = Predicted Thermal Load (Equipment)
-ZoneTemp = Average Temperature (Zone)
-MU_DampenLevel = Dampening Level of Modular Unit (0-100%)
-
-// Function: CalculateOptimalDampenLevel
-function CalculateOptimalDampenLevel(WetBulbTemp, DryBulbTemp, EquipmentLoad, ZoneTemp):
-    // 1. Baseline Dampen Level based on Wet Bulb Temperature
-    if WetBulbTemp <= 55F:
-        BaselineDampenLevel = 100 // Maximize outside air intake
-    else if WetBulbTemp <= 60F:
-        BaselineDampenLevel = 75
-    else:
-        BaselineDampenLevel = 50
-
-    // 2. Adjust for Equipment Load
-    LoadAdjustment = EquipmentLoad * 0.1 // 10% Dampen Level change per unit of load.
-    AdjustedDampenLevel = BaselineDampenLevel + LoadAdjustment
-
-    // 3. Zone Temperature Feedback
-    TempDifference = ZoneTemp - TargetTemperature
-    if TempDifference > 2F:
-        AdjustedDampenLevel = AdjustedDampenLevel + 5 // Increase Dampening
-    else if TempDifference < -2F:
-        AdjustedDampenLevel = AdjustedDampenLevel - 5 // Decrease Dampening
-
-    // 4. Limit Dampen Level
-    if AdjustedDampenLevel > 100:
-        AdjustedDampenLevel = 100
-    else if AdjustedDampenLevel < 0:
-        AdjustedDampenLevel = 0
-
-    return AdjustedDampenLevel
+function handleUserInput(userInput, userSelection):
+  if userSelection is not null:
+    skill = getSkillForSuggestion(userSelection)
+    invokeSkill(skill, userInput)
+  else:
+    intent = analyzeIntent(userInput)
+    skill = getSkillForIntent(intent)
+    invokeSkill(skill, userInput)
+    if skill supports chaining:
+      nextSkill = skill.suggestNextSkill()
+      if nextSkill is not null:
+        promptUserForChaining(nextSkill)
 ```
 
-**IV. Bio-Integration – Predictive Maintenance & Air Purification**
-
-*   **Microbial Load Monitoring:** Real-time analysis of airborne microbial data.  Predictive models identify potential contamination events and adjust filtration accordingly.
-*   **Self-Cleaning Features:** UV-C sanitization module activated based on bio-sensor data. Reduces bio-film buildup within the MU and improves air quality.
-*   **Data Analytics:** Aggregate microbial data provides insights into system performance and potential maintenance requirements.
-
-**V. Scalability & Adaptability**
-
-*   Modular design allows for flexible deployment in various environments.
-*   Wireless mesh network enables seamless communication and control.
-*   Machine learning algorithms continuously optimize performance and adapt to changing conditions.
-*   Open API for integration with existing building management systems.
+**Novelty:** This system moves beyond *reactive* interaction to *proactive* assistance. It anticipates user needs based on content and context, streamlining the experience and reducing friction. The dynamic skill chaining and predictive UI component create a more fluid and intuitive interaction model.
