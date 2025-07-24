@@ -1,81 +1,65 @@
-# 10200333
+# 9426903
 
-## Adaptive Environmental Projection System
+## Modular, Bio-Integrated Cooling Stack
 
-**System Overview:** A networked system utilizing the bulletin board technology as a focal point for localized environmental control & immersive experiences. Expands beyond simple announcements to influence surrounding conditions.
+**Concept:** Evolving the cooling stack beyond simple heat exhaust. Integrating living biological components – specifically, engineered moss cultures – within a transparent, modular stack structure to actively *consume* heat and humidity, then release filtered, oxygenated air. This moves beyond passive cooling to an actively regenerative system.
 
-**Core Components:**
+**Modular Stack Specifications:**
 
-*   **Enhanced Bulletin Board Units:** Modified bulletin boards equipped with:
-    *   Full-spectrum, dynamically adjustable LED panels (ambient lighting)
-    *   Miniaturized ultrasonic transducers (localized sound shaping/directional audio)
-    *   Micro-environmental sensors (temperature, humidity, air quality)
-    *   Aromatherapy diffusion system (optional, controlled release of scents).
-*   **Central Control Server:** Manages all networked bulletin boards, user preferences, and environmental profiles.
-*   **User Identification System:** Compatible with existing badge identification methods (RFID, QR code, facial recognition)
-*   **Content Creation Suite:** Allows administrators to design "Environmental Scenes" associating specific announcements with environmental profiles.
+*   **Material:** Stack constructed from interlocking, transparent polycarbonate modules (30cm x 30cm x 60cm). Modules connect via magnetic seals ensuring airtightness and easy disassembly/maintenance.
+*   **Internal Structure:** Each module contains a lattice-like framework constructed from a bio-compatible polymer (PLA or similar) designed to support the moss culture. The lattice maximizes surface area for growth and airflow.
+*   **Moss Culture:** *Sphagnum* moss, genetically engineered for increased heat tolerance and CO2 absorption. Moss is grown hydroponically, with nutrient solution circulated via micro-pumps within each module.
+*   **Humidity Control:** Integrated hygroscopic membranes within each module capture excess humidity, supplementing the moss's water absorption and preventing condensation.
+*   **Airflow System:** Low-speed micro-fans within each module distribute air evenly through the moss culture. Air enters from the bottom of the stack (drawing warm air from the racks), passes through the moss, and exits through vents at the top.
+*   **Lighting:** Embedded LED strips providing optimized light spectrum for moss photosynthesis. Intensity adjustable based on rack temperature/humidity sensors.
+*   **Sensors:** Each module equipped with temperature, humidity, CO2, and light sensors. Data transmitted wirelessly to a central control system.
+*   **Stack Configuration:** Stacks connect vertically and horizontally to form cooling ‘walls’ or ‘columns’ tailored to the computer room layout.
+*   **Control System:** AI-powered control system analyzes sensor data and adjusts fan speed, light intensity, nutrient flow, and overall stack configuration to optimize cooling performance and maintain desired humidity levels.
 
-**Operational Specifications:**
-
-1.  **Badge Scan & Profile Activation:** A user presents a badge to a bulletin board. The system identifies the user and retrieves their associated preferences *and* the currently scheduled/active "Environmental Scene".
-2.  **Environmental Scene Implementation:** The bulletin board’s sensors collect real-time environmental data. The system calculates adjustments necessary to achieve the target profile defined by the current Environmental Scene.
-3.  **Dynamic Adjustment:**
-    *   **Lighting:** LED panels adjust color temperature and intensity to create desired ambiance.
-    *   **Sound:** Ultrasonic transducers focus sound to create directional audio cues or dampen external noise. (Optional: Audio announcements are blended into the directional sound field.)
-    *   **Aroma:** (If equipped) The aromatherapy system releases scents corresponding to the scene (e.g., coffee aroma for a morning meeting announcement).
-    *   **Temperature/Humidity:** (Advanced implementation - requires integration with HVAC systems) Adjusts local temperature and humidity within a limited radius.
-4.  **Announcements as Triggers:** Announcements themselves *become* triggers for environmental changes. For example:
-    *   A “Fire Drill” announcement activates flashing red lights and a pre-recorded evacuation message.
-    *   A “New Product Launch” announcement activates upbeat music, vibrant lighting, and a stimulating aroma.
-5.  **Networked Synchronization:** Multiple bulletin boards within a defined area synchronize their environmental profiles to create a consistent immersive experience.
-
-**Pseudocode (Scene Activation):**
+**Pseudocode (Control System):**
 
 ```
-FUNCTION ActivateScene(badgeID, announcementID)
+// Sensor Data Inputs:
+temperature[moduleID] = readTemperature(moduleID)
+humidity[moduleID] = readHumidity(moduleID)
+CO2[moduleID] = readCO2(moduleID)
 
-  // Retrieve user preferences
-  userPreferences = GetUserPreferences(badgeID)
+// Target Values:
+targetTemperature = 22  // Celsius
+targetHumidity = 50    // Percent
+targetCO2 = 400       // ppm
 
-  // Retrieve announcement details
-  announcementDetails = GetAnnouncementDetails(announcementID)
+// Control Logic:
 
-  // Determine scene ID based on announcement type & user preference
-  sceneID = DetermineSceneID(announcementDetails, userPreferences)
+for each moduleID:
+    temperatureDelta = targetTemperature - temperature[moduleID]
 
-  // Load scene profile
-  sceneProfile = LoadSceneProfile(sceneID)
+    if temperatureDelta > 0: // Cooling needed
+        fanSpeed[moduleID] = min(100, fanSpeed[moduleID] + temperatureDelta * 2) // Increase fan speed
+        lightIntensity[moduleID] = min(100, lightIntensity[moduleID] + temperatureDelta) // Increase light intensity
+    else:
+        fanSpeed[moduleID] = max(0, fanSpeed[moduleID] - abs(temperatureDelta) * 1)
+        lightIntensity[moduleID] = max(0, lightIntensity[moduleID] - abs(temperatureDelta) * 0.5)
 
-  // Read current environmental data
-  currentTemp = ReadTemperature()
-  currentHumidity = ReadHumidity()
-  currentLightLevel = ReadLightLevel()
+    if humidity[moduleID] > 60: // High humidity
+        increase_absorption_rate(moduleID) // Activate additional humidity control mechanisms
 
-  // Calculate adjustments
-  targetTemp = sceneProfile.temperature
-  targetHumidity = sceneProfile.humidity
-  targetLightColor = sceneProfile.lightColor
-  targetLightIntensity = sceneProfile.lightIntensity
+    if CO2[moduleID] > 500: // High CO2
+        increase_moss_absorption_rate(moduleID) //Optimize moss CO2 capture
 
-  // Apply adjustments (via actuators)
-  SetTemperature(targetTemp)
-  SetHumidity(targetHumidity)
-  SetLightColor(targetLightColor)
-  SetLightIntensity(targetLightIntensity)
-
-  // Play associated audio (if any)
-  PlayAudio(sceneProfile.audioFile)
-
-  // Display visual announcement
-  DisplayAnnouncement(announcementDetails.text)
-
-END FUNCTION
+    send_commands(moduleID, fanSpeed[moduleID], lightIntensity[moduleID])
 ```
 
-**Potential Applications:**
+**Maintenance:**
 
-*   Corporate offices: Create focused work environments, enhance brand identity.
-*   Retail spaces: Influence customer mood and purchasing behavior.
-*   Healthcare facilities: Reduce patient anxiety, improve healing.
-*   Educational institutions: Create immersive learning experiences.
-*   Event spaces: Enhance atmosphere and engagement.
+*   Automated nutrient replenishment system.
+*   Modular design allows for easy replacement of individual modules for cleaning or repair.
+*   Monitoring system alerts for signs of moss stress or system malfunction.
+
+**Potential Benefits:**
+
+*   Reduced energy consumption.
+*   Improved air quality (oxygen enrichment, CO2 reduction).
+*   Sustainable and environmentally friendly cooling solution.
+*   Potential for carbon sequestration.
+*   Visually appealing and biophilic design.
