@@ -1,76 +1,58 @@
-# 11145301
+# 11983750
 
-## Autonomous Device Swarm & Predictive Interaction
+## Dynamic Risk Weighting via Real-Time Behavioral Signals
 
-**Core Concept:** Extend the autonomous device’s ability to identify and track a user by leveraging a swarm of smaller, networked devices. These devices *predict* user intent through environmental data and subtle biometrics, proactively adjusting the primary device’s behavior and establishing a richer, more seamless interaction.
+**Specification:** A system to dynamically adjust topic/item risk scores based on real-time user behavioral data, layered on top of the existing machine learning model.
 
-**Specifications:**
+**Core Concept:** The existing system appears to rely on static or periodically updated risk scores. This introduces latency and fails to capture rapidly evolving risk landscapes. Behavioral signals—how users *interact* with items flagged as potentially risky—provide immediate feedback and enable proactive risk mitigation.
 
-**1. Device Network – ‘Echoes’:**
+**Components:**
 
-*   **Hardware:** Miniature, low-power devices (approx. 2cm diameter) containing:
-    *   Microphone array (beamforming capable)
-    *   Passive Infrared (PIR) sensor
-    *   Bluetooth Low Energy (BLE) transceiver
-    *   Ultra-Wideband (UWB) transceiver (for precise location)
-    *   Accelerometer/Gyroscope
-    *   Limited processing capability (edge computing)
-*   **Deployment:** Designed to be subtly integrated into the environment – clipped onto clothing, attached to furniture, or dispersed within a room. Maximum swarm size: 20 devices.
-*   **Power:** Rechargeable via inductive charging or replaceable coin-cell batteries.
+1.  **Behavioral Signal Collection:** Capture the following signals in real-time:
+    *   **View Duration:** How long does a user spend viewing an item page?  Shorter durations may indicate a 'drive-by' or suspicious activity.
+    *   **Scroll Depth:** How far down the page does a user scroll?  Limited scrolling suggests disinterest or a quick scan for specific information.
+    *   **Zoom/Image Interaction:**  Are users zooming in on specific areas of images?  (e.g., looking for details of a prohibited item).
+    *   **"Report" Actions:**  Track user reports of suspicious items.
+    *   **Add-to-Cart/Purchase Rate (Post-Flag):**  Track if flagged items are still being purchased.  A high purchase rate suggests the risk assessment may be flawed or circumvented.
+    *   **Session Characteristics:** IP address, location, time of day, browser fingerprint. Anomalous patterns may suggest bot activity or malicious intent.
 
-**2. Data Fusion & Prediction Engine:**
+2.  **Real-time Feature Engineering:** Process raw behavioral signals into meaningful features:
+    *   **Weighted Signal Aggregation:** Combine multiple signals into a single risk score using a weighted sum. Weights can be adjusted via A/B testing or machine learning.
+    *   **Anomaly Detection:** Identify unusual patterns in user behavior using statistical methods (e.g., z-score, isolation forest).
+    *   **Session Risk Score:** Calculate a risk score for each user session based on their behavioral patterns.
 
-*   **Algorithm:** A recurrent neural network (RNN) with Long Short-Term Memory (LSTM) layers.
-*   **Input Data:**
-    *   Audio data (speech, ambient sounds) from all ‘Echo’ devices.
-    *   PIR data (motion detection) from all ‘Echo’ devices.
-    *   UWB location data of all ‘Echo’ devices relative to each other and the primary autonomous device.
-    *   Accelerometer/Gyroscope data from ‘Echo’ devices (detecting subtle movements, gestures).
-    *   Historical user interaction data (preferences, routines).
-*   **Output:**
-    *   Probability distribution of user intent (e.g., “likely to adjust thermostat,” “likely to request music,” “likely to make a phone call”).
-    *   Predicted gaze direction.
-    *   Emotional state estimation (based on vocal tone and micro-movements).
+3.  **Dynamic Risk Weighting Module:** Integrate behavioral data into the existing risk assessment framework:
+    *   **Risk Score Modulation:**  Apply a multiplier to topic/item risk scores based on the session risk score.  Higher session risk = higher effective risk score.
+    *   **Threshold Adjustment:** Dynamically adjust the threshold for triggering item removal based on real-time risk levels.
+    *   **Feedback Loop:**  Use behavioral data to retrain the machine learning model, improving its ability to identify and assess risks.
 
-**3. Primary Autonomous Device Integration:**
-
-*   **Communication:** Secure, encrypted connection with the ‘Echo’ swarm via BLE/UWB.
-*   **Behavioral Adaptation:**
-    *   **Proactive UI adjustment:** Display relevant information *before* the user explicitly requests it (e.g., show thermostat controls when predicting temperature adjustment).
-    *   **Automated actions:** Execute simple tasks based on predicted intent (e.g., dim lights when predicting relaxation, start music playlist when predicting activity).
-    *   **Gaze-aware interaction:** Adjust display content and input methods based on predicted gaze direction.
-    *   **Adaptive audio focus:** Prioritize audio sources based on predicted attention (e.g., focus on speech during conversation, prioritize music during activity).
-
-**4. Pseudocode (Primary Device – Prediction Loop):**
+**Pseudocode:**
 
 ```
-// Initialize prediction engine with user profile
+function calculate_effective_risk_score(item_risk_score, session_risk_score):
+  // Session Risk Score is normalized between 0 and 1 (0 = low risk, 1 = high risk)
 
-WHILE (device is active) {
+  // Apply a multiplier to the item risk score
+  multiplier = 1 + (session_risk_score * 0.5)  // Adjust 0.5 for sensitivity
+  effective_risk_score = item_risk_score * multiplier
 
-    // Receive data from Echo swarm
-    swarmData = receiveSwarmData();
+  return effective_risk_score
 
-    // Process swarm data
-    processedData = processSwarmData(swarmData);
+function process_item_page(item_page, session_data):
+  item_risk_score = calculate_item_risk_score(item_page) //Existing ML Model
+  session_risk_score = calculate_session_risk_score(session_data) //New Module
 
-    // Run prediction engine
-    prediction = predictIntent(processedData);
+  effective_risk_score = calculate_effective_risk_score(item_risk_score, session_risk_score)
 
-    // Adapt device behavior based on prediction
-    adaptDeviceBehavior(prediction);
-
-    //Update user model with observed actions
-    updateUserModel(prediction, observedActions)
-
-    //Delay loop for efficient processing.
-    delay(50ms);
-
-}
+  if effective_risk_score > threshold:
+    remove_item_page(item_page)
+  else:
+    display_item_page(item_page)
 ```
 
-**5. Scalability & Privacy:**
+**Hardware/Software Requirements:**
 
-*   **Modular Design:** Easy to add/remove ‘Echo’ devices to adjust coverage and precision.
-*   **Edge Computing:** Most data processing occurs on the ‘Echo’ devices and primary device, minimizing data transmission to the cloud.
-*   **Privacy Controls:** User-configurable settings to control data collection, sharing, and prediction accuracy. Full opt-out option. Local processing mode.
+*   Real-time data streaming infrastructure (e.g., Kafka, Apache Pulsar).
+*   Fast, scalable data storage (e.g., Redis, Memcached).
+*   Machine learning platform for model training and deployment.
+*   Web analytics tracking library to capture user behavior.
