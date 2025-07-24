@@ -1,67 +1,53 @@
-# 10154013
+# 9086318
 
-## Dynamic Key Sharding with Temporal Decay
+## Dynamic Diffraction Focusing for Augmented Reality Projection
 
-**Concept:** Extend the core idea of encrypting a larger key with a smaller key to a system where the larger key is *sharded* – broken into multiple pieces – and each piece is encrypted with a different instance of the smaller key. These instances are then rotated over time, and older, encrypted shards are allowed to decay in usefulness, creating a constantly shifting security landscape.
+**Concept:** A cover sheet incorporating microfluidic channels filled with a refractive index matched liquid. These channels contain micro-actuators capable of dynamically altering the local refractive index within the sheet. This creates a programmable diffraction grating allowing for focused light projection *from* the cover sheet itself – turning the cover sheet into a miniature, dynamic AR display.
 
 **Specs:**
 
-**1. System Components:**
+*   **Material:** Transparent polymer substrate (e.g., PDMS, polycarbonate) with integrated microfluidic channels.
+*   **Channel Dimensions:** 5-20μm width, 1-5μm depth. Channel spacing optimized for targeted wavelengths (visible spectrum). Density: 500-1000 lines/mm.
+*   **Fluid:** Refractive index matched liquid (e.g., fluorocarbon oil) with a known refractive index range.
+*   **Actuators:** Micro-electromechanical systems (MEMS) – piezoelectric or electrostatic – integrated within or adjacent to microfluidic channels. Precise control of fluid displacement/mixing. Response time <1ms.
+*   **Light Source Integration:**  Edge-mounted array of micro-LEDs (RGB) or laser diodes. Light coupled into the cover sheet via total internal reflection.
+*   **Control System:** High-speed processor capable of calculating diffraction patterns and controlling individual actuators. Wireless communication for external control (smartphone, computer).
+*   **Power:** Low-power consumption – optimized actuator design and control algorithms. Wireless charging capability.
+*   **Diffraction Pattern Generation:** Algorithm translates desired projection image into a series of actuator control signals. Utilizes phase modulation to create complex diffraction patterns.
 
-*   **Key Sharding Module:** Responsible for dividing the large (asymmetric) key into *n* equal-sized shards. The number *n* is configurable.
-*   **Symmetric Key Rotation Engine:** Manages the generation and rotation of symmetric keys used to encrypt each shard.  Symmetric keys will have an associated Time-To-Live (TTL) value.
-*   **Shard Encryption/Decryption Unit:** Encrypts individual shards with their assigned symmetric key and decrypts them during retrieval.
-*   **Persistent Storage (Fuse-Based):** Stores the primary, smaller symmetric key (the root key).
-*   **Non-Volatile Storage (Flash/EEPROM):** Stores the encrypted shards and their associated TTL metadata.
-*   **Decay Management System:** Monitors TTL values and removes/archives shards that have exceeded their lifespan.
+**Operation:**
 
-**2. Operational Flow:**
+1.  Light from the micro-LEDs/laser diodes is coupled into the cover sheet.
+2.  Control system calculates diffraction pattern needed to project desired image.
+3.  Control signals activate MEMS actuators, altering the refractive index within microfluidic channels.
+4.  The modified refractive index creates a dynamic diffraction grating.
+5.  Light diffracts through the grating, projecting a focused image onto a surface (e.g., user's eye, nearby object).
+6.  The diffraction pattern is updated in real-time to create moving images or interactive displays.
 
-1.  **Initial Key Generation:** Generate the asymmetric key. Divide it into *n* equal shards.
-2.  **Symmetric Key Creation & Assignment:** The Symmetric Key Rotation Engine generates *n* unique symmetric keys. Each key is assigned to a specific shard.
-3.  **Shard Encryption & Storage:** The Shard Encryption/Decryption Unit encrypts each shard with its assigned symmetric key.  The encrypted shard and its associated TTL are stored in Flash/EEPROM.
-4.  **Key Retrieval & Decryption:** To reconstruct the asymmetric key:
-    *   The system retrieves all encrypted shards.
-    *   For each shard, it retrieves the corresponding symmetric key’s metadata from Flash/EEPROM.
-    *   The shard is decrypted using its symmetric key.
-    *   All decrypted shards are concatenated to reconstruct the complete asymmetric key.
-5.  **Symmetric Key Rotation:** At predetermined intervals, the Symmetric Key Rotation Engine generates new symmetric keys.  These new keys encrypt *new* copies of the shards. The old, encrypted shards are flagged for decay.
-6.  **Decay Management:** The Decay Management System periodically scans Flash/EEPROM for expired shards.  Expired shards are either removed entirely or archived for auditing purposes.
-
-**3. Pseudocode (Decryption Process):**
+**Pseudocode (Simplified Control Loop):**
 
 ```
-function decryptAsymmetricKey():
-    shardCount = getShardCount()
-    decryptedShards = []
+// Initialize:
+Load image data.
+Calculate initial diffraction pattern.
+Set actuator control signals.
 
-    for i = 0 to shardCount - 1:
-        encryptedShard = readEncryptedShard(i)
-        symmetricKeyMetadata = readSymmetricKeyMetadata(i)
-
-        if symmetricKeyMetadata.isValid():
-            symmetricKey = deriveSymmetricKey(symmetricKeyMetadata)
-            decryptedShard = decrypt(encryptedShard, symmetricKey)
-            decryptedShards.append(decryptedShard)
-        else:
-            // Handle invalid shard (e.g., log error, attempt recovery)
-            logError("Invalid shard detected")
-            // Attempt to retrieve a more recent version, or signal failure
-
-    if len(decryptedShards) == shardCount:
-        reconstructedKey = concatenate(decryptedShards)
-        return reconstructedKey
-    else:
-        // Handle incomplete key reconstruction
-        return error("Key reconstruction failed")
+// Main Loop:
+while (true) {
+    Get user input/sensor data.
+    Update image data (if needed).
+    Calculate new diffraction pattern based on image data.
+    For each actuator:
+        Calculate required refractive index change.
+        Send control signal to actuator.
+    Wait for synchronization signal.
+}
 ```
 
-**4. Configuration Parameters:**
+**Potential Applications:**
 
-*   `shardCount`: Number of shards to divide the key into.
-*   `symmetricKeyTTL`:  Time-To-Live for symmetric keys (e.g., 24 hours, 7 days).
-*   `rotationInterval`: Frequency of symmetric key rotation.
-*   `archiveRetentionPeriod`:  Length of time to retain archived shards.
-*   `encryptionAlgorithm`: The encryption algorithm used for shard encryption (e.g., AES-256).
-
-**Novelty:** This design introduces a temporal element to key security.  Rather than a single, static encryption layer, it employs a dynamic system where the encryption of key fragments is constantly changing.  This significantly increases the difficulty for attackers, as they must compromise multiple encryption layers within a limited timeframe to reconstruct the key. The decay mechanism ensures that even if an attacker gains access to encrypted shards, those shards will eventually become useless without the current symmetric keys.
+*   Heads-up displays (HUDs) for AR glasses/helmets.
+*   Interactive displays integrated into device covers (smartphones, tablets).
+*   Dynamic privacy filters – projecting patterns to obscure the screen from view.
+*   Holographic projections for entertainment/communication.
+*   Microscopic imaging with dynamic focusing.
