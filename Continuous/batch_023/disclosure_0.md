@@ -1,75 +1,44 @@
-# 9962830
+# 11798248
 
-**Automated Inventory Pod Network with Dynamic Reconfiguration**
+## Dynamic Mesh Deformation for Realistic Eyewear Fit
 
-**Concept:** Expand beyond static inventory pods to a dynamically reconfigurable network. Instead of fixed locations, pods move and combine based on real-time demand and inventory levels.
+**Concept:** Enhance the realism of virtual eyewear fitting by dynamically deforming the user's face mesh *around* the eyewear during the positioning phase, rather than relying solely on collider collisions. This creates a more natural and snug fit, particularly around the nose bridge and temples.
 
 **Specs:**
 
-*   **Pod Design:**
-    *   Dimensions: 60cm x 60cm x 90cm (standardized).
-    *   Construction: Lightweight aluminum frame with modular, impact-resistant polymer panels.
-    *   Locomotion: Omnidirectional wheels (mecanum wheels) powered by individual electric motors.
-    *   Communication: Wi-Fi 6E and Bluetooth 5.2.
-    *   Power: Internal rechargeable battery (inductive charging capability).
-    *   Sensors: LiDAR, ultrasonic sensors (for obstacle avoidance and proximity detection), weight sensors (for inventory tracking).
-*   **Conveyor System Integration:**
-    *   Conveyor sections are modular and can be dynamically reconfigured.
-    *   Conveyor belts utilize magnetic levitation technology for silent, high-speed transport.
-    *   Tote handling: Totes are equipped with RFID tags and magnetic bases for secure attachment to the conveyor.
-*   **Central Control System:**
-    *   Software: AI-powered warehouse management system (WMS).
-    *   Algorithms:
-        *   Demand forecasting: Predicts future demand based on historical data and external factors.
-        *   Pod allocation: Dynamically assigns pods to specific areas based on demand.
-        *   Path planning: Optimizes pod movement to minimize congestion and travel time.
-        *   Collision avoidance: Real-time detection and avoidance of obstacles.
-    *   User Interface: Intuitive dashboard for monitoring pod status, inventory levels, and system performance.
-*   **Extractor Enhancement:**
-    *   Multi-articulated robotic arms integrated into each pod.
-    *   Computer vision system for identifying tote contents.
-    *   Gentle gripping mechanism for handling delicate items.
-*   **Network Topology:**
-    *   Mesh network: Pods communicate directly with each other, creating a resilient and scalable network.
-    *   Dedicated communication channels: Separate channels for control signals, sensor data, and video streams.
+*   **Input:** 3D model of eyewear, 3D mesh model of user’s face, initial eyewear position (as determined by midpoint between eyes, as described in the provided patent).
+*   **Data Structure:** Facial Landmark Map – A pre-computed map linking vertices on the face mesh to key facial landmarks (eyes, nose, temples, cheeks). This allows for targeted mesh manipulation.
+*   **Deformation Algorithm:**
+    *   **Proximity Detection:** For each vertex on the eyewear model, identify nearby vertices on the user’s face mesh within a defined radius.
+    *   **Influence Field:** Calculate an “influence field” for each eyewear vertex. This field determines the degree to which nearby face vertices will be deformed.  The influence decreases with distance – inverse square law is recommended.
+    *   **Vertex Displacement:** Displace the identified face vertices *towards* the eyewear vertex, based on the influence field strength. Limit the maximum displacement to prevent unrealistic distortions.
+    *   **Smoothing:** Apply a Laplacian smoothing filter to the deformed face mesh to maintain a natural appearance.
+*   **Collision Refinement:** After mesh deformation, perform final collider collision checks to ensure no clipping. Adjust eyewear position slightly if necessary.
+*   **Anchor/Tracking:** Once anchored, continue to subtly deform the face mesh around the eyewear as the user’s head/face moves to maintain a consistent fit during animation/video conferencing.
 
-**Pseudocode (Pod Movement and Combination):**
+**Pseudocode:**
 
 ```
-// Function: MovePod
-// Input: Pod ID, Target Location (X, Y, Z)
-// Output: Success/Failure
+function deformFaceMesh(eyewearMesh, faceMesh, influenceRadius, maxDisplacement):
 
-Function MovePod(PodID, TargetX, TargetY, TargetZ) {
-  CalculatePath(PodID, TargetX, TargetY, TargetZ);
-  While (Pod Not At Target) {
-    ReadSensorData();
-    AvoidObstacles();
-    MoveWheels();
-    UpdatePosition();
-  }
-}
+    for each eyewearVertex in eyewearMesh:
+        nearbyFaceVertices = findNearbyVertices(faceMesh, eyewearVertex, influenceRadius)
 
-// Function: CombinePods
-// Input: Pod1 ID, Pod2 ID
-// Output: Combined Pod ID (new ID assigned)
+        for each faceVertex in nearbyFaceVertices:
+            distance = calculateDistance(eyewearVertex, faceVertex)
+            influence = 1.0 / (distance * distance) // Inverse square law
 
-Function CombinePods(Pod1ID, Pod2ID) {
-  MovePodsClose();
-  LockPodsTogether();
-  CreateNewPodID();
-  UpdateWMS();
-}
+            displacementVector = normalize(vector from faceVertex to eyewearVertex) * influence * maxDisplacement
+            faceVertex.position += displacementVector
 
-// Function: SplitPod
-// Input: Pod ID
-// Output: Pod1 ID, Pod2 ID
+    applyLaplacianSmoothing(faceMesh)
 
-Function SplitPod(PodID) {
-  UnlockPods();
-  AssignNewIDs();
-  UpdateWMS();
-}
+    return faceMesh
 ```
 
-**Innovation:** Dynamic reconfigurability unlocks adaptive warehousing. The network isn't bound by static layouts, maximizing space utilization and responsiveness to changing needs. This moves beyond automation towards *orchestration* of the entire inventory process.
+**Hardware/Software Requirements:**
+
+*   Real-time 3D rendering engine (Unity, Unreal Engine).
+*   Facial landmark detection library (e.g., MediaPipe Face Mesh).
+*   GPU with sufficient memory for real-time mesh deformation.
+*   C++/C# programming language.
