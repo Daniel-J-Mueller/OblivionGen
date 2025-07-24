@@ -1,57 +1,62 @@
-# 10462545
+# 11663058
 
-## Haptic Microphone Array
+## Event Source Profiling & Adaptive Bloom Filter Granularity
 
-**Concept:** Augment the microphone array with localized haptic feedback to provide directional audio awareness for the user, and to allow for ‘touchless’ gesture control.
+**Concept:** Enhance the bloom filter system by profiling event sources to dynamically adjust the granularity of filtering applied to each. Some sources may generate high-volume, predictable events, while others produce rare, complex events. A 'one-size-fits-all' bloom filter approach isn’t optimal. This system builds source profiles and adapts filter settings accordingly.
 
 **Specifications:**
 
-*   **Microphone Array Integration:** The existing microphone array will be retrofitted with miniature, high-frequency vibration actuators (piezoelectric transducers) directly bonded to the exterior housing surrounding each microphone element.
-*   **Haptic Mapping:** Software algorithm maps incoming audio signals to corresponding vibration patterns on the housing.  Stronger audio sources activate stronger/more frequent vibrations on the corresponding side of the device.  Directional audio is conveyed through relative vibration intensity across the array.
-*   **Gesture Recognition:** The array functions as a touchless gesture sensor.  Pressure waves from hand movements (snaps, swipes, etc.) are detected by the microphones and interpreted as commands.  Algorithm filters out ambient noise and vibration.
-*   **Housing Modification:** Housing material must be rigid enough to transmit vibrations effectively, yet thin enough for user interaction. Aluminum alloy or high-density polymer recommended.
-*   **Software Interface:** User adjustable settings for haptic intensity, gesture sensitivity, and custom gesture mapping.
+**1. Source Profiler Module:**
 
-**Pseudocode (Gesture Recognition):**
+*   **Data Collection:** Each event source reports (or has automatically collected) metadata with each event: source ID, event type ID, event complexity score (calculated based on data payload size/structure), event rate (events/second).
+*   **Statistical Analysis:** The profiler maintains a running average of event rates, complexity, and type distributions for each source.  Uses exponential smoothing to give more weight to recent data.
+*   **Source Classification:** Classifies sources into tiers (e.g., High-Volume/Low-Complexity, Medium-Volume/Medium-Complexity, Low-Volume/High-Complexity) based on the statistical analysis.  Tier boundaries are configurable.
+*   **Output:** Generates a Source Profile object containing: Source ID, Tier, Average Event Rate, Average Complexity Score, Event Type Distribution.
+
+**2. Adaptive Bloom Filter Manager:**
+
+*   **Bloom Filter Allocation:** Maintains a pool of bloom filters with varying sizes and false positive rates.  Larger filters reduce false positives but consume more memory.
+*   **Tier-Based Filter Assignment:**  Assigns a bloom filter to each source based on its assigned Tier:
+    *   **High-Volume/Low-Complexity:** Small, highly optimized bloom filter with a higher false positive rate.  Fast processing is prioritized.
+    *   **Medium-Volume/Medium-Complexity:** Medium-sized bloom filter with a balanced false positive rate and processing speed.
+    *   **Low-Volume/High-Complexity:** Large, highly accurate bloom filter with a lower false positive rate. Accuracy is prioritized, as the cost of false positives is higher.
+*   **Dynamic Adjustment:** Monitors event rates and complexity scores in real-time. If a source's behavior changes significantly (e.g., high-volume source suddenly sends complex events), the system automatically re-allocates a bloom filter with appropriate characteristics.
+*   **Filter Update Mechanism:**  Similar to the original patent, updates are propagated to the event sources. However, the update message includes the new bloom filter *and* a signal indicating the new filter characteristics (size, false positive rate).
+
+**3. Event Source Adaptation:**
+
+*   **Filter Reception:** Event sources receive updated bloom filters and associated characteristics.
+*   **Filter Switching:** Event sources seamlessly switch to the new filter.
+*   **Resource Allocation:** Event sources allocate resources (memory, CPU) dynamically based on the size of the received filter.
+
+**Pseudocode (Adaptive Bloom Filter Manager):**
 
 ```
-// Define gesture keywords (snap, swipe, etc.)
-keywords = ["snap", "swipe", "rotate"]
+function assign_bloom_filter(source_id):
+  source_profile = get_source_profile(source_id)
+  tier = classify_source(source_profile)
 
-// Microphone data input
-audio_data = get_microphone_data()
+  if tier == "HighVolumeLowComplexity":
+    filter = get_bloom_filter("small", "high_false_positive")
+  elif tier == "MediumVolumeMediumComplexity":
+    filter = get_bloom_filter("medium", "balanced_false_positive")
+  elif tier == "LowVolumeHighComplexity":
+    filter = get_bloom_filter("large", "low_false_positive")
+  else:
+    filter = get_bloom_filter("default", "balanced_false_positive")
 
-// FFT analysis for frequency spectrum
-frequency_spectrum = FFT(audio_data)
+  return filter
 
-// Filter frequencies associated with human speech
-filtered_spectrum = filter_speech(frequency_spectrum)
-
-// Feature extraction (peak frequencies, duration, amplitude)
-features = extract_features(filtered_spectrum)
-
-// Gesture matching with defined keywords
-matched_gesture = match_gesture(features, keywords)
-
-// Command execution based on matched gesture
-if (matched_gesture != NULL) {
-  execute_command(matched_gesture);
-}
+function monitor_source_behavior(source_id):
+  # collect event statistics (rate, complexity)
+  # if statistics deviate significantly from historical data:
+  #   reclassify_source(source_id)
+  #   new_filter = assign_bloom_filter(source_id)
+  #   send_updated_filter(source_id, new_filter)
 ```
 
-**Materials:**
+**Additional Considerations:**
 
-*   Piezoelectric transducers (miniature, high frequency)
-*   Conductive adhesive
-*   Rigid polymer or aluminum alloy housing
-*   Digital Signal Processor (DSP)
-*   Software Development Kit (SDK)
-*   Microcontroller with sufficient processing power
-
-**Potential Applications:**
-
-*   Enhanced accessibility for visually impaired users.
-*   Intuitive and hands-free control of the device.
-*   Immersive audio experience.
-*   Improved call quality in noisy environments.
-*   Gesture control in AR/VR applications.
+*   **Bloom Filter Chaining:**  For sources with highly variable event types, consider chaining multiple bloom filters, each specialized for a particular event type.
+*   **Source-Specific Updates:**  Updates to the bloom filter can be targeted to specific sources, reducing unnecessary network traffic.
+*   **Feedback Loop:**  Implement a feedback loop where event sources report false positives to the Bloom Filter Manager, allowing it to fine-tune filter parameters.
