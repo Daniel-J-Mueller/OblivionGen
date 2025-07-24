@@ -1,66 +1,63 @@
-# 11463535
+# 10734837
 
-## Adaptive Cache Poisoning Resilience via Predictive Forensics
+## Modular Kinetic Energy Harvesting Grid Nodes
 
-**Concept:** Extend the forensic trail concept to *predict* potential cache poisoning events before they fully propagate, using machine learning to identify anomalous patterns in forensic data.
+**Concept:** Augment the power distribution grid with localized kinetic energy harvesting at each node, transforming mechanical vibrations into usable DC power to supplement or even offset grid demand, and increasing overall system resilience.
 
-**Specification:**
+**Specifications:**
 
-**I. Data Collection & Feature Engineering:**
+*   **Node Integration:** Each grid node will integrate a miniature, multi-axis vibration-to-electricity converter. This converter will utilize a micro-electromechanical system (MEMS) based piezoelectric or electromagnetic generator array.
+*   **Vibration Sources:** Target vibration sources include:
+    *   HVAC system vibrations transmitted through building structure.
+    *   Foot traffic/building occupancy vibrations.
+    *   Equipment operation vibrations (servers, networking gear).
+    *   Ambient wind/building sway.
+*   **Converter Array:** The converter array will consist of multiple micro-generators arranged in a matrix to capture vibrations across all three axes.  Each micro-generator will feature tunable resonant frequencies to maximize energy capture from dominant vibration profiles within the specific node location.
+*   **Energy Storage:** Each node will incorporate a supercapacitor for short-term energy storage. Supercapacitors offer faster charge/discharge cycles and greater lifespan compared to batteries, ideal for capturing intermittent vibration energy.  Capacity: 10 Farads, 3.7V.
+*   **DC-DC Conversion:** A highly efficient DC-DC converter will step up the voltage from the supercapacitor (approximately 3.7V) to match the grid voltage (e.g., 48V DC).  Efficiency target: >95%.
+*   **Intelligent Power Management:** An embedded microcontroller will monitor vibration levels, supercapacitor charge state, and grid demand. It will intelligently switch between:
+    *   Harvesting and storing energy.
+    *   Supplementing grid power with harvested energy.
+    *   Maintaining supercapacitor charge for peak demand.
+*   **Node Communication:** Nodes will communicate with a central monitoring system via a low-power wireless protocol (e.g., Zigbee or Bluetooth Mesh). Data transmitted includes:
+    *   Vibration amplitude and frequency.
+    *   Supercapacitor charge state.
+    *   Energy harvested.
+    *   Grid contribution.
+*   **Mechanical Integration:** Nodes will be mechanically isolated from the surrounding structure using vibration damping materials to minimize noise and maximize energy capture.
+*   **Scalability:** Nodes are designed as modular units that can be easily retrofitted to existing grids or integrated into new construction.
+*   **Material Specifications:**
+    *   Piezoelectric material: Lead Zirconate Titanate (PZT) or similar high-performance ceramic.
+    *   Electromagnetic generator components: Micro-coils and permanent magnets (Neodymium Iron Boron).
+    *   Enclosure: High-impact polymer with vibration damping properties.
 
-*   **Extended Forensic Data:** Augment existing forensic trails with:
-    *   **Requestor IP Reputation:** Integrate IP reputation scores (e.g., from abuse databases) into the forensic trail.
-    *   **Request Rate:** Capture the request rate from each client IP over a sliding window.
-    *   **Content Type/Size:** Track the type and size of requested content.
-    *   **Geographic Location:** Derive geographic location from IP addresses.
-    *   **Time-to-First-Byte (TTFB):** Record TTFB for each request.
-*   **Feature Engineering Pipeline:** A dedicated pipeline will automatically compute the following features from the raw data:
-    *   **Anomaly Scores:** Calculate anomaly scores for each feature (request rate, TTFB, content size) based on historical data.  Use techniques like Isolation Forest or One-Class SVM.
-    *   **Reputation-Weighted Scores:** Combine IP reputation scores with anomaly scores to create a combined risk score.
-    *   **Pattern Recognition:** Identify recurring patterns in feature combinations. (e.g., sudden spike in requests from low-reputation IPs for large files.)
-
-**II. Predictive Model:**
-
-*   **Model Type:** Employ a time-series forecasting model combined with a classification model.
-    *   **Time-Series Component:** LSTM (Long Short-Term Memory) network to predict future request rates and TTFB based on historical data.
-    *   **Classification Component:** Gradient Boosting Machine (GBM) to classify requests as either "benign" or "potentially malicious" based on the features described above and the predictions from the LSTM.
-*   **Training Data:** Historical cache request logs, augmented with known poisoning events (if available) and labeled with “benign” or “malicious”.
-*   **Model Retraining:** Continuously retrain the model with new data to adapt to evolving attack patterns. Frequency: Weekly.
-
-**III. Implementation & Integration:**
-
-*   **Forensic Trail Enrichment:** Modify the lowest-level servers to collect and store the extended forensic data.
-*   **Prediction Engine:** Deploy a dedicated Prediction Engine that receives forensic data, runs the predictive model, and generates risk scores.
-*   **Adaptive Cache Control:** Integrate the Prediction Engine with the cache servers.  Based on the risk score:
-    *   **Threshold-Based Actions:**
-        *   **Low Risk:**  Serve the content as normal.
-        *   **Medium Risk:**  Introduce a short delay before serving the content, or request a verification from a higher-level cache.
-        *   **High Risk:**  Evict the content from the cache and potentially block the requesting IP address.
-    *   **Dynamic Threshold Adjustment:** Implement an algorithm that dynamically adjusts the risk thresholds based on the overall system load and observed attack patterns.
-
-**IV. Pseudocode (Cache Server - Adaptive Control Logic):**
+**Pseudocode (Node Controller):**
 
 ```
-function serve_request(request):
-  forensic_data = get_forensic_data(request)
-  risk_score = prediction_engine.predict_risk(forensic_data)
+LOOP:
+    readVibrationData()
+    IF vibrationAmplitude > threshold:
+        generateEnergy(vibrationData)
+        storeEnergy(generatedEnergy)
+    ENDIF
 
-  if risk_score < LOW_THRESHOLD:
-    return cached_content
-  elif risk_score < MEDIUM_THRESHOLD:
-    verification_result = request_verification_from_higher_cache(request)
-    if verification_result == VALID:
-      return cached_content
-    else:
-      evict_from_cache(request)
-      return error_response
-  else:
-    evict_from_cache(request)
-    block_requesting_ip(request.ip_address)
-    return error_response
+    readSupercapacitorCharge()
+    readGridDemand()
+
+    IF supercapacitorCharge > threshold AND gridDemand > threshold:
+        supplyEnergyToGrid()
+    ENDIF
+
+    transmitDataToCentralSystem()
+
+    delay(10ms)
+ENDLOOP
 ```
 
-**V.  Monitoring and Alerting:**
+**Potential Benefits:**
 
-*   **Real-time Monitoring:** Monitor the number of requests classified as "potentially malicious" and the number of cache evictions triggered by the predictive model.
-*   **Alerting:** Configure alerts to notify administrators when the number of malicious requests exceeds a predefined threshold, or when the predictive model's accuracy drops below a certain level.
+*   Reduced reliance on traditional power sources.
+*   Increased grid resilience to disruptions.
+*   Lower operating costs.
+*   Environmentally friendly.
+*   Scalable and adaptable to various environments.
