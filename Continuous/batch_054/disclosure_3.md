@@ -1,44 +1,66 @@
-# 10650409
+# 9098266
 
-## Dynamic Advertisement ‘Mood Boards’
+**Data Store Mirroring & Predictive Token Generation**
 
-**Concept:** Extend the user feedback loop beyond simple disinterest reasons, and move toward a dynamically generated ‘mood board’ of options, presented *within* the ad space, allowing for nuanced preference expression.
+**Concept:** Expand the temporary token system to proactively mirror data stores and *predict* potential unavailability, issuing temporary tokens *before* failures occur, coupled with a tiered token validation system.
 
-**Specs:**
+**Specifications:**
 
-*   **Data Source:** Existing user data (browsing history, purchase history, return history). Additionally, contextual data (time of day, location - if permissible, trending items, social media ‘vibes’ - topic modeling on publicly available data, *without* PII).
+1.  **Data Store Mirroring:**
+    *   Implement a real-time mirroring system for critical data stores.  Mirrors should be geographically distributed.
+    *   Mirroring should be asynchronous and optimized for eventual consistency, minimizing latency impact on primary data store.
+    *   A health monitoring system continuously assesses primary and mirror data store health (latency, errors, capacity).
 
-*   **Mood Board Generation:**
-    *   Initial Ad Presentation: Standard ad for Item A. Alongside, a small (initially collapsed) 'Vibe Check' panel.
-    *   'Vibe Check' Panel: Contains a 3x3 grid of visual ‘vibes’ – images/short video clips representing styles, aesthetics, or use-cases related to Item A.  These are *not* alternative items. Examples: “Minimalist”, “Outdoor Adventure”, “Luxury”, “Budget Friendly”, “Cozy”, “Modern”, “Rustic”, “High-Tech”, “Handmade”.  The initial vibes are algorithmically selected based on Item A's attributes and the user's profile.
-    *   User Interaction: User clicks on 1-3 vibe squares. This doesn’t immediately replace the ad. Instead, the system registers these preferences.
-    *   Refinement & Display: After a short delay (2-5 seconds), or on user hover/click of a ‘Refine’ button, the ad dynamically adjusts *within* the existing ad space.
-        *   **Visual Adjustment:**  The item image is subtly re-rendered to align with selected vibes (e.g., applying a color filter, changing the background, adding props).
-        *   **Copy Adjustment:**  Ad copy is rewritten to emphasize aspects aligned with the chosen vibes.
-        *   **Alternative Item Display (Tier 2):** *Below* the dynamically adjusted primary ad, display 2-3 alternative items that strongly match the selected vibes *and* are related to Item A's category. These are smaller previews with direct links.
-    *   'Disinterest' Integration: If the user selects a ‘Disinterested’ button (still present), the mood board data is also recorded, offering a richer reason for the rejection.
+2.  **Predictive Unavailability Algorithm:**
+    *   Employ a machine learning model trained on historical data store health metrics (CPU, memory, disk I/O, network latency, error rates).
+    *   The model predicts the probability of data store unavailability within a defined time window (e.g., next 5, 15, 30 minutes).
+    *   A configurable threshold determines when to proactively issue temporary tokens.  Lower thresholds generate more preemptive tokens, increasing robustness at the cost of potential overhead.
 
-*   **System Architecture:**
-    *   **Ad Server Integration:** Ad server needs to support dynamic content rendering within a standard ad unit.
-    *   **Vibe Database:** Large database of images/videos categorized by aesthetic/lifestyle tags.
-    *   **Content Generation Module:** AI-powered module to rewrite ad copy and dynamically adjust images based on vibe selection.  Utilizes image style transfer and text generation models.
-    *   **User Preference Tracking:** Store user vibe selections alongside browsing/purchase history.
+3.  **Tiered Token Validation System:**
+    *   **Tier 1: Temporary Token (Proactive/Reactive):**  Issued when: (a) the predictive algorithm indicates potential unavailability, or (b) a data store becomes unavailable.  Grants limited access, suitable for read-only operations or queuing requests.
+    *   **Tier 2: Provisional Token:** Issued after a data store becomes unavailable, and a failover to a mirror is in progress. Validates against the mirror, allowing read/write access to mirrored data. Limited lifespan.
+    *   **Tier 3: Valid Token:**  Issued once the primary data store is fully restored, or a mirror has been promoted to primary. Full access to all data.
 
-*   **Pseudocode (Core Logic):**
+4.  **Token Orchestration Service:**
+    *   A dedicated service manages token issuance, validation, and propagation.
+    *   Communicates with the predictive algorithm, data store health monitoring, and mirroring system.
+    *   Maintains a token registry with associated metadata (expiration time, access level, associated data store).
+
+5.  **API Extensions:**
+    *   New API endpoints for:
+        *   `PredictiveTokenRequest(serviceId, dataBlockId)`:  Requests a predictive token for a specific service and data block.
+        *   `TokenStatusCheck(tokenId)`:  Checks the validity and status of a token.
+        *   `TokenRefresh(tokenId)`: Attempts to refresh a token (e.g., upgrade from temporary to valid).
+
+**Pseudocode (Token Orchestration Service - Simplified):**
 
 ```
-FUNCTION generateMoodBoard(item, user):
-  vibeOptions = getVibeOptions(item, user) // Algorithmically selects 9 vibe options
-  RETURN vibeOptions
+function handleDataBlockTokenizationCall(serviceId, dataBlockId):
+  storeStatus = getDataStoreStatus(dataBlockId)
 
-FUNCTION adjustAd(item, selectedVibes):
-  newImage = applyStyleTransfer(item.image, selectedVibes)
-  newCopy = generateAdCopy(item, selectedVibes)
-  alternativeItems = findAlternativeItems(item, selectedVibes)
-  RETURN newImage, newCopy, alternativeItems
+  if storeStatus == "unavailable":
+    predictiveRisk = getPredictiveRisk(dataBlockId)
+    if predictiveRisk > threshold:
+      tokenId = generateTemporaryToken(serviceId, dataBlockId)
+      issueToken(serviceId, tokenId)
+      log("Issued preemptive token for service " + serviceId)
 
-ON User Clicks 'Disinterested':
-  recordDisinterest(item, selectedVibes)
+  //...Existing token handling logic...
+
+  if storeStatus == "unavailable":
+    failoverComplete = initiateFailover(dataBlockId)
+    if failoverComplete:
+      tokenId = generateProvisionalToken(serviceId, dataBlockId)
+      issueToken(serviceId, tokenId)
+      log("Issued provisional token for service " + serviceId)
+
+  //...Existing token handling logic...
+
 ```
 
-*   **Hardware Requirements:** Standard ad server infrastructure.  GPU acceleration recommended for style transfer and content generation.
+**Potential Benefits:**
+
+*   Reduced latency during data store outages.
+*   Improved application resilience.
+*   Proactive mitigation of data store failures.
+*   Enhanced user experience.
