@@ -1,65 +1,54 @@
-# 10395221
+# 10064184
 
-## Adaptive Haptic Feedback System for Device Care
+## Dynamic Mesh Network Orchestration via Bio-Inspired Swarm Intelligence
 
-**Core Concept:** Integrate haptic feedback, not merely as notification, but as a responsive ‘training’ system, teaching users subtle handling techniques to minimize device stress and reward careful behavior. This moves beyond simply *detecting* drops or moisture, and actively guides user behavior *before* incidents occur.
+**Concept:** Leverage principles of swarm intelligence (specifically, particle swarm optimization) to create a self-organizing, adaptive mesh network for video streaming, moving beyond simple point-to-point or centralized routing decisions. This allows for truly dynamic bandwidth allocation and resilience against interference, even in highly congested environments. The initial patent focuses on *choosing* between links. This expands it to *creating* links and dynamically reconfiguring the network topology itself.
 
-**System Components:**
+**Specs:**
 
-*   **Multi-Axis Stress Sensors:**  Beyond accelerometers/gyroscopes/moisture sensors, embed micro-strain gauges *within* the device chassis, detecting subtle bending/flexing *before* significant impact or deformation. These sensors should cover key stress points – corners, edges, screen areas.
-*   **Localized Haptic Actuators:**  An array of miniature haptic actuators (e.g., piezoelectric, LRAs) distributed across the device's surface.  These must be capable of *precise*, localized vibrations.
-*   **AI-Powered Behavior Model:** A machine learning model trained to correlate sensor data (stress, motion, grip) with potential damage scenarios.  This model learns *individual* user handling patterns.
-*   **Haptic Feedback Profiles:**  Pre-defined and dynamically adjusted haptic patterns.
-*   **Reward System Integration:** Connects to existing reward infrastructure to assign points/badges/rewards.
+*   **Node Types:** Media Device (source), Client Device (destination), Relay Nodes (can be either or both). Relay nodes can be anything – smart speakers, IoT devices, other client devices willing to participate, even temporarily dedicated hardware.
+*   **Communication Protocol:** Mesh network based on 802.11ax (Wi-Fi 6) or similar, supporting multiple channels and MU-MIMO.
+*   **"Fitness Function":** The core of the swarm intelligence algorithm. This function evaluates the "quality" of a network topology based on:
+    *   **Aggregate Bandwidth:** Total bandwidth available between source and destination.
+    *   **Latency:** End-to-end delay.
+    *   **Packet Loss:** Percentage of lost packets.
+    *   **Airtime Fairness:** Distribution of airtime usage among nodes to prevent starvation.
+    *   **Interference Avoidance:** Minimizing interference with other networks or devices.
+*   **"Particles":** Each particle represents a potential network topology. A topology is defined by:
+    *   Active Relay Nodes: Which nodes are currently participating in the mesh.
+    *   Routing Paths: The specific paths data packets will take from source to destination.
+    *   Channel Assignments: Which channel each link in the mesh is using.
+    *   Transmission Power Levels: The power level each node is transmitting at.
+*   **Algorithm:**
+    1.  **Initialization:** Each particle (topology) is initialized randomly.
+    2.  **Evaluation:** The fitness function is used to evaluate the fitness of each particle.
+    3.  **Velocity & Position Update:** Each particle's position (topology) is updated based on its current position and velocity. Velocity is influenced by the particle's best known position (personal best) and the best known position of the entire swarm (global best). The following pseudocode is representative of the velocity and position updates:
 
-**Operational Logic (Pseudocode):**
+```pseudocode
+// For each particle i in the swarm:
+  velocity[i] = inertia * velocity[i] +
+                 c1 * rand() * (personal_best_position[i] - position[i]) +
+                 c2 * rand() * (global_best_position - position[i])
 
+  position[i] = position[i] + velocity[i]
+
+  // Clamp values to ensure feasibility (e.g., valid relay nodes, channel assignments).
 ```
-//Initialization
-Device.InitializeSensors()
-AI.LoadBehaviorModel(UserID)
-RewardSystem.Initialize(UserID)
+    *   `inertia`: Controls the influence of the particle's previous velocity.
+    *   `c1`, `c2`: Cognitive and social parameters, controlling the influence of personal and global best positions.
+    *   `rand()`: A random number between 0 and 1.
 
-//Main Loop
-While (Device.IsOn())
-{
-    SensorData = Device.ReadSensors()
-    RiskLevel = AI.AssessRisk(SensorData)
+    4.  **Topology Validation:**  Check that the proposed topology is feasible. This includes checking for disconnected paths, channel conflicts, and exceeding node capacity.
+    5.  **Mesh Network Configuration:** If the topology is valid, configure the mesh network accordingly. This involves establishing connections between nodes, assigning channels, and setting transmission power levels.
+    6.  **Data Transmission:** Transmit video data through the configured mesh network.
+    7.  **Performance Monitoring:** Monitor network performance (bandwidth, latency, packet loss).
+    8.  **Repeat steps 2-7:** Continuously optimize the network topology based on real-time performance data.
 
-    If (RiskLevel > 0) // Potential for harm
-    {
-        HapticPattern = AI.GenerateHapticPattern(RiskLevel)  // Pattern designed to subtly correct grip/position
-        Device.PlayHapticPattern(HapticPattern)
+*   **Hysteresis:** To prevent oscillations, a hysteresis threshold is implemented. The network will only switch to a new topology if the improvement in fitness exceeds the threshold.
+*   **Proactive Topology Exploration:** Periodically explore new topologies even if the current topology is performing well. This helps the network adapt to changing conditions and discover even better solutions.
 
-        If(UserRespondsPositively){ //Adjusted Grip, Stabilized Device
-            RewardSystem.AwardPoints(PointsForPositiveResponse)
-        } else {
-            //Increase Haptic Intensity or Change Pattern
-        }
+**Hardware Requirements:**
 
-    }
-    If(DeviceStable()){
-        RewardSystem.AwardPoints(PointsForStableHandling)
-    }
-
-}
-
-```
-
-**Haptic Pattern Examples:**
-
-*   **Early Drop Warning:**  A gentle, pulsating vibration *underneath* the fingers, encouraging a firmer grip. Intensity increases with risk.
-*   **Incorrect Grip Correction:** If the device is held by a corner, a localized vibration on the opposite side encourages redistribution of pressure.
-*   **Moisture Detection:** A cool, localized vibration near the source of moisture, accompanied by a visual alert.
-*   **Stable Handling Reward:** A subtle, satisfying ‘pulse’ when the device is held securely and moves smoothly.
-
-**Hardware Specifications:**
-
-*   **Micro-Strain Gauges:** Piezo-resistive strain gauges (3x3 array under display, 2x2 on rear corners). Resolution: 0.1 micro-epsilon.
-*   **Haptic Actuators:**  Linear Resonant Actuators (LRAs) or Piezoelectric Actuators, 20+ distributed across device surface. Frequency range: 50Hz - 250Hz. Amplitude control: 0-100%.
-*   **Processing:** Dedicated co-processor for sensor fusion and haptic pattern generation. Real-time processing required.
-*   **Power Management:** Low-power sensor monitoring with adjustable sampling rates.
-
-**Novelty:**
-
-This is distinct from existing systems by its *proactive* nature. It’s not simply about logging damage, it’s about *teaching* users how to handle the device to prevent damage. The integration of localized haptic feedback, paired with AI-driven behavioral analysis, creates a unique and engaging user experience. The focus is on positive reinforcement and subtle guidance, rather than reactive alerts.
+*   Media Device: Sufficient processing power and memory to run the swarm intelligence algorithm and manage mesh network connections.
+*   Client Device:  Support for mesh networking protocols and participation in the swarm intelligence algorithm (optional, can be offloaded to the media device).
+*   Relay Nodes: Wi-Fi enabled devices with sufficient processing power to participate in the mesh network.
