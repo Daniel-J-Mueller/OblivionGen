@@ -1,80 +1,61 @@
-# 8782744
+# 11379268
 
-## Dynamic API 'Shadowing' and Predictive Authorization
+## Dynamic Workflow Sharding via Predictive Resource Demand
 
-**Concept:** Extend the metadata-driven authorization described in the patent to include a system that proactively ‘shadows’ API calls and predicts potential authorization failures *before* they occur, using machine learning. This moves authorization from a purely reactive gatekeeper to a predictive system that improves performance and user experience.
+**Concept:** Extend the affinity-based routing to incorporate *predictive* resource demand. Instead of simply routing based on existing affinities (data locality, capability), proactively *shard* the workflow *before* execution, distributing tasks not just to nodes *with* resources, but to nodes *predicted* to have sufficient resources *when* the task needs them. This mitigates contention and improves overall throughput, particularly for long-running or complex workflows.
 
-**Specifications:**
+**Specs:**
 
-**1. Shadow API Endpoint Creation:**
+**1. Predictive Demand Model (PDM):**
 
-*   Upon deployment of any API endpoint, a corresponding ‘shadow’ endpoint is automatically created. This shadow endpoint mirrors the original but does not perform the core business logic.
-*   All incoming requests are *duplicated* and sent to both the primary endpoint and the shadow endpoint.
-*   The shadow endpoint’s sole purpose is to analyze the request metadata and predict authorization status.
+*   **Input:** Workflow definition (task dependencies, estimated execution time, resource requirements – CPU, memory, GPU, network bandwidth), historical execution data (resource usage per task type on each node, workflow completion times, node utilization), real-time node monitoring data (current CPU/memory/GPU/network load).
+*   **Model:**  A time-series forecasting model (e.g., LSTM, Prophet) trained on historical execution data and continuously updated with real-time node monitoring data.  The model predicts future resource demand for each node at specific time intervals.  Multiple models may be required, one for each resource type.
+*   **Output:** A resource demand profile for each node over the workflow’s expected execution timeframe.  This profile indicates the predicted availability of each resource.
 
-**2. Request Feature Extraction:**
+**2. Workflow Sharder:**
 
-*   The shadow endpoint extracts features from the incoming request, including:
-    *   Client ID
-    *   API Endpoint
-    *   Request Parameters (values are hashed/anonymized to protect data)
-    *   Time of day
-    *   Geographic Location (based on IP address – anonymized)
-    *   Request frequency from the client
-*   These features are combined into a vector representation for machine learning.
+*   **Input:** Workflow definition, PDM output (resource demand profiles for all nodes).
+*   **Process:**
+    1.  Analyze task dependencies.
+    2.  For each task, identify potential execution nodes based on required resources.
+    3.  Using the PDM output, calculate a ‘contention score’ for each potential node. This score represents the predicted likelihood of resource contention at the task’s estimated execution time.
+    4.  Assign tasks to nodes with the *lowest* contention scores, prioritizing nodes with sufficient resources.  This may involve re-ordering task execution within dependency constraints to further minimize contention.
+    5.  Generate a sharded workflow definition specifying the assigned node for each task.
 
-**3. Predictive Authorization Model:**
+**3. Dynamic Resharding Module:**
 
-*   A machine learning model (e.g., Random Forest, Gradient Boosting) is trained on historical request data, including successful and failed authorization attempts.
-*   The model predicts the probability of authorization failure for each incoming request based on the extracted features.
-*   Model training is continuous, adapting to evolving usage patterns.
+*   **Trigger:** Monitor node health and resource availability during workflow execution. Detect deviations from the PDM predictions (e.g., node failure, unexpected load spikes).
+*   **Process:**
+    1.  Identify tasks currently executing or scheduled to execute on the affected node.
+    2.  Using the sharded workflow definition and PDM output, identify alternative execution nodes with sufficient resources and low contention.
+    3.  Re-route tasks to the alternative nodes, updating the sharded workflow definition accordingly.
 
-**4. Early Rejection & Client Notification:**
-
-*   If the predictive model determines a high probability of authorization failure (above a configurable threshold), the request is *immediately* rejected *before* reaching the primary endpoint.
-*   A tailored error message is sent to the client, explaining the reason for rejection (e.g., “Insufficient permissions for this action”). This could also include guidance on how to rectify the situation.
-
-**5. Dynamic Permission Assignment:**
-
-*   When a client attempts an action that would normally be blocked but has a *low* predictive failure probability (suggesting an edge case or temporary issue), a system can dynamically assign permissions for a limited time.
-*   This requires a separate approval workflow (e.g., email notification to an administrator).
-
-**6. Pseudocode (Shadow Endpoint):**
+**Pseudocode (Dynamic Resharding):**
 
 ```
-function processShadowRequest(request) {
-  features = extractFeatures(request)
-  prediction = mlModel.predict(features)
+function dynamicResharding(nodeFailureEvent):
+  affectedTasks = findTasksOnNode(nodeFailureEvent.nodeId)
+  for task in affectedTasks:
+    alternativeNodes = findAlternativeNodes(task.resourceRequirements, PDM.getFutureResourceAvailability())
+    if alternativeNodes.size() > 0:
+      bestNode = selectBestNode(alternativeNodes, PDM) // Prioritize nodes with lowest contention
+      updateShardedWorkflow(task, bestNode)
+      reRouteTask(task, bestNode)
+    else:
+      log("No suitable alternative node found for task: " + task.taskId)
+      // Handle failure – potentially retry, pause workflow, or escalate
 
-  if (prediction.failureProbability > threshold) {
-    log("Rejected request due to predicted authorization failure")
-    return {
-      status: "error",
-      message: "Insufficient permissions"
-    }
-  } else {
-    // Optionally: Log successful prediction
-    return {
-      status: "success"
-    }
-  }
-}
-
-function extractFeatures(request) {
-    // Extract client ID, API endpoint, request parameters (hashed), time, location, frequency
-    // Return a feature vector
-}
+function selectBestNode(nodes, PDM):
+  // Calculate a score based on predicted contention
+  for node in nodes:
+    contentionScore = PDM.getPredictedContention(node, task.estimatedExecutionTime)
+    node.score = contentionScore
+  // Return node with lowest contention score
+  return nodes.sortBy(score).first()
 ```
 
-**7. Data Pipeline:**
+**Data Structures:**
 
-*   Real-time request data (including authorization results) is streamed to a data lake.
-*   Data is preprocessed, cleaned, and transformed into a format suitable for model training.
-*   A machine learning pipeline automatically retrains the predictive model on a regular basis.
-
-**8. Integration with Existing Authorization System:**
-
-*   The predictive authorization system operates in parallel with the existing metadata-driven authorization system described in the patent.
-*   The predictive system *augments* the existing system, providing an additional layer of protection and improving performance.
-
-This system shifts the focus from reactive enforcement to proactive prediction, enhancing both security and user experience.  It creates a more intelligent and adaptive API authorization framework.
+*   **Task:**  `taskId`, `resourceRequirements` (CPU, memory, GPU, network), `estimatedExecutionTime`, `dependencies`, `assignedNode`
+*   **Node:** `nodeId`, `resourceCapacity` (CPU, memory, GPU, network), `currentLoad` (CPU, memory, GPU, network), `healthStatus`
+*   **PDM Output:** Time-series data representing predicted resource availability for each node.
