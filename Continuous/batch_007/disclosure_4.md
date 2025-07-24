@@ -1,58 +1,60 @@
-# 10491403
+# 10505862
 
-## Adaptive Key Shadowing with Predictive Re-encryption
+## Dynamic Resource Host ‘Shadowing’ for Predictive Scaling & Resilience
 
-**Concept:** Extend the key usage limit enforcement by introducing ‘key shadowing’ – maintaining multiple cryptographic keys for the same data stream, and *predictively* re-encrypting data segments *before* the primary key’s usage limit is reached. This aims to minimize disruption and maintain consistent data availability.
+**Concept:** Expand upon the infrastructure diversity constraint concept by introducing ‘shadow’ resource hosts. These aren't immediately utilized for live resource placement, but constantly mirror the utilization patterns and configurations of primary hosts. This creates a readily available, pre-configured environment for rapid scaling and immediate failover, exceeding simple capacity metrics.
 
-**Specification:**
+**Specifications:**
 
-**1. System Components:**
+1.  **Shadow Host Creation:**
+    *   Automatically provision shadow hosts mirroring primary hosts based on cluster topology and workload profiles.
+    *   Shadow hosts utilize a minimal resource allocation (e.g., 10-20% of primary host capacity) for monitoring and configuration synchronization.
+    *   Selection of shadow hosts prioritizes geographic diversity *beyond* the primary host diversity constraints – aiming for resilience against regional outages.
 
-*   **Key Management Service (KMS):**  Handles key generation, rotation, and distribution. Maintains a ‘key shadow pool’ – a set of currently valid but secondary keys.
-*   **Policy Engine:** Defines usage limits, rotation schedules, and predictive re-encryption triggers.  Incorporates data stream characteristics (volume, frequency) into prediction algorithms.
-*   **Data Interception/Redirection Module (DIRM):** Intercepts data streams, enforces policy, and directs data to the appropriate re-encryption module. Can exist at network edge or within a data center.
-*   **Predictive Re-Encryption Module (PREM):** Re-encrypts data using a key from the shadow pool based on PREM’s algorithms. Operates in parallel with data stream to minimize latency.
-*   **Attestation Service:** Verifies system state and key validity before and after re-encryption.
+2.  **Utilization Mirroring & Prediction:**
+    *   Implement a real-time utilization data stream from primary hosts to their respective shadows. This includes CPU, memory, storage I/O, and network bandwidth.
+    *   Employ a machine learning model (Time Series Forecasting – Prophet, LSTM) on shadow hosts to *predict* future utilization based on historical primary host data. The prediction horizon is configurable (e.g., 15 minutes, 1 hour).
+    *   The prediction model considers seasonality (daily, weekly, monthly) and anomalous events.
 
-**2. Operational Flow:**
+3.  **Dynamic Scaling Trigger:**
+    *   Establish scaling thresholds based on predicted utilization. For example, if the predicted utilization of a primary host exceeds 80% within the next 15 minutes, automatically initiate a scaling action.
+    *   Scaling actions include:
+        *   Provisioning a new primary host (standard scaling).
+        *   *Activating* a shadow host as a full primary host – providing *instant* capacity without provisioning delays.
+        *   Migrating workloads from heavily loaded primary hosts to newly activated shadow hosts.
 
-1.  **Baseline Establishment:** Upon initial data stream setup, the KMS generates a primary key and a set of shadow keys. These keys share a cryptographic relationship (e.g., derived from a master key).
-2.  **Policy Definition:** The Policy Engine defines the primary key’s usage limit (e.g., number of operations, time-based validity). It also establishes parameters for predictive re-encryption (e.g., re-encryption trigger threshold – 75% of limit reached).
-3.  **Data Interception:** The DIRM intercepts the data stream.
-4.  **Usage Monitoring:** The DIRM monitors the usage of the primary key.
-5.  **Predictive Analysis:** When the primary key’s usage reaches the defined threshold, the Policy Engine predicts the remaining validity.
-6.  **Parallel Re-encryption:** The PREM begins re-encrypting subsequent data segments using a key selected from the shadow pool. This occurs *before* the primary key reaches its absolute limit.  PREM performs the re-encryption on data segments in parallel with the ongoing data stream.
-7.  **Key Switchover:**  Once a sufficient portion of the data stream has been re-encrypted with the shadow key, the DIRM switches the data stream to use the new key as the primary key.  Any remaining data encrypted with the old key is handled via a ‘catch-up’ re-encryption process if necessary.
-8.  **Attestation & Verification:** The Attestation Service verifies the system state and key validity throughout the process.
-9.  **Shadow Key Rotation:** The shadow keys are periodically rotated to further enhance security.
-10. **Stream Synchronization:** PREM uses a stream synchronization protocol to ensure that re-encrypted segments are assembled correctly and delivered to the destination in the original order.
+4.  **Automated Failover:**
+    *   Implement health checks on primary hosts.
+    *   If a primary host fails, automatically activate its associated shadow host as a replacement *without* manual intervention.
+    *   Data synchronization is handled by mirroring or replication, ensuring minimal data loss during failover.
 
-**3. Pseudocode (PREM - Predictive Re-Encryption Module):**
+5.  **Resource Host ‘Swapping’**
+    *   Periodically, *swap* the roles of primary and shadow hosts. This distributes the load more evenly and helps to identify potential issues with hardware or configuration.
+    *   The swapping process is automated and occurs during off-peak hours.
+    *   This also allows for 'rolling upgrades' and maintenance without downtime.
 
-```pseudocode
-function reEncryptSegment(dataSegment, shadowKey):
-    encryptedSegment = encrypt(dataSegment, shadowKey)
-    return encryptedSegment
+**Pseudocode (Simplified Scaling Trigger):**
 
-function processDataStream():
-    while (receiving dataSegment):
-        // Check if primary key is nearing usage limit
-        if (usageLimitReached(primaryKey, threshold)):
-            // Select a shadow key
-            shadowKey = selectShadowKey()
-            // Re-encrypt data segment in parallel
-            encryptedSegment = reEncryptSegment(dataSegment, shadowKey)
-            // Transmit re-encrypted segment
-            transmit(encryptedSegment)
-        else:
-            // Use primary key for encryption
-            encryptedSegment = encrypt(dataSegment, primaryKey)
-            transmit(encryptedSegment)
+```
+FUNCTION trigger_scaling(primary_host_data, prediction_model, scaling_threshold):
+  predicted_utilization = prediction_model.predict(primary_host_data)
+
+  IF predicted_utilization > scaling_threshold:
+    shadow_host = find_shadow_host(primary_host_data.host_id)
+
+    IF shadow_host.status == "inactive":
+      activate_shadow_host(shadow_host)
+      migrate_workloads(primary_host_data, shadow_host)
+    ELSE:
+      // Shadow host already active – may need to scale further
+      scale_up_shadow_host(shadow_host)
+
+  ENDIF
+ENDFUNCTION
 ```
 
-**4. Considerations:**
+**Data Structures:**
 
-*   **Latency:**  Parallel re-encryption aims to minimize latency, but careful optimization is crucial.
-*   **Key Management Complexity:** Maintaining and rotating shadow keys adds complexity to key management.
-*   **Computational Overhead:** Re-encryption introduces computational overhead.
-*   **Synchronization:** Maintaining data segment order during re-encryption is vital.
+*   `HostData`:  `host_id`, `status` (active/inactive), `utilization` (CPU, Memory, Storage, Network), `configuration`
+*   `PredictionModel`:  `model_type`, `parameters`, `prediction_horizon`
+*   `WorkloadData`:  `workload_id`, `resource_requirements`, `host_id`
