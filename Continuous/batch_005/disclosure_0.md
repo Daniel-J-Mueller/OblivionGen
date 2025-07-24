@@ -1,60 +1,59 @@
-# 9576109
+# 10147456
 
-## Dynamic Content Re-Allocation Based on Reader Engagement
+## Dynamic Motion Baseline Calibration & Predictive Alerting
 
-**Concept:** Expand revenue allocation beyond simple sales rankings of physical books to incorporate *real-time* reader engagement metrics within the digital book itself. This shifts from passively observing physical sales as a proxy for interest to *directly measuring* how readers interact with the content.
+**Concept:** Expand beyond simple motion *detection* to establish a learned ‘normal’ baseline for a monitored space, then predict potential incidents *before* they fully manifest as triggered motion events. This involves a multi-faceted sensor array and a continuous learning algorithm.
 
 **Specs:**
 
-*   **Engagement Data Collection:** Instrument the digital book reader application (e.g., Kindle, Kobo, custom app) to collect the following data (anonymized and aggregated):
-    *   Time spent on each chapter/section.
-    *   Frequency of highlighting/note-taking.
-    *   Search terms used within the book.
-    *   Completion rate (percentage of the book read).
-    *   Interactive element engagement (if the book includes quizzes, polls, embedded video, etc.).
-    *   Social sharing activity (sharing quotes, passages, or completion status).
-*   **Engagement Score Calculation:** Develop an algorithm to combine these data points into a single "Engagement Score" for each reader/user (or a representative sample).  Weighting factors would be adjustable to prioritize specific metrics.
+*   **Sensor Suite:**
+    *   Multiple PIR sensors (as in the base patent) – minimum of 4, strategically positioned to cover a volume, not just a plane.
+    *   Microphone array (3+ mics) – for ambient sound analysis and directional sound source localization.
+    *   Low-resolution thermal camera – to detect heat signatures and differentiate between animate/inanimate sources.
+    *   Vibration sensor – attached to the structure (wall/floor) to detect subtle structural vibrations that might precede movement (e.g., someone approaching a door).
 
-    ```pseudocode
-    function calculateEngagementScore(timeSpent, highlights, searches, completionRate, interactiveEngagement) {
-        //Adjustable weights
-        weightTime = 0.3
-        weightHighlights = 0.25
-        weightSearches = 0.15
-        weightCompletion = 0.2
-        weightInteractive = 0.1
+*   **Data Processing Unit:** Embedded system with sufficient processing power for real-time data analysis and machine learning.
 
-        score = (weightTime * normalize(timeSpent)) +
-                (weightHighlights * normalize(highlights)) +
-                (weightSearches * normalize(searches)) +
-                (weightCompletion * normalize(completionRate)) +
-                (weightInteractive * normalize(interactiveEngagement))
+*   **Learning Algorithm:**
+    *   **Baseline Establishment:** During an initial learning period (configurable duration), the system builds a probabilistic model of “normal” activity based on sensor data. This model encapsulates typical patterns of PIR activation, ambient sound levels, thermal signatures, and structural vibrations.
+    *   **Anomaly Detection:**  Continuously compares real-time sensor data to the learned baseline.  Deviations are scored based on a weighted combination of sensor discrepancies.
+    *   **Predictive Alerting:** When the anomaly score exceeds a dynamically adjusted threshold *and* exhibits a specific trend (e.g., rapidly increasing anomaly score), a “pre-alert” is generated. This pre-alert indicates a *potential* incident.
+    *   **Confirmation Phase:**  The system monitors for *actual* motion confirmation via PIR or thermal detection.  If motion is confirmed within a short timeframe after the pre-alert, a full alert is triggered. If not, the pre-alert is dismissed as a false positive (and used to refine the learning model).
 
-        return score // Score between 0 and 1
+*   **Alert System:**
+    *   Client device notification with pre-alert and confirmed alert status.
+    *   Optional recording initiation upon pre-alert (short buffer).
+    *   Configurable sensitivity levels and alert types.
+
+**Pseudocode:**
+
+```
+// Initialization
+LEARN_BASELINE(duration);
+
+// Main Loop
+WHILE (TRUE) {
+    READ_SENSORS(pir_data, mic_data, thermal_data, vibration_data);
+    anomaly_score = CALCULATE_ANOMALY_SCORE(pir_data, mic_data, thermal_data, vibration_data);
+
+    IF (anomaly_score > threshold AND anomaly_score_trend == INCREASING) {
+        SEND_PRE_ALERT(client_device);
+        START_RECORDING(buffer);
+
+        // Wait for motion confirmation
+        IF (MOTION_DETECTED() WITHIN timeout) {
+            SEND_FULL_ALERT(client_device);
+        } ELSE {
+            DISMISS_PRE_ALERT();
+            UPDATE_BASELINE(with pre-alert data as false positive);
+        }
     }
+}
+```
 
-    function normalize(value) {
-        //Scales value to between 0 and 1 based on max observed value.
-        return value / maxValue //Max value tracked per book.
-    }
-    ```
-*   **Dynamic Revenue Allocation:** Link the Engagement Score to revenue allocation.
-    *   Establish tiers of Engagement Scores (e.g., Low, Medium, High).
-    *   Allocate a higher percentage of revenue to the rights holder for books with a higher average Engagement Score.
-    *   Introduce a “Reader Dividend” – a small percentage of revenue is pooled and distributed to rights holders of books with exceptionally high engagement.
-*   **Real-Time Adjustment:** Implement a system that dynamically adjusts revenue allocations based on *rolling* Engagement Scores (e.g., calculated daily or weekly). This allows for rapid response to changes in reader interest.
-*   **Integration with Existing System:**  The new system integrates with the original patent's ranking of physical books, effectively combining external market indicators with internal reader behavior.  A blended score could be used.
+**Refinement Possibilities:**
 
-**Hardware/Software Requirements:**
-
-*   Digital book reader application with data collection capabilities.
-*   Secure data storage and processing infrastructure.
-*   Real-time analytics engine.
-*   API for integration with existing revenue allocation system.
-
-**Potential Benefits:**
-
-*   Incentivizes authors to create highly engaging content.
-*   Provides a more accurate reflection of book value based on *actual* reader interest.
-*   Creates a more sustainable revenue model for authors and publishers.
-*   Generates valuable data for content optimization and marketing.
+*   **Object Recognition:** Integrate a low-resolution camera (or utilize thermal data) for basic object recognition (e.g., person vs. pet) to further refine alert accuracy.
+*   **Geofencing:**  Combine sensor data with geofencing to create activity zones and tailor alerts based on location.
+*   **AI-powered behavior learning:** Adapt to user schedules and learn 'normal' behaviors to create more targeted and accurate alerts.
+*   **Integration with smart home systems:** Control lighting, locks, and other devices in response to detected anomalies.
