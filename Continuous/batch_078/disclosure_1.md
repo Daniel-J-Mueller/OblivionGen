@@ -1,57 +1,63 @@
-# 11892721
+# 10855580
 
-## Dynamic Light Field Projection via Layered LC Control
+## Adaptive Route Coloring & Weighted Preference
 
-**Concept:** Extend the liquid crystal control demonstrated in the patent to create a volumetric display capable of projecting dynamic light fields. Instead of simply switching privacy/opacity, modulate the light *direction* emanating from the display itself, creating the illusion of 3D objects suspended in space.
+**Concept:** Extend the existing redundant route controller system with a dynamic route coloring scheme coupled with weighted preference settings for individual flow managers. This allows for fine-grained traffic steering beyond simple health checks, enabling optimization for latency, cost, or specific application requirements.
 
-**Specs:**
+**Specification:**
 
-*   **Display Structure:** Multi-layered liquid crystal panel stack. Minimum of 3 layers, optimally 5-7. Each layer operates as a discrete ‘plane’ in the volumetric display.
-*   **Electrode Configuration:** Each LC layer possesses a micro-lens array patterned onto the electrode surface. These micro-lenses are individually addressable via the thin-film transistor layer, allowing precise control of light deflection. Lens focal lengths are optimized for layer separation distance.
-*   **LC Material:** Fast-switching cholesteric liquid crystal.  Chosen for its wide viewing angle and ability to efficiently scatter light. Layer doping with dichroic dyes to provide colour control.
-*   **Backlight System:** High-resolution micro-LED array positioned behind the LC stack. Each micro-LED corresponds to a pixel in the display. This provides precise illumination control for each volumetric voxel.
-*   **Polarization Control:**  Each LC layer incorporates a dynamically adjustable polarization filter. Filters can rotate to control the polarization of light passing through, enhancing the contrast and clarity of the volumetric image.
-*   **Control System:** Dedicated FPGA-based processor with high-speed data transfer interfaces.
-*   **Software API:** Enables developers to define volumetric scenes using a 3D scene graph. API includes functions for specifying light intensity, colour, and direction for each volumetric voxel.
+**1. Route Coloring Module:**
 
-**Pseudocode – Volumetric Scene Rendering:**
+*   **Function:** Assigns a ‘color’ (identifier) to each route entry. Colors represent different service levels or quality of service (QoS) profiles.
+*   **Implementation:** Integrated within each route controller.
+*   **Color Assignment:**  Driven by a policy engine, configurable through a management interface. Policies can be based on source/destination IP, port, application type, user ID, or any combination.
+*   **Data Structure:**  A color table mapping colors to QoS parameters (e.g., latency target, bandwidth allocation, cost).
+*   **Example:**  Color 'Red' = Low latency, high cost; Color 'Blue' = High bandwidth, medium cost; Color 'Green' = Best effort, low cost.
+
+**2. Flow Manager Preference Profiles:**
+
+*   **Function:** Each flow manager (packet processor) maintains a profile indicating its preference for different route colors.
+*   **Data Structure:** A weight array, where each element corresponds to a route color. The weight value represents the flow manager's preference for handling traffic of that color (higher weight = higher preference).
+*   **Dynamic Adjustment:**  Flow managers can dynamically adjust their preference weights based on load, resource utilization, or external signals (e.g., network congestion).  This can be done using a simple feedback loop.
+
+**3. Enhanced Route Controller Logic:**
+
+*   **Route Advertisement:**  When a route controller advertises a route, it includes the route color.
+*   **Flow Manager Selection:** The router device uses the route color and the reported flow manager preference weights to select the optimal flow manager for a given packet. The selection process prioritizes flow managers with higher weights for the packet’s route color.
+*   **Tie-Breaking:**  If multiple flow managers have the same preference weight, health checks are used as a tie-breaker.
+*   **Algorithm (Pseudocode):**
 
 ```
-// Define Volumetric Scene
-Scene = new Scene();
+function select_flow_manager(packet, route_color, flow_manager_preferences):
+  best_flow_manager = null
+  highest_preference = -1
 
-// Define Volumetric Voxel
-Voxel = new Voxel(x, y, z, colour, intensity);
-Scene.add(Voxel);
+  for each flow_manager in flow_managers:
+    preference = flow_manager_preferences[route_color]
+    health = get_flow_manager_health(flow_manager)
 
-// For each layer in the display:
-For (Layer = 0; Layer < NumLayers; Layer++)
-{
-    // Project voxels onto the current layer
-    ProjectedVoxels = Project(Scene.Voxels, Layer);
+    if health > 0:  # Check health before comparison
+      if preference > highest_preference:
+        highest_preference = preference
+        best_flow_manager = flow_manager
+      elif preference == highest_preference and get_flow_manager_health(flow_manager) > get_flow_manager_health(best_flow_manager):
+          best_flow_manager = flow_manager
 
-    // For each projected voxel:
-    For (Voxel in ProjectedVoxels)
-    {
-        // Calculate micro-lens angle to deflect light
-        Angle = CalculateAngle(Voxel.x, Voxel.y, Voxel.z, Layer);
-
-        // Apply voltage to corresponding micro-lens
-        SetMicroLensAngle(Voxel.x, Voxel.y, Layer, Angle);
-
-        // Set micro-LED intensity
-        SetMicroLEDIntensity(Voxel.x, Voxel.y, Voxel.z, Voxel.intensity);
-
-    }
-}
-
-// Update display
-Display.update();
+  return best_flow_manager
 ```
 
-**Further Considerations:**
+**4.  Control Plane Integration:**
 
-*   **Eye Tracking Integration:** Integrate eye tracking to dynamically adjust the displayed light field, maximizing the 3D effect.
-*   **Haptic Feedback:** Combine the visual display with localized haptic feedback to allow users to "feel" the volumetric objects.
-*   **Computational Optics:** Utilize computational optics techniques to correct for aberrations and distortions, improving the image quality.
-*   **Power Management:** Optimize power consumption by dynamically adjusting the backlight intensity and LC switching frequency.
+*   **Centralized Policy Engine:**  A centralized policy engine manages the route coloring policies and distributes them to the route controllers.
+*   **Real-time Updates:**  The policy engine can push updates to the route controllers in real-time to adapt to changing network conditions.
+*   **API Integration:**  Expose APIs for external applications to programmatically influence route coloring policies.
+
+**5.  Monitoring & Analytics:**
+
+*   **Route Color Distribution:** Track the distribution of route colors across the network.
+*   **Flow Manager Utilization:**  Monitor the utilization of each flow manager for different route colors.
+*   **Performance Metrics:**  Collect performance metrics (latency, throughput, packet loss) for each route color.  This data can be used to optimize route coloring policies.
+
+
+
+This system enables a more intelligent and flexible traffic steering mechanism, allowing the network to optimize performance based on application requirements and network conditions. It builds upon the existing redundancy framework and provides a richer set of control options.
