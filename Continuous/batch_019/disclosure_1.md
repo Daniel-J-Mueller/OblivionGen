@@ -1,60 +1,63 @@
-# 11216917
+# 11514236
 
-## Adaptive Temporal Fusion for Enhanced Detail
+## Dynamic Data Type Propagation & Predictive Indexing
 
-**Core Concept:** Extend the temporal analysis beyond immediate preceding/succeeding frames to incorporate a weighted blend of multiple past *and* future frames. This creates a more robust and contextually aware enhancement, particularly for fast-moving scenes or those with complex occlusions. The weighting isn’t static; it dynamically adjusts based on motion vectors and scene content analysis.
+**Core Concept:** Extend the hybrid datatype indexing to *propagate* datatype awareness across linked spreadsheets/data stores, and *predictively* build/optimize indexes based on anticipated query patterns.
 
-**Specification:**
+**Specifications:**
 
-1.  **Temporal Buffer:** Maintain a buffer of ‘N’ frames surrounding the current frame being enhanced (e.g., N=7: 3 preceding, current, 3 succeeding).
+**1. Data Type Propagation Layer:**
 
-2.  **Motion Vector Analysis:** Calculate dense optical flow (motion vectors) for each frame in the buffer. This reveals the direction and magnitude of motion within the scene.
+*   **Component:** “Type Weaver” – a background service operating across linked spreadsheets/databases.
+*   **Functionality:**
+    *   Monitors data entering/changing in linked spreadsheets.
+    *   Analyzes data to infer dominant/potential datatypes (even if not explicitly defined). Uses statistical methods & potentially lightweight machine learning for inference.
+    *   Propagates datatype information to downstream linked spreadsheets/data stores.  For instance, if Sheet A’s column X is identified as containing mostly dates, Sheet B (linked to Sheet A) receives a ‘hint’ that column X (when referenced) should be treated as a date.
+    *   Handles conflicts/ambiguity by establishing a “datatype lineage” – a record of how a datatype was inferred and propagated. This allows for debugging & manual overrides.
+    *   Utilizes a lightweight protocol (e.g., REST API with JSON payloads) for datatype exchange between spreadsheets/databases.
+*   **Data Structures:**
+    *   `DataTypeLineage`:  `{source_spreadsheet: string, source_column: string, inferred_datatype: string, confidence_score: float, propagation_path: list[string]}`
+    *   `SpreadsheetMetadata`: `{spreadsheet_id: string, columns: [{column_id: string, datatype: string, lineage: DataTypeLineage}]}`
 
-3.  **Scene Segmentation:** Employ a semantic segmentation network to categorize pixels (e.g., sky, building, person, vehicle). This provides contextual understanding.
+**2. Predictive Indexing Engine:**
 
-4.  **Weight Calculation:**
-    *   For each pixel in the current frame, calculate a weight for each frame in the buffer.
-    *   **Motion-Based Weight:** Higher weight is assigned to frames where the corresponding pixel exhibits similar motion (based on optical flow) to the current frame. Dissimilar motion results in lower weight. A Gaussian kernel can be applied to smooth the motion difference.
-    *   **Semantic Weight:** Higher weight is assigned to frames where the corresponding pixel belongs to the same semantic category as the current frame. This helps maintain consistency for static objects.
-    *   **Distance Weight:** A weight decay based on the temporal distance from the current frame. Frames closer in time have a higher base weight.
-    *   Combined Weight = MotionWeight * SemanticWeight * DistanceWeight. Normalize weights across the buffer to sum to 1.
+*   **Component:** “Index Oracle” – a service operating in parallel with spreadsheet access.
+*   **Functionality:**
+    *   Monitors query patterns against linked spreadsheets. Stores query logs, identifying frequently accessed columns, operators (e.g., =, >, <, LIKE), and key values.
+    *   Uses query logs to build a “Query Prediction Model” – a statistical or machine learning model that anticipates future queries.
+    *   Based on the Query Prediction Model, proactively builds/optimizes indexes for anticipated queries.  This includes:
+        *   Creating indexes for frequently queried columns.
+        *   Choosing the most efficient index type (hashed, tree-based, prefix/suffix tree) based on query patterns and data distribution.
+        *   Pre-calculating frequently used filter criteria.
+        *   Generating “Index Blueprints” – instructions for building and maintaining indexes.
+    *   Integrates with the Type Weaver to leverage datatype information for optimized indexing.
+*   **Data Structures:**
+    *   `QueryLogEntry`: `{spreadsheet_id: string, column_id: string, operator: string, key_value: string, timestamp: datetime}`
+    *   `QueryPredictionModel`:  (implementation details vary - could be a Markov model, decision tree, or neural network).  Outputs a probability distribution over future queries.
+    *   `IndexBlueprint`: `{column_id: string, index_type: string, filter_criteria: list[tuple(field, value)]}`
 
-5.  **Fusion Process:**
-    *   For each pixel in the current frame, calculate a weighted average of the corresponding pixels in all frames within the temporal buffer, using the calculated weights.
-    *   This fused pixel value becomes the input to the existing neural network enhancement pipeline.
+**3.  Dynamic Index Update Mechanism:**
 
-6.  **Neural Network Adaptation:** The existing neural network should be adapted to handle the fused input. This might require retraining, but could leverage transfer learning from the existing model. Consider incorporating a ‘fusion layer’ early in the network to explicitly process the temporal information.
+*   Monitors data changes in linked spreadsheets (via event listeners or polling).
+*   When a significant data change occurs, the Index Oracle re-evaluates the Query Prediction Model and updates indexes accordingly.
+*   Implements a tiered update strategy:
+    *   **Incremental Updates:**  For minor data changes, update existing indexes incrementally.
+    *   **Rebuilds:** For major data changes or model shifts, rebuild indexes from scratch.
+    *   **Checkpointing:** Periodically create checkpoints of index data to enable fast recovery from failures.
 
-**Pseudocode:**
+**Pseudocode (Index Oracle - Simplified):**
 
 ```
-function EnhanceFrame(currentFrame, temporalBuffer, motionVectors, semanticSegmentation):
-    fusedFrame = empty frame with same dimensions as currentFrame
+function processQueryLog(queryLogEntry):
+  update query frequency for column in queryLogEntry
+  update query prediction model
 
-    for each pixel (x, y) in currentFrame:
-        weightedSum = 0
-        totalWeight = 0
-
-        for each frame in temporalBuffer:
-            motionDifference = calculateMotionDifference(motionVectors[frame], pixel, x, y)
-            semanticMatch = compareSemanticCategories(semanticSegmentation[frame], pixel, x, y)
-            temporalDistance = calculateTemporalDistance(frame, currentFrame)
-
-            motionWeight = gaussianKernel(motionDifference)
-            semanticWeight = semanticMatch ? 1 : 0
-            distanceWeight = exponentialDecay(temporalDistance)
-
-            combinedWeight = motionWeight * semanticWeight * distanceWeight
-
-            pixelValue = getPixelValue(frame, x, y)
-            weightedSum += pixelValue * combinedWeight
-            totalWeight += combinedWeight
-
-        fusedPixelValue = weightedSum / totalWeight
-        setPixelValue(fusedFrame, x, y, fusedPixelValue)
-
-    enhancedFrame = existingNeuralNetwork(fusedFrame)
-    return enhancedFrame
+function updateIndexes():
+  for each column:
+    predictedQueryFrequency = queryPredictionModel.predictFrequency(column)
+    if predictedQueryFrequency > threshold:
+      if column does not have an index:
+        createIndex(column, chooseIndexType(column))
+      else:
+        optimizeIndex(column)
 ```
-
-**Hardware Considerations:** This approach increases computational complexity due to the temporal buffer and weight calculations. Consider using hardware acceleration (e.g., GPUs, specialized ASICs) to handle the increased workload. Optimized memory access patterns are crucial.
