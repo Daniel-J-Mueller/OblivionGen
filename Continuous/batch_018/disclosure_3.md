@@ -1,69 +1,54 @@
-# 11032287
+# 11875191
 
-## Delegated Policy Synthesis & Dynamic Permission Sculpting
+## Dynamic Resource Allocation Based on Predicted Grid Carbon Intensity
 
-**Concept:** Expand the delegated administrator concept beyond static permission boundaries. Introduce a system where delegated administrators can *synthesize* new permission policies based on pre-approved “policy fragments” and dynamically adjust effective permissions for IAM principals based on contextual factors.
+**Concept:** Expand the energy optimization to include real-time and predicted carbon intensity of the electrical grid supplying the data centers. This allows shifting workloads to locations and times with lower carbon emissions, contributing to sustainability goals *in addition* to reducing energy costs.
 
-**Specification:**
+**Specifications:**
 
-**1. Policy Fragment Repository:**
+**1. Data Acquisition & Processing:**
 
-*   A centralized repository storing pre-approved, modular policy fragments. These fragments represent common access patterns or specific resource permissions (e.g., "read S3 bucket X", "invoke Lambda function Y", “EC2 instance console access – region Z”).
-*   Each fragment is tagged with metadata: resource type, action, required conditions (e.g., MFA, IP range), risk score, and a "synthesis signature" (identifying allowed combinations with other fragments).
-*   Central administrator controls fragment creation, approval, and versioning.
-*   Fragments can be versioned, and deprecated fragments archived.
+*   **Grid Carbon Intensity API Integration:** Integrate with APIs providing real-time and predicted carbon intensity data for regional electrical grids (e.g., Electricity Maps, EPA’s AVERT).  Data should include carbon intensity (gCO2/kWh) and the forecast horizon (e.g., next 24 hours, next week).
+*   **Historical Data Storage:** Maintain a historical database of grid carbon intensity, weather data (temperature, humidity), and data center energy usage patterns.
+*   **Prediction Model:** Develop a machine learning model to predict future grid carbon intensity based on historical data, weather forecasts, and potentially other factors (e.g., planned grid maintenance, time of day).  Consider time series forecasting models (e.g., ARIMA, LSTM).
+*   **Data Normalization:** Normalize carbon intensity data to a common scale for comparison across regions.
 
-**2. Delegated Policy Synthesis Interface:**
+**2. Resource Allocation Algorithm:**
 
-*   A web-based UI for delegated administrators.
-*   Allows administrators to *compose* new permission policies by selecting and combining pre-approved fragments.
-*   The interface presents fragments based on a search/filter, categorized by resource type and action.
-*   A "synthesis engine" validates fragment combinations against the synthesis signatures, preventing the creation of invalid or overly permissive policies.
-*   The UI visually depicts the composed policy and its effective permissions.
-*   Workflow approval system for synthesized policies before deployment.
+*   **Cost Function:** Expand the existing energy cost component of the resource allocation algorithm to include a carbon cost component.  The carbon cost should be weighted based on organizational sustainability goals.  (e.g., `Total Cost = (Energy Cost * Energy Weight) + (Carbon Cost * Carbon Weight)`).
+*   **Carbon Cost Calculation:** Calculate the carbon cost for running a workload at a specific location and time:  `Carbon Cost = (Workload Energy Usage) * (Predicted Carbon Intensity) * (Carbon Price)`. The "Carbon Price" is a configurable internal cost per kgCO2, representing the value the organization places on reducing emissions.
+*   **Workload Prioritization:** Allow workload prioritization based on carbon impact.  Critical workloads might prioritize performance, while less urgent workloads can be more flexible in their placement to minimize carbon emissions.
+*   **Dynamic Re-allocation:** Implement a mechanism for dynamically re-allocating workloads *during* execution based on changing grid conditions. For instance, if a region’s carbon intensity suddenly increases, the system can migrate workloads to a cleaner region (with acceptable performance overhead).
 
-**3. Contextual Permission Sculpting:**
+**3. System Architecture:**
 
-*   Extend IAM to incorporate “context keys”. These keys represent real-time factors influencing access decisions (e.g., time of day, user location, device type, data sensitivity level).
-*   Delegated administrators can associate context keys with synthesized policies.
-*   IAM evaluates context keys at runtime.  Policy effects are modified *dynamically* based on context.
-*   Example: Policy grants access to sensitive data, *but only* if the user is accessing from a corporate network and using a managed device.
+*   **Centralized Controller:** A centralized controller manages the resource allocation process, incorporating grid carbon intensity data into the decision-making process.
+*   **Agent-Based Architecture:** Implement an agent-based architecture where individual data center locations are represented by agents. Each agent monitors local grid conditions and reports them to the central controller.
+*   **API Integration:**  Expose APIs for other systems (e.g., workload schedulers, monitoring tools) to access grid carbon intensity data and resource allocation recommendations.
 
-**4.  Dynamic Permission ‘Blending’**
-
-*   Implement a "permission blending" engine.
-*   Blends the effective permissions granted by the synthesized policy, the permission boundary policy, *and* the contextual evaluation.
-*   The blending engine utilizes a prioritized evaluation scheme. Boundary policies offer a baseline, then synthesized permissions are layered on top, finally, contextual factors dynamically adjust the blend.
-
-**Pseudocode (Contextual Evaluation):**
+**Pseudocode (Resource Allocation Algorithm):**
 
 ```
-function evaluatePermission(user, action, resource, context) {
-  boundaryPermissions = getBoundaryPermissions(user);
-  synthesizedPermissions = getSynthesizedPermissions(user);
-  
-  if (!boundaryPermissions.allows(action, resource)) {
-    return false; // Deny if boundary policy blocks
-  }
+function allocate_workload(workload, candidate_locations):
+  best_location = null
+  min_cost = infinity
 
-  combinedPermissions = boundaryPermissions.intersect(synthesizedPermissions);
-  
-  if (context.location == "Corporate Network" && context.deviceType == "Managed Device") {
-      combinedPermissions.addPermission("accessSensitiveData"); //Dynamically add permission
-  }
+  for location in candidate_locations:
+    predicted_energy_usage = estimate_energy_usage(workload, location)
+    predicted_carbon_intensity = get_predicted_carbon_intensity(location)
+    carbon_cost = predicted_energy_usage * predicted_carbon_intensity * carbon_price
+    energy_cost = predicted_energy_usage * energy_price
+    total_cost = (energy_cost * energy_weight) + (carbon_cost * carbon_weight)
 
-  if (combinedPermissions.allows(action, resource)) {
-    return true;
-  } else {
-    return false;
-  }
-}
+    if total_cost < min_cost:
+      min_cost = total_cost
+      best_location = location
+
+  return best_location
 ```
 
-**Engineering Considerations:**
+**4. Monitoring and Reporting:**
 
-*   A robust fragment repository requires a scalable database and efficient indexing.
-*   The synthesis engine needs to be optimized for performance to handle complex fragment combinations.
-*   Context key evaluation should be implemented efficiently to minimize latency.
-*   Auditing and logging are essential for tracking policy changes and access decisions.
-*   The system needs to support granular access control to the fragment repository and synthesis tools.
+*   **Carbon Footprint Tracking:** Track the carbon footprint of data center operations, broken down by location, workload, and time.
+*   **Reporting Dashboard:** Provide a dashboard visualizing carbon emissions data, energy usage, and cost savings.
+*   **Alerting:** Configure alerts to notify administrators of high carbon emissions or grid instability.
