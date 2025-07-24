@@ -1,50 +1,98 @@
-# 12229247
+# 10303492
 
-**Adaptive Security Zone Partitioning with Dynamic Resource Allocation**
+## Dynamic Runtime Composition via Graph-Based Dependencies
 
-**Concept:** Extend the sandboxed iframe approach to allow for *dynamic* partitioning of security zones, not just a binary "host" vs. "insecure" separation. This enables granular control over resource access and privileges based on the *real-time* risk assessment of embedded applications.
+**Concept:** Extend the runtime provisioning system to support *composable* runtimes, built from smaller, interconnected runtime components. Instead of monolithic runtimes, define runtimes as directed acyclic graphs (DAGs) where nodes are individual runtime components (e.g., a specific version of a Python interpreter, a particular machine learning library, a custom pre-processing script) and edges represent dependencies.
 
-**Specs:**
+**Specification:**
 
-1.  **Security Zone Manager (SZM):** A central component within the host application responsible for creating, managing, and monitoring security zones.
-2.  **Zone Definition Language (ZDL):** A declarative language used to define the characteristics of security zones. This includes:
-    *   Permitted resource access (network, filesystem, CPU, memory).
-    *   Content Security Policy (CSP) overrides/extensions.
-    *   Inter-zone communication rules.
-    *   Risk score thresholds triggering dynamic adjustments.
-3.  **Dynamic Resource Broker (DRB):** An intermediary that intercepts resource requests from applications within security zones. It enforces the policies defined in the ZDL and manages resource allocation.
-4.  **Risk Assessment Engine (RAE):** Continuously monitors application behavior (network traffic, system calls, data access) and assigns a risk score to each application. This score is used to dynamically adjust security zone policies.
-5.  **Adaptive Partitioning Algorithm:** 
+**1. Runtime Definition Language (RDL):**
 
-    ```pseudocode
-    function adjustSecurityZone(application, riskScore) {
-      if (riskScore > HIGH_THRESHOLD) {
-        // Further restrict resources
-        reduceNetworkAccess(application)
-        limitCPUUsage(application)
-        disableFileWriteAccess(application)
-      } else if (riskScore > MEDIUM_THRESHOLD) {
-        // Moderate restrictions
-        limitNetworkAccess(application)
-        monitorFileAccess(application)
-      } else {
-        // Normal operation
-        restoreDefaultResources(application)
-      }
-    }
-    ```
-6.  **Zone Isolation Mechanism:** Utilize a combination of containerization (e.g., WebAssembly, micro-VMs) and browser-level sandboxing (iframes) to enforce zone isolation.
-7.  **Inter-Zone Communication Protocol:** Establish a secure and controlled communication channel between security zones. All communication must be explicitly authorized by the SZM.
+*   Introduce a declarative language (YAML, JSON, or similar) to define runtimes as DAGs.
+*   Each node in the DAG represents a 'Runtime Component' with the following attributes:
+    *   `name`: Unique identifier for the component.
+    *   `image`: Container image (Docker, etc.) containing the component.
+    *   `version`: Semantic versioning string.
+    *   `entrypoint`: Command to execute the component within the container.
+    *   `resources`: CPU, memory, and other resource requirements.
+*   Edges define dependencies between components.  `source` -> `target` signifies that the `target` component requires the `source` component to be running.
 
-**Implementation Details:**
+**Example RDL:**
 
-*   The host application loads embedded applications within dedicated zones.
-*   The SZM uses ZDL definitions to create and configure each zone.
-*   The DRB intercepts resource requests and enforces zone policies.
-*   The RAE continuously monitors application behavior and adjusts zone policies based on risk scores.
-*   Inter-zone communication is mediated by the SZM, ensuring that only authorized interactions occur.
-*   Utilize a policy engine (e.g. Open Policy Agent) to handle complex rules within the ZDL.
+```yaml
+runtime_name: "ImageProcessingRuntime"
+graph:
+  nodes:
+    python:
+      name: "python3.9"
+      image: "python:3.9"
+      resources: {cpu: 1, memory: 2}
+    pillow:
+      name: "pillow"
+      image: "python:3.9"
+      entrypoint: "pip install pillow"
+      resources: {cpu: 0.5, memory: 1}
+      dependencies: ["python"]
+    image_processor:
+      name: "image_processor"
+      image: "my_image_processor:latest"
+      entrypoint: "python /app/main.py"
+      resources: {cpu: 2, memory: 4}
+      dependencies: ["pillow"]
+```
 
-**Novelty:** 
+**2. Dynamic Provisioning Service:**
 
-This approach moves beyond static sandboxing to provide a more flexible and adaptable security model. The dynamic partitioning and resource allocation capabilities enable granular control over application privileges, reducing the attack surface and mitigating the risks associated with embedded applications. This also addresses the use-case of progressive trust, allowing the system to *learn* about an application's behavior, and adjust it's level of privilege accordingly.
+*   Modify the existing provisioning system to parse RDL definitions.
+*   The service will:
+    *   Analyze the dependency graph.
+    *   Provision containers for each node in the graph, respecting dependencies.  A component will only be provisioned *after* its dependencies are running.
+    *   Expose necessary ports and volumes for inter-component communication.
+    *   Manage the lifecycle of each component (start, stop, restart).
+
+**3.  Communication Interface:**
+
+*   Implement a standard interface (e.g., gRPC, REST) for components to communicate with each other.
+*   The interface should handle:
+    *   Service discovery – finding the addresses of other components.
+    *   Serialization/deserialization of messages.
+    *   Error handling.
+
+**4.  Scalability & Resilience:**
+
+*   Implement a mechanism to scale individual components independently based on demand.  This could involve running multiple instances of a component behind a load balancer.
+*   Implement fault tolerance by automatically restarting failed components and/or provisioning new instances.
+
+**Pseudocode (Dynamic Provisioning Service - `provision_runtime` function):**
+
+```python
+def provision_runtime(rdl_definition):
+  graph = parse_rdl(rdl_definition)
+  ordered_nodes = topological_sort(graph) #Ensure components are provisioned in the right order
+
+  for node in ordered_nodes:
+    if node.status == "not_provisioned":
+      dependencies_running = True
+      for dependency in node.dependencies:
+        if dependency.status != "running":
+          dependencies_running = False
+          break
+
+      if dependencies_running:
+        container = create_container(node)
+        start_container(container)
+        node.status = "running"
+        #Update service discovery with container details
+      else:
+        #Log dependency failure
+        raise Exception("Dependency not met for component: " + node.name)
+
+  #Return access information to the runtime
+```
+
+**Innovation:** This approach moves beyond static runtime images to a dynamic, composable system.  It enables:
+
+*   **Flexibility:**  Runtimes can be easily customized and updated by modifying the DAG.
+*   **Resource Efficiency:** Only the necessary components are provisioned.
+*   **Scalability:** Individual components can be scaled independently.
+*   **Modularity:** Encourages the development of reusable runtime components.
