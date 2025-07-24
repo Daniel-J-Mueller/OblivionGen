@@ -1,52 +1,74 @@
-# 12182695
+# 8290838
 
-## Dynamic Precision Weighting in Systolic Arrays
+## Dynamic Transaction Mirroring & Behavioral Drift Analysis
 
-**Concept:** Extend the systolic array architecture to dynamically adjust the precision of weight values during matrix multiplication, optimizing for both performance and energy efficiency.  Instead of a fixed precision, the system will assess the sensitivity of each output element to variations in input weights, and allocate higher precision to more critical weights.
+**Concept:** Extend fraud detection beyond immediate transaction pairs to encompass a network of mirrored transactions and assess subtle behavioral drifts indicating compromise.
 
 **Specifications:**
 
-*   **Weight Precision Metadata:** Each weight value stored in memory will be associated with a metadata tag indicating its current precision level (e.g., 8-bit, 16-bit, 32-bit floating point). This metadata is loaded *alongside* the weight value into the systolic array.
-*   **Sensitivity Analysis Module:** A pre-processing stage (or an online analysis during initial training epochs) calculates a sensitivity score for each weight. This score represents the impact of a small change in the weight on the final output value.  Sensitivity calculation could use techniques like local Lipschitz constants or finite difference methods.  The sensitivity score is stored alongside the weight/metadata.
-*   **Dynamic Precision Shifter:** Each Processing Element (PE) in the systolic array will incorporate a dynamic precision shifter. This shifter receives the weight value, the metadata indicating precision level, and the sensitivity score. It adjusts the precision of the weight value *before* performing the multiplication. Lower sensitivity weights are truncated/quantized to lower precision, while higher sensitivity weights are maintained or even increased in precision (within hardware limits).
-*   **PE Architecture Modification:**
-    *   **Precision Control Logic:** Digital logic to control the width of the multiplier and adder based on the shifted precision.
-    *   **Truncation/Quantization Unit:** Hardware unit to truncate or quantize the weight value to the appropriate precision level.
-    *   **Variable-Width Multiplier/Adder:** A configurable multiplier and adder capable of operating on variable-width operands.
-*   **Array Control Signals:** New control signals to manage the precision shifting process within the array. These signals would include:
-    *   `enable_precision_shift`: Global enable for dynamic precision control.
-    *   `shift_mode`:  Selects between different precision shifting modes (e.g., fixed, sensitivity-based).
-*   **Calibration Phase:** An initial calibration phase to determine the optimal precision levels for different weights and sensitivity thresholds. This phase would involve running a small set of representative matrix multiplications and measuring the accuracy and performance of the system.
+**1. Transaction Mirroring Module:**
 
-**Pseudocode (within each PE):**
+*   **Function:**  Identify and record "mirrored transactions" – transactions that share significant attributes (amount, merchant category, time proximity) across *multiple* accounts, not just pairs.
+*   **Data Input:** Real-time transaction streams, historical transaction data.
+*   **Algorithm:**
+    *   Calculate a "similarity score" between transactions based on weighted attributes (amount: 50%, MCC: 30%, timestamp difference < 5 minutes: 20%).
+    *   Establish a "mirror group" when the similarity score exceeds a threshold (e.g., 0.8).
+    *   Dynamically update mirror groups as new transactions occur.
+*   **Output:**  A real-time graph of mirror groups, highlighting interconnected accounts.
+
+**2. Behavioral Drift Analysis Engine:**
+
+*   **Function:** Monitor individual account behavior *within* established mirror groups and detect deviations from established patterns.
+*   **Data Input:** Transaction history for each account within a mirror group, including features like:
+    *   Average transaction amount.
+    *   Frequency of transactions.
+    *   Preferred merchant categories.
+    *   Time of day for transactions.
+    *   Geographic location of transactions (IP address, GPS data if available).
+*   **Algorithm:**
+    *   Establish a baseline behavioral profile for each account using historical data (e.g., 3 months).
+    *   Calculate a "drift score" for each new transaction based on deviation from the baseline profile.  Features contributing to drift should be weighted based on their predictive power (determined through machine learning).
+    *   Aggregate drift scores for all accounts within a mirror group.
+    *   If the aggregate drift score exceeds a threshold, flag the mirror group for further investigation.
+*   **Output:**  Drift scores for individual accounts and mirror groups, along with visualizations highlighting significant behavioral changes.
+
+**3. Predictive Compromise Scoring:**
+
+*   **Function:** Combine mirror group analysis and behavioral drift scoring to generate a "compromise probability" score for each account.
+*   **Algorithm:**
+    *   Compromise Probability = (Mirror Group Risk Score * Weight1) + (Behavioral Drift Score * Weight2) + (Historical Fraud Indicator * Weight3).
+    *   Weights (Weight1, Weight2, Weight3) are determined through machine learning using historical fraud data.
+    *   The Compromise Probability score is continuously updated as new transactions occur.
+*   **Output:**  A real-time risk score for each account, used to prioritize investigation and trigger preventative actions (e.g., account hold, multi-factor authentication).
+
+**Pseudocode:**
 
 ```
-// Input: weight_value, weight_metadata (precision level), sensitivity_score
-// Output: scaled_weight_value
+// Transaction Mirroring Module
+function findMirroredTransactions(transaction) {
+  similarTransactions = [];
+  for each otherTransaction in allTransactions {
+    similarityScore = calculateSimilarity(transaction, otherTransaction);
+    if similarityScore > threshold {
+      similarTransactions.add(otherTransaction);
+    }
+  }
+  return similarTransactions;
+}
 
-function process_weight(weight_value, weight_metadata, sensitivity_score):
-    if (enable_precision_shift == 1):
-        if (sensitivity_score < threshold_low):
-            precision = 8
-        else if (sensitivity_score > threshold_high):
-            precision = 16
-        else:
-            precision = weight_metadata.precision //use pre-assigned precision
-
-        if (precision < weight_metadata.precision):
-            scaled_weight_value = truncate(weight_value, precision)
-        else:
-            scaled_weight_value = weight_value
-
-    else:
-        scaled_weight_value = weight_value
-
-    return scaled_weight_value
+// Behavioral Drift Analysis Engine
+function calculateDriftScore(transaction, baselineProfile) {
+  driftScore = 0;
+  for each feature in features {
+    deviation = abs(transaction.feature - baselineProfile.feature);
+    driftScore += weight(feature) * deviation;
+  }
+  return driftScore;
+}
 ```
 
-**Potential Benefits:**
+**Implementation Notes:**
 
-*   Reduced energy consumption by operating on lower-precision weights when possible.
-*   Improved performance by reducing the amount of data that needs to be processed.
-*   Increased accuracy by allocating higher precision to more critical weights.
-*   Adaptability to different workloads and data distributions.
+*   This system requires significant computational resources to process real-time transaction streams and maintain baseline profiles for millions of accounts.
+*   Machine learning is crucial for optimizing weights and thresholds, and for identifying subtle patterns of fraudulent behavior.
+*   Privacy concerns must be addressed when collecting and analyzing user data.  Data anonymization and aggregation techniques should be used whenever possible.
