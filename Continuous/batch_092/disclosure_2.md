@@ -1,70 +1,59 @@
-# 11379463
+# 9154479
 
-## Adaptive Constraint Propagation with Predictive Locking
+## Secure Proxy-Based Dynamic Sharding & Load Balancing
 
-**Concept:** Extend the existing write tracking mechanism to *predict* potential cross-page conflicts *before* the write is even initiated, leveraging a learned model of database access patterns. This allows for proactive locking or pre-fetching of dependent pages, reducing transaction aborts and improving concurrency.
+**Concept:** Extend the secure proxy's endpoint resolution capabilities to dynamically shard application traffic across multiple, geographically distributed instances of a service *before* the traffic even reaches those instances. This isn’t just about finding *an* IP address, it’s about actively routing traffic to the *best* instance *at that moment*, based on real-time performance, geographic proximity, and security posture.
 
-**Specifications:**
+**Specs:**
 
-**1. Data Structures:**
-
-*   **Conflict Prediction Model:** A machine learning model (e.g., a graph neural network) trained on historical transaction logs. This model learns relationships between modified pages and potentially conflicting dependent pages (e.g., those involved in foreign key relationships, indexing, or application-level constraints). Input: Set of modified pages, transaction type. Output: Probability distribution over potentially conflicting pages.
-*   **Conflict Prediction Cache:** A local cache within each database engine node storing the most recent predictions for common transactions and page sets. This minimizes the need for repeated model evaluations.
-*   **Adaptive Lock Granularity Map:** A per-transaction map indicating the optimal lock granularity for dependent pages. This is dynamically adjusted based on the conflict prediction probability and the estimated contention level.
-
-**2. Workflow:**
-
-1.  **Write Intent Declaration:** Before initiating a write transaction, the database engine node declares its intent and the pages it intends to modify.
-2.  **Conflict Prediction:** The node queries the Conflict Prediction Model (or its cache) with the set of modified pages. The model outputs a probability distribution over potentially conflicting pages.
-3.  **Lock Granularity Determination:** Based on the prediction probabilities, the node determines the appropriate lock granularity for each potentially conflicting page. Options include:
-    *   **No Lock:** If the probability is below a threshold, no lock is acquired.
-    *   **Row Lock:** Acquire a lock on the specific rows involved in the potential conflict.
-    *   **Page Lock:** Acquire a lock on the entire page.
-    *   **Pre-Fetch:** Asynchronously read the page into cache.
-4.  **Lock Acquisition/Pre-Fetch:** Acquire the necessary locks or initiate pre-fetching of dependent pages.
-5.  **Write Execution:** Execute the write transaction.
-6.  **Lock Release:** Release locks upon transaction completion.
-
-**3. Pseudocode:**
+*   **Component:** ShardResolver Module (integrated into existing Secure Proxy)
+*   **Input:** Application Request (includes endpoint/service identifier)
+*   **Output:** Modified Request (includes selected shard/instance IP address *and* associated security context)
+*   **Data Structures:**
+    *   `ShardInfo`: {shardID, instanceIP, geographicLocation, currentLoad, securityScore, healthStatus}
+    *   `PolicyContext`: {encryptionLevel, authenticationMethod, accessControlList}
+*   **Algorithm:**
+    1.  Receive Application Request.
+    2.  Query Endpoint Resolver for available `ShardInfo` records matching the requested service.
+    3.  Apply policies based on request characteristics and `ShardInfo` data. Prioritize shards with:
+        *   Lowest latency (geographic proximity).
+        *   Highest security score (based on real-time threat intelligence).
+        *   Lowest current load.
+    4.  Select the optimal shard.
+    5.  Augment the Application Request with:
+        *   Selected shard’s IP address.
+        *   Associated `PolicyContext` (e.g., encryption keys, access tokens).
+    6.  Forward modified request to the selected shard.
+*   **Security Considerations:**
+    *   `PolicyContext` must be digitally signed to prevent tampering.
+    *   Shard selection algorithm must be resistant to manipulation.
+    *   Real-time threat intelligence feeds must be validated and trusted.
+*   **API Extensions:**
+    *   `ShardResolver.GetShardInfo(serviceID)`: Returns a list of available shards.
+    *   `ShardResolver.EvaluateShard(shardInfo, request)`: Evaluates a shard based on a request.
+*   **Pseudocode:**
 
 ```
-function executeWrite(transaction, modifiedPages) {
-  conflictPredictions = getConflictPredictions(modifiedPages)
-  lockGranularityMap = determineLockGranularity(conflictPredictions)
+function ResolveShard(request):
+  shardList = GetAvailableShards(request.serviceID)
+  filteredShards = FilterShards(shardList, request.policies) //apply initial policies
 
-  for (page, granularity in lockGranularityMap) {
-    if (granularity == "row") {
-      acquireRowLock(page)
-    } else if (granularity == "page") {
-      acquirePageLock(page)
-    } else if (granularity == "prefetch") {
-      prefetchPage(page)
-    }
-  }
+  bestShard = null
+  bestScore = -1
 
-  executeTransaction(transaction)
+  for shard in filteredShards:
+    score = CalculateShardScore(shard, request) //based on latency, security, load
+    if score > bestScore:
+      bestScore = score
+      bestShard = shard
 
-  releaseLocks(lockGranularityMap)
-}
-
-function getConflictPredictions(modifiedPages) {
-  // Check local cache first
-  predictions = checkCache(modifiedPages)
-  if (predictions != null) {
-    return predictions
-  }
-
-  // If not in cache, query the model
-  predictions = conflictPredictionModel.predict(modifiedPages)
-  updateCache(modifiedPages, predictions)
-  return predictions
-}
+  if bestShard != null:
+    request.destinationIP = bestShard.instanceIP
+    request.securityContext = bestShard.securityContext //including encryption keys
+    return request
+  else:
+    //Handle failure: return error or use default shard
+    return error
 ```
 
-**4.  Considerations:**
-
-*   **Model Training:** The Conflict Prediction Model must be regularly retrained with updated transaction logs to maintain accuracy.
-*   **Cache Invalidation:** The Conflict Prediction Cache needs a strategy to invalidate stale predictions.
-*   **False Positives:** There will be false positives (predicting conflicts that don't occur). The system should minimize the impact of these false positives on performance.
-*   **Lock Escalation:** Implement a mechanism for lock escalation (e.g., from row locks to page locks) to reduce lock contention.
-*   **Integration with Existing Write Tracking:** This system can be integrated with the existing write tracking mechanism to provide a layered approach to conflict detection. The write tracker would still be used as a fallback for conflicts that are not predicted by the model.
+**Novelty:** This shifts the load balancing paradigm *before* traditional load balancers, using the secure proxy as a proactive traffic director. The integration of security context *at the point of routing* is also new, allowing for fine-grained security enforcement based on shard characteristics. It moves beyond simply finding an IP to *actively shaping* the traffic flow.
