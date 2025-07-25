@@ -1,64 +1,52 @@
-# 10181108
+# 11483046
 
-## Dynamic Chute Reconfiguration & Predictive Sorting
+## Adaptive Multi-Link Congestion Prediction & Pre-emptive CSI Adjustment
 
-**Concept:** Expand beyond fixed chute assignments and introduce a system where chute configurations *dynamically* adjust based on real-time object attribute data and *predictive* modeling of incoming object types.
+**Concept:** Extend the dynamic CSI packet period adjustment based on link congestion to *predict* congestion on multiple links simultaneously and proactively adjust CSI packet periods *before* congestion manifests, minimizing latency impacts. This moves from reactive adaptation to predictive optimization.
 
 **Specs:**
 
-**1. Hardware Augmentation:**
-
-*   **Actuated Chutes:** Each chute is equipped with linear actuators allowing for minor positional adjustments (horizontal and vertical).  Range of motion: +/- 5cm in each direction. Precision: 1mm.
-*   **Chute Array:**  The existing chute structure is expanded to be a denser array, allowing for greater flexibility in redirecting objects. Minimum chute width: 7cm.
-*   **High-Speed Conveyor Network:**  A secondary, high-speed conveyor network *above* the chute array. This network receives objects *before* they reach the chute selection point and can rapidly re-orient or reposition them.
-*   **Multi-Modal Sensor Suite:** Supplement existing cameras with:
-    *   **Weight Sensors:** Integrated into the conveyor belt immediately before the chute array.
-    *   **Lidar/Depth Sensors:**  Provide precise 3D object profiling.
-    *   **Material Sensors:**  (e.g., NIR Spectroscopy) Detect object material composition.
-
-**2. Software Architecture:**
-
-*   **Predictive Sorting Model:** A machine learning model (trained on historical object data) that predicts the type and attributes of incoming objects *before* they reach the chute selection point.  Inputs: real-time sensor data (weight, dimensions, material). Output: Probability distribution over object types and attribute values (size, shape, packaging).
-*   **Dynamic Chute Allocation Algorithm:**  This algorithm receives the predictive output from the ML model and dynamically assigns chutes to optimize sorting efficiency. The algorithm considers:
-    *   **Chute Capacity:**  Each chute has a maximum capacity.
-    *   **Object Attributes:** Chute assignments are based on a cost function that minimizes the mismatch between object attributes and chute characteristics (width, depth, angle).
-    *   **Real-time Chute Status:** Tracks which chutes are full or blocked.
-*   **Actuator Control System:**  Controls the linear actuators to adjust chute positions based on the dynamic allocation algorithm.
-*   **Data Fusion Module:** Integrates data from all sensors (cameras, weight sensors, lidar, material sensors).
-*   **Object Tracking System:**  Identifies and tracks individual objects as they move through the system.
-
-**3. Operational Flow:**
-
-1.  Object enters the system and is scanned by the multi-modal sensor suite.
-2.  Data is fused and fed into the Predictive Sorting Model.
-3.  The Predictive Sorting Model generates a probability distribution over object types and attributes.
-4.  The Dynamic Chute Allocation Algorithm selects the optimal chute based on the prediction and real-time system status.
-5.  The Actuator Control System adjusts the chute position as needed.
-6.  The Object Tracking System guides the object to the assigned chute.
-7.  System continuously monitors performance and retrains the Predictive Sorting Model to improve accuracy.
-
-**Pseudocode (Dynamic Chute Allocation Algorithm):**
+*   **Hardware:** Requires devices capable of monitoring multiple links concurrently with sufficient processing power for predictive modeling. A dedicated co-processor for running the prediction algorithm is ideal, but software implementation on the primary processor is acceptable.
+*   **Software Modules:**
+    *   **Multi-Link Congestion Monitor:** Collects congestion metrics (packet loss, latency, jitter, throughput) from *all* active links.
+    *   **Congestion Prediction Engine:** Implements a time-series forecasting model (e.g., LSTM, ARIMA, Prophet) trained on historical congestion data from each link. The model predicts future congestion levels for a short time horizon (e.g., 100-500ms).
+    *   **CSI Adjustment Controller:** Receives congestion predictions and determines optimal CSI packet periods for each link based on a predefined mapping (similar to the provided patent’s approach, but extended to multiple links).  It also incorporates a 'confidence level' for each prediction. Lower confidence = more conservative adjustment.
+    *   **Cross-Link Interference Model:** Attempts to model how congestion on one link *influences* congestion on another.  (e.g., shared wireless spectrum, routing dependencies). This allows for more accurate predictions.
+*   **Data Structures:**
+    *   `LinkStats`: {linkID, currentCongestion, predictedCongestion, confidenceLevel, currentCSIPeriod, historicalCongestionData}
+    *   `CSIMappingTable`: {congestionRange, CSIPeriod} – Expanded to support multiple congestion thresholds and dynamically adjustable periods.
+    *   `InterferenceMatrix`: A matrix representing the degree of influence between each pair of links.
+*   **Pseudocode (CSI Adjustment Controller):**
 
 ```
-function allocateChute(object, predictedAttributes, chuteArray):
-  bestChute = null
-  minCost = infinity
+FUNCTION AdjustCSIPeriods(linkStatsArray, interferenceMatrix):
+    FOR EACH linkStats IN linkStatsArray:
+        predictedCongestion = linkStats.predictedCongestion
+        confidence = linkStats.confidenceLevel
 
-  for each chute in chuteArray:
-    cost = calculateCost(object, predictedAttributes, chute)
+        # Apply a "damping factor" based on prediction confidence
+        adjustedPredictedCongestion = predictedCongestion * (1 - confidence)
 
-    if cost < minCost:
-      minCost = cost
-      bestChute = chute
+        # Lookup optimal CSI period based on adjusted congestion
+        newCSIPeriod = LookupCSIPeriod(adjustedPredictedCongestion)
 
-  return bestChute
+        # Account for cross-link interference
+        FOR EACH otherLink IN linkStatsArray:
+            IF otherLink != linkStats:
+                interferenceImpact = interferenceMatrix[linkStats.linkID][otherLink.linkID] * otherLink.predictedCongestion
+                newCSIPeriod = newCSIPeriod + interferenceImpact // or subtract if interference is negative
 
-function calculateCost(object, predictedAttributes, chute):
-  # Cost function considers:
-  #   - Mismatch between object size and chute width
-  #   - Mismatch between object shape and chute geometry
-  #   - Chute fullness
-  #   - Penalty for excessive chute adjustments
-  cost = abs(objectSize - chuteWidth) +  abs(objectShape - chuteGeometry) + chuteFullnessPenalty + adjustmentPenalty
-  return cost
+        # Apply limits to CSI period (min/max values)
+        newCSIPeriod = CLAMP(newCSIPeriod, minCSIPeriod, maxCSIPeriod)
+
+        # If significant change, update CSI period on link
+        IF ABS(newCSIPeriod - linkStats.currentCSIPeriod) > threshold:
+            SetCSIPeriod(linkStats.linkID, newCSIPeriod)
+            linkStats.currentCSIPeriod = newCSIPeriod
 ```
+
+*   **Training & Calibration:** The congestion prediction engine requires a training phase using historical congestion data collected from the network. The training data should be representative of typical network traffic patterns. Regular re-training is necessary to adapt to changing conditions. Calibration parameters (damping factors, thresholds) need to be tuned to optimize performance.
+*   **Potential Enhancements:**
+    *   **Federated Learning:** Train the prediction model using data from multiple devices without sharing raw data, preserving privacy.
+    *   **Reinforcement Learning:** Use RL to dynamically adjust the calibration parameters and optimize the overall system performance.
+    *   **Proactive Link Scheduling:** Based on the predicted congestion, proactively schedule data transmissions over less congested links.
