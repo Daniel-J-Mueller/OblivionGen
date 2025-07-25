@@ -1,69 +1,81 @@
-# 12019983
+# 11050784
 
-## Knowledge Graph Dataset Augmentation via Simulated User Interaction
+## Dynamic Cipher Suite "Chaining" & Reputation Scoring
 
-**Concept:** Expand dataset generation by simulating user interactions with the knowledge graph *before* dataset creation. This introduces a ‘behavioral’ layer to the data, enabling training of models sensitive to user intent and query patterns.
+**Concept:** Expand the dynamic cipher suite switching beyond simply escalating to a more computationally intensive option. Implement a "chain" of cipher suites with varying computational costs *and* security profiles. Couple this with a client reputation scoring system to preemptively select cipher suites, and dynamically adjust the chain based on observed attack patterns.
 
 **Specifications:**
 
-**1. Interaction Simulator Module:**
+**1. Cipher Suite Chain Definition:**
 
-*   **Input:** Knowledge graph (format agnostic), custom ontology.
-*   **Functionality:**
-    *   **Persona Generation:** Create synthetic user personas with defined information needs and query biases (e.g., a persona interested in historical figures, a persona focused on scientific research).  Parameters include:
-        *   *Interest Profile*: Vector representing preferences across KG entities/relationships.
-        *   *Query Complexity*: Preference for short/long, simple/complex queries.
-        *   *Error Tolerance*: Willingness to accept ambiguous or incomplete results.
-    *   **Query Generation:**  Based on the persona, generate a series of simulated queries targeting the knowledge graph. Queries should explore different paths and relationships within the KG.  Utilize a combination of:
-        *   *Random Walks*: Explore the graph randomly, respecting edge weights/relationship strengths.
-        *   *Goal-Oriented Queries*:  Construct queries designed to retrieve specific information based on the persona’s needs.  Employ natural language generation (NLG) to formulate queries.
-        *   *Ambiguous Queries*: Introduce intentional ambiguity to simulate real-world user behavior.
-    *   **Interaction Logging:** Record each simulated interaction, including:
-        *   *Query Text*
-        *   *Entities/Relationships Involved*
-        *   *Returned Results*
-        *   *Persona ID*
-        *   *Interaction Timestamp*
-        *   *‘Reward’ Signal*: Assign a reward based on the relevance and quality of the results to the persona’s needs.
+*   A configuration file defines a cipher suite chain.  Each entry in the chain includes:
+    *   `cipher_suite_id`: Unique identifier for the cipher suite.
+    *   `computational_cost`: Integer representing relative computational cost (1-10).
+    *   `security_score`: Integer representing a subjective security rating (1-10).  This can be manually tuned or derived from industry best practices.
+    *   `minimum_reputation`: Integer representing the minimum client reputation score required to *initially* use this cipher suite.
+*   The chain is ordered from lowest computational cost/highest initial accessibility to highest cost/restricted access.
 
-**2. Dataset Generation Module (Augmented):**
+**2. Client Reputation System:**
 
-*   **Input:** Knowledge graph, custom ontology, Interaction Logs.
-*   **Functionality:**
-    *   **Mention-Concept Pair Extraction:** Extract mention-concept pairs as described in the original patent.
-    *   **Interaction-Weighted Pairs:**  Assign weights to each mention-concept pair based on its frequency and relevance in the interaction logs.  Higher weights indicate greater user interest.
-    *   **Contextual Pair Generation:** Identify pairs that occur in specific interaction contexts (e.g., pairs frequently queried together, pairs that resolve ambiguous queries).
-    *   **Dataset Creation:** Create a dataset comprising mention-concept pairs, augmented with interaction weights and contextual information.
-    *   **Data Augmentation:** Synthesize new mention-concept pairs by subtly altering existing ones based on interaction patterns. For instance, if a user frequently clarifies ambiguous queries by adding a specific modifier, generate new pairs with that modifier.
+*   Each client is assigned a reputation score, initialized to a default value.
+*   Reputation is dynamically adjusted based on several factors:
+    *   **Connection Stability:**  Frequent disconnections/reconnections lower reputation.
+    *   **Traffic Patterns:**  Anomalous request rates (compared to historical norms or peer group) lower reputation.
+    *   **Cipher Suite Negotiation:**  Consistent refusal to negotiate a reasonable cipher suite (or attempts to force weak ciphers) lower reputation.
+    *   **Successful Authentication:** Consistent successful authentication increases reputation.
+*   Reputation scores are stored persistently (e.g., in a database or cache).
 
-**3. Training Pipeline Integration:**
+**3. Initial Cipher Suite Selection:**
 
-*   Integrate the augmented dataset into the machine learning model training pipeline.
-*   Experiment with different weighting schemes for interaction data.
-*   Evaluate model performance on tasks that require understanding user intent and query context.
+*   Upon initial connection attempt, the client provides its supported cipher suites.
+*   The host server intersects the client’s list with the available cipher suites in the defined chain.
+*   The server selects the *highest* cipher suite in the chain that meets *both* criteria:
+    *   The client supports it.
+    *   The client's current reputation score is greater than or equal to the `minimum_reputation` for that cipher suite.
 
+**4. Dynamic Cipher Suite Escalation/De-escalation:**
 
+*   **Attack Detection:** The system monitors various metrics (bandwidth usage, latency, error rates, etc.) to detect potential DDoS attacks.
+*   **Escalation:** If an attack is suspected, the system can *aggressively* escalate the cipher suite for clients exhibiting suspicious behavior.  This is done by bypassing the reputation check and selecting a higher-cost cipher suite from the chain.  Even clients with high reputations can be subjected to escalation during an active attack.
+*   **De-escalation:** After the attack subsides, the system dynamically de-escalates cipher suites based on client reputation and observed traffic patterns.
 
-**Pseudocode (Dataset Generation):**
+**5. Pseudocode (Simplified):**
 
 ```
-function generate_augmented_dataset(knowledge_graph, ontology, interaction_logs):
-  pairs = extract_mention_concept_pairs(knowledge_graph, ontology)
-  for pair in pairs:
-    pair.weight = 0
-    for log in interaction_logs:
-      if pair.mention in log.query and pair.concept in log.results:
-        pair.weight += log.reward # Reward signal from interaction logs
-  
-  # Generate contextual pairs
-  contextual_pairs = find_cooccurring_pairs(interaction_logs)
-  pairs.extend(contextual_pairs)
+function select_cipher_suite(client, available_cipher_suites):
+  client_reputation = get_client_reputation(client)
+  eligible_cipher_suites = []
 
-  # Augment data with slight alterations based on interaction patterns
-  augmented_pairs = generate_augmented_pairs(pairs, interaction_logs)
-  pairs.extend(augmented_pairs)
+  for cipher_suite in available_cipher_suites:
+    if cipher_suite.minimum_reputation <= client_reputation:
+      eligible_cipher_suites.append(cipher_suite)
 
-  return pairs
+  if is_attack_detected():
+    # Bypass reputation check during attack
+    highest_cipher_suite = find_highest_cipher_suite(eligible_cipher_suites) # Based on cost/security
+    return highest_cipher_suite
+  else:
+    # Select highest eligible cipher suite based on reputation
+    highest_cipher_suite = find_highest_cipher_suite(eligible_cipher_suites) # Based on cost/security
+    return highest_cipher_suite
+
+function find_highest_cipher_suite(cipher_suite_list):
+  # Find the cipher suite with the highest combined cost and security score
+  highest_suite = null
+  highest_score = -1
+
+  for suite in cipher_suite_list:
+    score = suite.computational_cost + suite.security_score
+    if score > highest_score:
+      highest_score = score
+      highest_suite = suite
+
+  return highest_suite
 ```
 
-This approach moves beyond static KG analysis to incorporate a dynamic, user-centric dimension into dataset generation, potentially leading to more robust and intelligent machine learning models.
+**6.  Additional Considerations:**
+
+*   **A/B Testing:** The chain configuration can be dynamically adjusted based on A/B testing to optimize performance and security.
+*   **Geographic Filtering:** Combine with geographic filtering to further restrict access based on known attack sources.
+*   **Adaptive Reputation Adjustment:**  Implement more sophisticated reputation adjustment algorithms that consider the severity and frequency of malicious activity.
+*   **Feedback Loop:** Integrate with threat intelligence feeds to proactively adjust the chain based on emerging threats.
