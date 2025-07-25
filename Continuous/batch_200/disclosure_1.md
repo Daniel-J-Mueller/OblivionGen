@@ -1,47 +1,75 @@
-# 10785320
+# 8966097
 
-## Predictive Resource 'Shadowing' & Automated Drift Correction
+## Adaptive Content Reconstruction with Dynamic Fraction Prioritization
 
-**Concept:** Proactively create ‘shadow’ instances mirroring production resources, analyzing utilization *patterns* rather than just current utilization. These shadows predict future resource needs *before* alarms trigger, and automatically adjust resource allocation to prevent performance degradation – essentially ‘correcting drift’ before it manifests.
+**Concept:** Extend the fractional redundant distribution concept by introducing dynamic prioritization of data fractions based on real-time network conditions and user device capabilities. Instead of uniformly distributing fractions, the system analyzes network congestion, device processing power, and storage availability to intelligently prioritize delivery of the *most impactful* fractions first, maximizing perceived content quality and minimizing buffering.
 
 **Specs:**
 
-*   **Shadow Instance Creation:** System automatically provisions scaled-down replicas ('shadows') of critical resources.  Shadows mirror configuration but operate on a small, statistically relevant subset of production data – enough for pattern analysis, not full load.
-*   **Pattern Learning Module:** A dedicated module analyzes time-series utilization data from both production & shadow instances. Utilizes machine learning (LSTM networks preferred) to predict future resource needs (CPU, memory, disk I/O, network bandwidth) based on learned patterns.
-*   **Drift Detection:**  Discrepancy between predicted future utilization (from shadow analysis) and *current* production utilization triggers a ‘drift’ alert *before* performance thresholds are breached.  Severity based on predicted impact.
-*   **Automated Resource Adjustment:** Upon drift detection, system automatically initiates resource adjustments (scaling up/down, storage allocation) to production resources *proactively*. These adjustments are prefaced with a short 'grace period' - 1-2 minutes - to allow for error detection.
-*   **Configuration Synchronization:**  All configuration changes made to production resources are automatically mirrored to the corresponding shadow instances for ongoing pattern learning accuracy.
-*   **Anomaly Filtering:** A module that learns typical 'adjustment patterns' (e.g., scale-ups usually follow specific events) to filter out spurious drift alerts caused by transient spikes.
-*   **'What-If' Analysis:** Allow users to simulate configuration changes in the shadow environment to assess the potential impact on production resources *before* applying the changes.
+**1. Fraction Metadata & Impact Scoring:**
 
-**Pseudocode (Drift Detection & Correction):**
+*   Each media content segment is divided into a predetermined number of fractions (e.g., 16, 32, 64).
+*   Each fraction is tagged with metadata:
+    *   **Spatial Priority:** Indicates the visual importance of the fraction (e.g., high for faces, action elements, low for background areas). This could be pre-calculated during encoding or dynamically determined using lightweight computer vision.
+    *   **Temporal Priority:**  Indicates the temporal importance of the fraction (e.g., keyframes, motion vectors).
+    *   **Redundancy Group:**  Identifies the redundancy group the fraction belongs to.
+    *   **Size:** Data size of the fraction.
+*   An "Impact Score" is calculated for each fraction: `Impact Score = Spatial Priority * Temporal Priority / Size`. This score represents the 'bang for the buck' of downloading a given fraction.
+
+**2. User Device Profiling:**
+
+*   The user device reports its capabilities:
+    *   Processing Power (CPU/GPU)
+    *   Available Storage
+    *   Network Bandwidth (current & historical)
+    *   Screen Resolution/Density
+*   A "Device Profile" is created based on these parameters.
+
+**3. Dynamic Fraction Prioritization Engine:**
+
+*   On request for content:
+    *   The system analyzes the User Device Profile and current network conditions.
+    *   It calculates a "Download Priority" for each fraction: `Download Priority = Impact Score * Network Multiplier * Device Multiplier`.
+        *   **Network Multiplier:**  Higher for fractions that can be downloaded quickly given the current bandwidth.
+        *   **Device Multiplier:** Higher for fractions that can be efficiently processed/displayed by the device.
+    *   Fractions are sorted based on their Download Priority.
+*   The system requests fractions from peer devices in the prioritized order.
+
+**4. Adaptive Reconstruction Algorithm:**
+
+*   The user device receives fractions in the prioritized order.
+*   The reconstruction algorithm prioritizes combining the highest priority fractions *first*.
+*   The algorithm uses the redundancy groups to reconstruct missing or corrupted fractions as in the original patent.
+*   The algorithm dynamically adjusts the reconstruction quality based on the number of available fractions and the user device capabilities.
+*   If the reconstruction process fails to meet a quality threshold, the algorithm may request additional fractions with lower priorities.
+
+**5.  Peer Selection Enhancement:**
+
+*   The peer selection algorithm prioritizes peers with:
+    *   Fractions that are currently highest priority for the requesting device.
+    *   Higher bandwidth and lower latency connections.
+    *   Sufficient processing power to handle fraction requests.
+
+**Pseudocode (User Device - Reconstruction):**
 
 ```
-FUNCTION detect_and_correct_drift(resource):
-  shadow = resource.shadow_instance
-  predicted_utilization = shadow.pattern_learning_module.predict_future_utilization(time_horizon=5min)
-  current_utilization = resource.get_current_utilization()
+function reconstructContent(contentID):
+  deviceProfile = getDeviceProfile()
+  priorityQueue = new PriorityQueue()
+  
+  // Request initial set of high priority fractions
+  requestFractions(contentID, priorityQueue) 
 
-  drift_score = calculate_drift_score(predicted_utilization, current_utilization)
-
-  IF drift_score > threshold:
-    adjustment_plan = generate_adjustment_plan(drift_score) //Scaling, storage changes etc
-    display_warning_to_user(adjustment_plan)
-    wait_for_user_confirmation(timeout=60s) //Optional safety net
-    execute_adjustment_plan(adjustment_plan)
-  ENDIF
-ENDFUNCTION
-
-FUNCTION calculate_drift_score(predicted, current):
-  // Use a weighted formula considering prediction confidence & magnitude of difference
-  score =  (abs(predicted - current) * weight_difference) + (1 - prediction_confidence) * weight_confidence
-  RETURN score
-ENDFUNCTION
+  while (content not fully reconstructed and timeout not reached):
+    fraction = receiveFraction()
+    if (fraction valid):
+      addFractionToReconstructionBuffer(fraction)
+      reconstructPartialContent() //Use redundancy groups
+      updatePriorityQueue(fraction) //Request next fraction
+    else:
+      requestReplacementFraction(fraction) //Request from another peer
+    
+  displayReconstructedContent()
 ```
 
-**Hardware/Software Considerations:**
-
-*   Requires substantial compute resources for shadow instance management & ML training.
-*   Integration with existing monitoring & orchestration tools (e.g., Kubernetes, Terraform).
-*   Secure communication channels for data exchange between production & shadow environments.
-*   ML model retraining schedule to adapt to evolving workloads.
+**Innovation Focus:** This extends the concept beyond simple redundancy to a dynamic, adaptive system that maximizes user experience by intelligently prioritizing content delivery based on real-time conditions and device capabilities.  It moves from a 'just in time' delivery model, to a 'smart just in time' delivery model.
