@@ -1,58 +1,68 @@
-# 9588851
+# 10754554
 
-## Adaptive Quorum Based on Network Topology & Predictive Failure Analysis
+## Distributed Queue ‘Shadowing’ for Predictive Scaling
 
-**Specification:** System Enhancement – Distributed Data Management
+**Concept:** Extend the distributed queue system to proactively ‘shadow’ queue operations across multiple, geographically diverse queue instances *before* scaling events. This allows for near-instantaneous failover and scalability, minimizing latency spikes during peak loads or outages.
 
-**Core Concept:**  Instead of solely relying on availability zone or data center counts for quorum determination, dynamically adjust the quorum based on real-time network topology, latency, and *predicted* node failure probabilities. This moves beyond simple geographic redundancy to a proactive, network-aware resilience model.
+**Specifications:**
 
-**Components:**
+**1. Shadow Queue Creation:**
 
-1.  **Network Topology Mapping Service (NTMS):**  A continuous monitoring service that discovers and maps the network topology between all nodes (master & slaves). This includes link bandwidth, latency, and congestion metrics. It utilizes active probing and passive monitoring of network traffic.
+*   Upon queue creation (as in the base patent), designate a ‘shadow factor’ (configurable per queue). This factor determines the number of shadow queues to create.
+*   Shadow queues are created across geographically distributed data centers.  Location selection is based on latency metrics to client applications.
+*   Each shadow queue mirrors the configuration of the primary queue (reliability, availability, access control).
 
-2.  **Predictive Failure Analysis (PFA) Engine:**  Leverages machine learning models trained on historical node performance data (CPU, memory, disk I/O, network errors), system logs, and external factors (e.g., power grid status, weather patterns). This engine generates a ‘failure probability score’ for each node, updated continuously.  Models will require retraining periods.
+**2. Operation Interception & Distribution:**
 
-3.  **Dynamic Quorum Calculator (DQC):**  The core logic. This module integrates data from the NTMS and PFA.  It calculates an optimal quorum size and node selection based on the following:
-    *   **Network Partition Risk:** Prioritizes nodes in well-connected, low-latency subnets. Nodes identified as being at high risk of network isolation are *excluded* from quorum candidates.
-    *   **Node Failure Probability:**  Nodes with higher failure probability scores are given lower weight in quorum selection.
-    *   **Data Consistency Requirements:**  Allows administrators to configure consistency levels (e.g., strong consistency, eventual consistency). This influences the minimum quorum size.
-    *   **Budgeting:** Provides a means to weigh costs/performance, and/or bandwidth limitations.
-    *   **N-K+1 Adjustment:** Instead of a fixed N-K+1, the calculator dynamically updates K based on the risk assessment, prioritizing more reliable nodes.
+*   All queue operations (enqueue, dequeue, etc.) are intercepted by a ‘Distribution Manager’ component.
+*   The Distribution Manager distributes operations to the primary queue *and* all shadow queues concurrently.
+*   An operation is considered ‘acknowledged’ only when a majority of queues (primary + shadows) have successfully completed the operation. This enhances data durability.
+*   Acknowledgement messages are aggregated and returned to the client.
 
-**Pseudocode (DQC):**
+**3. Predictive Scaling & Failover:**
 
-```pseudocode
-FUNCTION CalculateDynamicQuorum(nodes, topologyData, failureProbabilities, consistencyLevel):
+*   The system continuously monitors queue load (message rate, latency).
+*   When load exceeds a configurable threshold, the system *proactively* promotes a shadow queue to become the new primary.  This is done with zero downtime because the shadow queue already contains a mirrored copy of the data.
+*   The old primary is demoted to a shadow.
+*   In the event of a primary queue failure, the system automatically promotes the nearest healthy shadow queue to become the new primary.  The process is identical to the predictive scaling procedure.
+*   Geographic proximity, network performance, and resource availability are all factored into the promotion decision.
 
-  // Filter out nodes with high failure probability
-  filteredNodes = FilterNodes(nodes, failureProbabilities, threshold = 0.1) // Example: filter nodes > 10% failure probability
+**4. Conflict Resolution:**
 
-  // Rank nodes based on network connectivity (lowest latency first)
-  rankedNodes = RankNodes(filteredNodes, topologyData)
+*   Although operations are distributed to multiple queues concurrently, conflicts can still arise (e.g., two clients attempting to dequeue the same message).
+*   A distributed locking mechanism (e.g., using ZooKeeper or etcd) is used to ensure that only one client can successfully complete a conflicting operation.
 
-  // Determine base quorum size based on consistency level
-  baseQuorumSize = GetBaseQuorumSize(consistencyLevel)
+**Pseudocode (Distribution Manager):**
 
-  // Adjust quorum size based on network risk (e.g., high partition risk = larger quorum)
-  networkRiskFactor = CalculateNetworkRiskFactor(topologyData)
-  adjustedQuorumSize = baseQuorumSize * (1 + networkRiskFactor)
+```
+function distributeOperation(operation, queueName):
+  shadowQueues = getShadowQueues(queueName)
+  allQueues = [getPrimaryQueue(queueName)] + shadowQueues
+  acknowledgements = []
 
-  // Select top 'adjustedQuorumSize' nodes from 'rankedNodes'
-  quorumNodes = SelectTopNodes(rankedNodes, adjustedQuorumSize)
+  for queue in allQueues:
+    try:
+      acknowledgement = queue.execute(operation)
+      acknowledgements.append(acknowledgement)
+    except Exception as e:
+      //Log error, handle potentially retry operation
+      pass
 
-  RETURN quorumNodes
+  if len(acknowledgements) >= majorityThreshold:
+    return successAcknowledgement
+  else:
+    return failureAcknowledgement
 ```
 
-**System Interactions:**
+**Data Structures:**
 
-*   Master node queries DQC for the current quorum nodes before initiating a write operation.
-*   Master node uses the returned quorum nodes for acknowledgement verification.
-*   Slaves report health status and performance metrics to the PFA engine.
-*   NTMS continuously updates network topology information.
+*   `QueueMetadata`: Stores information about a queue, including its primary/shadow status, location, and configuration.
+*   `ShadowQueueList`:  Maintains a list of shadow queues associated with a primary queue.
+*   `OperationLog`:  Records all queue operations for auditing and replay purposes.
 
 **Potential Benefits:**
 
-*   Improved resilience to network partitions and node failures.
-*   Optimized performance by selecting the most reliable and responsive nodes.
-*   Reduced latency by minimizing cross-subnet communication.
-*   Adaptability to changing network conditions and node health.
+*   **Zero-downtime scaling:**  Scaling events are seamless and transparent to clients.
+*   **Improved reliability:**  Failover is automatic and fast.
+*   **Reduced latency:**  Clients are routed to the nearest available queue.
+*   **Enhanced data durability:**  Data is replicated across multiple locations.
