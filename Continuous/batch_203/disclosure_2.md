@@ -1,66 +1,50 @@
-# 8392242
+# 11599822
 
-## Dynamic Content Gating with Personalized Micro-Auctions
+## Dynamic Emotional Arc Mapping & Synthesis
 
-**Concept:** Expand the micropayment model beyond simple link access to encompass *dynamic content gating* triggered by user behavior and a personalized micro-auction system. Instead of paying to *reach* a site, users participate in real-time auctions to unlock specific content *within* a site, based on predicted willingness to pay.
+**Concept:** Extend the subgraph analysis to encompass *emotional* relationships between entities within a literary work, and synthesize novel narrative fragments based on detected emotional arcs.
 
-**Specs:**
+**Specification:**
 
-**1. User Profiling & Prediction Engine:**
+1.  **Emotional Lexicon & Tagging Module:**
+    *   A continuously updated lexicon mapping words/phrases to emotional valence (positive/negative/neutral) and intensity. Expand beyond basic emotions to include nuance (e.g., wistful, melancholic, defiant).
+    *   NLP process to tag entities (characters, locations, concepts) with associated emotions *as expressed by other entities within the text*.  Crucially, the emotion isn’t inherent to the entity, but *attributed* through interactions. Example: Character A consistently describes Location X as "ominous" – Location X is tagged with ‘fear’ as a received emotion.
+2.  **Emotional Graph Construction:**
+    *   Build a separate graph layer *over* the existing entity relationship graph.  Nodes represent entities.  Edges represent emotional connections.
+    *   Edge weight:  Derived from emotional valence, intensity, and frequency of emotional expression between entities.
+    *   Emotional ‘polarity’ of edges: Positive/Negative/Neutral.
+    *   Emotional ‘direction’ of edges: From entity expressing emotion *to* entity receiving it.
+3.  **Emotional Arc Identification:**
+    *   Algorithm to detect dominant emotional arcs within the graph.  An arc is a sequence of emotional changes experienced by an entity over time (as implied by text sequence).
+    *   Identify ‘turning points’ in emotional arcs – significant shifts in emotional state.
+    *   Calculate arc ‘shape’ parameters:  Rise time, peak intensity, fall time, overall duration.
+4.  **Narrative Synthesis Engine:**
+    *   Based on detected emotional arcs, generate short narrative fragments (sentences, paragraphs) extending the original work.
+    *   Utilize a large language model (LLM) fine-tuned on literary text.
+    *   Input to LLM:
+        *   Entity involved in arc
+        *   Arc shape parameters
+        *   Context from original text surrounding the arc
+        *   Desired ‘style’ (e.g., mimic author’s writing style).
+    *   Output: Novel text fragment continuing the emotional trajectory.
 
-*   **Data Sources:** Browser history, search queries, social media activity (with user consent), in-session behavior (dwell time, scrolling, clicks).
-*   **Model:** Machine learning model (e.g., Bayesian Network, Random Forest) to predict user’s willingness to pay for specific content categories (news, video, articles, tools, etc.).  Output:  "Willingness to Pay" score for each category (0-100).
-*   **Real-time Update:** Model constantly refines predictions based on user interactions with the system.
-
-**2. Content Segmentation & Auction Triggers:**
-
-*   **Content Metadata:** Content providers assign metadata tags to content (category, topic, complexity, exclusivity).
-*   **Gating Levels:** Content providers define multiple access levels (e.g., preview, basic, premium) for content, each associated with a minimum bid.
-*   **Auction Triggers:** Based on user behavior and predicted willingness to pay, the system dynamically determines if content should be gated, and at what level.  Examples:
-    *   User browsing a news article – System predicts high willingness to pay for political news – Article gated at “Premium” level.
-    *   User watching a free video – System predicts low willingness to pay for related tools – No gating.
-    *   User repeatedly accessing basic tutorials – System gates access to advanced tutorials at “Basic” or “Premium” level.
-
-**3. Micro-Auction System:**
-
-*   **Auction Types:**
-    *   **First-Price Sealed-Bid:** User submits a bid, highest bid wins.
-    *   **Dutch Auction:** Price starts high and decreases until a user accepts.
-    *   **Reverse Auction:** Multiple users bid to *minimize* the price (potentially for sponsored content).
-*   **Bid Increment:**  Minimum bid increment (e.g., $0.001).
-*   **Automated Bidding:** Users can set maximum bids or let the system automatically bid on their behalf within defined limits.
-*   **Bid Visibility:** Options for bid transparency (public, private, only to the content provider).
-
-**4. Payment & Revenue Sharing:**
-
-*   **Micro-Payment Integration:** Seamless integration with existing micro-payment platforms.
-*   **Revenue Split:** Configurable revenue split between content provider, auction platform, and (optionally) user.
-*   **Dynamic Pricing:** Algorithm dynamically adjusts pricing based on demand, content exclusivity, and user bidding patterns.
-
-**5.  User Interface (UI) & Experience (UX):**
-
-*   **Non-Intrusive Prompts:**  Gating prompts should be visually subtle and non-disruptive.
-*   **Transparent Pricing:**  Clear display of bid amounts and revenue split.
-*   **Bid History & Analytics:**  Users can view their bid history and spending patterns.
-*   **Subscription Option:**  Users can opt for a subscription to bypass micro-auctions for specific content providers or categories.
-
-**Pseudocode (Auction Trigger):**
+**Pseudocode (Narrative Synthesis):**
 
 ```
-FUNCTION TriggerAuction(user, content):
-  user_profile = GetUserProfile(user)
-  content_metadata = GetContentMetadata(content)
-  willingness_to_pay = PredictWillingnessToPay(user_profile, content_metadata)
+FUNCTION GenerateFragment(entity, arcShape, context, style):
+    prompt = "Continue the story from the following context, maintaining the style of [style]. " +
+             "The entity [entity] is experiencing an emotional arc with the following characteristics: " +
+             "Rise Time: " + arcShape.riseTime + ", Peak Intensity: " + arcShape.peakIntensity + ", Fall Time: " + arcShape.fallTime + ". " +
+             "Context: " + context
 
-  IF willingness_to_pay > threshold AND content.gated == TRUE:
-    auction_level = DetermineAuctionLevel(willingness_to_pay)
-    InitiateAuction(user, content, auction_level)
-  ELSE:
-    DisplayContent(content)
-  ENDIF
-ENDFUNCTION
+    fragment = LLM.generateText(prompt) // Use a fine-tuned LLM
+
+    RETURN fragment
 ```
 
-**Novelty:**
+**Potential Applications:**
 
-This system moves beyond simply charging for access. It leverages dynamic user profiling and auctions to determine *what* content users are willing to pay for *at a given moment*, maximizing revenue for content providers and providing a personalized experience for users. It’s a shift from a fixed-price model to a dynamic, demand-based model. It's also a departure from standard subscription models, offering flexibility and granular control over content consumption.
+*   Automated fan fiction generation.
+*   Personalized literary experiences – tailor story continuations based on user emotional preferences.
+*   Character development tools for authors.
+*   Novelty detection - identify emotional patterns uncommon in existing literature.
