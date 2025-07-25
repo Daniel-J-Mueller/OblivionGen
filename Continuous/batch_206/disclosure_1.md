@@ -1,71 +1,53 @@
-# 9460008
+# 9633073
 
-## Adaptive Tiered Log Compaction with Predictive Pre-Fetch
+## Hierarchical Data "Bloom" – Predictive Prefetching & Tiered Encoding
 
-**Concept:** Expand on the log reclamation process by introducing a tiered storage system *within* the log itself, combined with a predictive pre-fetch mechanism to optimize data page reconstruction. Instead of a single reclamation point, implement dynamic tiers based on access frequency and data age, allowing for granular reclamation and reduced reconstruction latency.
+**Concept:** Leverage query patterns *across* users to proactively "bloom" hierarchical data into optimized tiers *before* a query is even received. This moves beyond reactive optimization to a predictive, multi-tiered storage structure.
 
-**Specifications:**
+**Specs:**
 
-**1. Tiered Log Structure:**
+*   **Query Pattern Aggregator:** A service that passively monitors incoming queries (anonymized, naturally) across the entire system. This isn’t about *individual* user profiles, but aggregate trends. It identifies frequently accessed data *paths* within the hierarchical structure.  Data paths are represented as node IDs and attribute selections.
 
-*   **Tier 0: Hot Log:**  Small, fast storage (e.g., NVMe) holding the most recent log records.  Records stay here for a configurable period (e.g., 1 hour) or until a certain number of records are accumulated.  Records are appended only.
-*   **Tier 1: Warm Log:**  Faster storage (e.g., SSD) holding recently aged log records from Tier 0. Records from Tier 0 are moved in batches.  Records are appended and compactable.
-*   **Tier 2: Cold Log:**  High-capacity, lower-cost storage (e.g., HDD or object storage).  Holds older log records.  Records are compactable and archived.
+*   **Bloom Tier:** A fast, in-memory (or SSD-backed) tier dedicated to holding the *most probable* data paths identified by the Query Pattern Aggregator.  Data is stored in a highly optimized, columnar format.  This tier is small – the goal isn’t to hold *all* data, but the 95th percentile most likely access paths.
 
-**2. Access Frequency Monitoring:**
+*   **Transitional Tier:** A mid-tier utilizing NVMe storage.  Data here is a larger set of probable data paths than the Bloom Tier, and represents the "next level down" in predicted access. Data encoding here utilizes a lossy compression algorithm tailored to the data type (e.g. delta encoding for time series, reduced precision floats for scientific data) to maximize storage efficiency.
 
-*   Each data page maintains an access counter.  Reads and writes increment this counter.
-*   A background process periodically analyzes access counters.  Pages with high access frequency are prioritized for retention in higher tiers.
-*   Access frequency data is used to inform data movement between tiers.
+*   **Archive Tier:** The existing storage system. Standard columnar storage with potentially more aggressive compression.
 
-**3. Predictive Pre-Fetch:**
+*   **Dynamic Tiering Engine:** This is the core of the system.
+    *   **Prediction Module:** Receives data path predictions from the Query Pattern Aggregator.
+    *   **Tier Assignment:**  Assigns data paths to tiers based on prediction confidence and data size. Highly confident, small data paths go to the Bloom Tier.  Less confident or large paths are routed to the Transitional or Archive tiers.
+    *   **Eviction Policy:**  A Least Recently Predicted (LRP) policy determines which data paths are evicted from the Bloom and Transitional tiers as new predictions arrive.
+    *   **Prefetch Scheduler:**  Initiates prefetching of data paths to the appropriate tiers *before* a query is received.
 
-*   Monitor access patterns to data pages *before* reclamation occurs.
-*   Use machine learning models to predict which data pages are likely to be accessed in the near future.
-*   Proactively pre-fetch log records required to reconstruct those pages *before* they are needed, storing the reconstructed pages in a cache.
-*   Cache eviction policy prioritizes pages with predicted future access.
+*   **Query Routing:** Incoming queries are intercepted.
+    *   **Bloom Tier Check:**  First, the query checks the Bloom Tier. If all required data is present, the query is served immediately.
+    *   **Transitional Tier Check:** If data is missing from the Bloom Tier, the Transitional Tier is checked.
+    *   **Archive Tier Access:**  If data is missing from both tiers, access to the Archive Tier occurs.
+    *   **Tier Update:**  As data is accessed, the Dynamic Tiering Engine updates predictions and adjusts tier assignments accordingly.
 
-**4. Adaptive Reclamation:**
-
-*   Reclamation is not tied to a single point. Instead, it’s a continuous process.
-*   Oldest records in Tier 2 are eligible for reclamation after verification against backup systems and application of retention policies.
-*   Tier 2 reclamation triggers movement of records from Tier 1 to Tier 2, and Tier 0 to Tier 1.
-*   Reclamation is paused if predictive pre-fetch indicates a high probability of access to records in the targeted tier.
-
-**5. Data Movement & Compaction:**
-
-*   Batch data movement between tiers to minimize I/O overhead.
-*   Compaction within each tier to reduce storage space and improve read performance.
-*   Compaction considers access frequency. Frequently accessed records are prioritized for retention.
-
-**Pseudocode (Reclamation Process):**
+**Pseudocode (Dynamic Tiering Engine):**
 
 ```
-function reclaim_log_data():
-  while true:
-    // Tier 2 Reclamation
-    eligible_records = get_oldest_records_from_tier(2)
-    if eligible_records and is_backed_up(eligible_records):
-      reclaim_records(eligible_records)
-      move_records_from_tier(1, 2)
-      move_records_from_tier(0, 1)
+function processQuery(query):
+  bloomData = checkBloomTier(query)
+  if bloomData.complete:
+    return bloomData.results
 
-    // Predictive Pause
-    predicted_access = check_for_predicted_access()
-    if predicted_access:
-      pause_reclamation() // Wait for a period or until access probability decreases
+  transitionalData = checkTransitionalTier(query)
+  if transitionalData.complete:
+    return transitionalData.results
 
-    sleep(configurable_interval)
+  archiveData = accessArchiveTier(query)
+  updatePredictions(query, archiveData)
+  return archiveData
+
+function updatePredictions(query, data):
+  # Analyze query and data to refine prediction model
+  # Update prediction scores for relevant data paths
+  # Trigger prefetching of updated data paths
 ```
 
-**Hardware Considerations:**
+**Novelty:**
 
-*   Multi-tiered storage system with varying performance characteristics.
-*   Sufficient RAM for caching reconstructed data pages.
-*   High-speed network connectivity for data movement between storage tiers.
-
-**Software Considerations:**
-
-*   Machine learning library for access pattern prediction.
-*   Efficient data movement and compaction algorithms.
-*   Monitoring and alerting system for storage capacity and performance.
+This moves beyond reactive optimization. Most systems optimize data *after* a query arrives.  This system *predicts* access patterns and proactively prepares the data *before* the query is received. The tiered approach allows for balancing speed, storage cost, and prediction accuracy. The focus on aggregate patterns, rather than individual user profiles, addresses privacy concerns.
