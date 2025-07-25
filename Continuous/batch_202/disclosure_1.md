@@ -1,60 +1,84 @@
-# 11487733
+# 9578395
 
-**Secure Data Attestation via Temporal Merkle Trees**
+## Dynamic Manifest Stitching for Personalized Live Streams
 
-**Concept:** Extend the journal/hash retention concept to provide verifiable, time-stamped data attestation. Instead of simply proving data *existence*, this system allows proving data *integrity at a specific point in time*. This is achieved by layering temporal Merkle Trees on top of the existing journal structure.
+**Concept:** Extend the embedded manifest idea to enable real-time, personalized live stream experiences by dynamically stitching together manifests tailored to individual user preferences *before* the first chunk is requested. 
 
 **Specs:**
 
-1.  **Temporal Merkle Tree Construction:**
-    *   Each leaf node in the journal now contains not just a hash of the data entry, but a timestamp associated with that entry.
-    *   Periodically (e.g., every hour, day, week – configurable), a Merkle Tree is constructed using the leaf node hashes *and* timestamps. This creates a “snapshot” of the journal state at that moment.  The root hash of this Merkle Tree is considered the “Temporal Root”.
-    *   Temporal Roots are themselves chained together, creating a “Temporal Chain”.  Each Temporal Root contains the hash of the *previous* Temporal Root, providing a chronological history.
+**1. User Preference Profiles:**
 
-2.  **Data Attestation Protocol:**
-    *   To attest to the integrity of a specific data entry at a specific time, the following is required:
-        *   The data entry itself.
-        *   The timestamp of the entry.
-        *   The Merkle Proof (the set of hashes required to compute the root hash) for the data entry from the appropriate Temporal Merkle Tree.
-        *   The Temporal Root hash of that specific time period.
-        *   The chain of Temporal Root hashes back to a trusted “Genesis Root” (established during system initialization).
+*   Data Structure: JSON object.
+*   Fields:
+    *   `user_id`: Unique identifier for the user.
+    *   `content_interests`: Array of strings representing user's preferred content categories (e.g., "sports", "news", "comedy").
+    *   `preferred_languages`: Array of language codes (e.g., "en", "es", "fr").
+    *   `ad_block_level`: Integer (0-3) indicating the user's tolerance for advertisements (0 = no ads, 3 = maximum ads).
+    *   `resolution_preference`: String ("720p", "1080p", "4k").
 
-3.  **System Components:**
-    *   **Journal Manager:** Responsible for storing data entries, generating leaf node hashes, and constructing Temporal Merkle Trees.
-    *   **Attestation Service:** Receives attestation requests, verifies Merkle Proofs, and validates the Temporal Chain.
-    *   **Trusted Root Authority:**  Responsible for managing the Genesis Root and ensuring its security.  Could be a hardware security module (HSM).
+**2. Content Metadata Enrichment:**
 
-4.  **Pseudocode (Attestation Service – VerifyAttestationRequest):**
+*   All content chunks (video, audio, advertisements) must be tagged with metadata:
+    *   `content_category`: String (e.g., "sports", "news", "comedy").
+    *   `language`: Language code (e.g., "en", "es", "fr").
+    *   `ad_flag`: Boolean (True if advertisement, False otherwise).
+    *   `resolution`: String ("720p", "1080p", "4k").
+
+**3. Manifest Stitching Service:**
+
+*   Input: User Preference Profile, Live Stream Manifest (base manifest describing available chunks), Current Timecode of Live Stream.
+*   Process:
+    1.  Filter the base manifest to include only chunks that match the user's preferences (content categories, languages).
+    2.  Adjust advertisement frequency based on `ad_block_level`.  (e.g. Level 0: Remove all ads, Level 1: Reduce ad frequency by 50%, Level 2: Standard frequency, Level 3: Increased frequency)
+    3.  Select chunks with the `resolution_preference` if available; otherwise, select the highest available resolution.
+    4.  Create a personalized manifest containing the filtered and prioritized chunks.
+    5.  Embed the personalized manifest into the response to the user’s request for the live stream.
+
+**4. Client-Side Logic:**
+
+*   Receive embedded personalized manifest.
+*   Request content chunks based on the order and locations specified in the personalized manifest.
+*   Continuously request updated personalized manifests (e.g., every 5-10 seconds) to adapt to changing user preferences or live stream content.
+
+**Pseudocode (Manifest Stitching Service):**
 
 ```
-FUNCTION VerifyAttestationRequest(dataEntry, timestamp, merkleProof, temporalRoot, temporalChain):
-  // 1. Compute hash of dataEntry and compare to leaf node hash derived from merkleProof
-  IF hash(dataEntry) != ComputeLeafHash(merkleProof) THEN
-    RETURN FALSE // Data integrity check failed
+function stitch_manifest(user_profile, base_manifest, current_timecode):
+  filtered_chunks = []
+  for chunk in base_manifest.chunks:
+    if (chunk.content_category in user_profile.content_interests and
+        chunk.language in user_profile.preferred_languages):
+      filtered_chunks.append(chunk)
 
-  // 2. Verify Merkle Proof against Temporal Root
-  IF VerifyMerkleProof(merkleProof, temporalRoot) THEN
-    // 3. Validate Temporal Chain
-    currentRoot = temporalRoot
-    WHILE currentRoot != GenesisRoot:
-      previousRoot = GetPreviousRoot(currentRoot)
-      IF VerifyChainHash(currentRoot, previousRoot) THEN
-        currentRoot = previousRoot
-      ELSE
-        RETURN FALSE // Chain integrity compromised
+  # Adjust advertisement frequency
+  ad_count = 0
+  for chunk in filtered_chunks:
+    if chunk.ad_flag:
+      ad_count += 1
 
-    RETURN TRUE // Attestation successful
+  if user_profile.ad_block_level == 0:
+    filtered_chunks = [chunk for chunk in filtered_chunks if not chunk.ad_flag]
+  elif user_profile.ad_block_level == 1:
+    # Reduce ad frequency by 50% (remove half of the ads)
+    # Implement logic to randomly remove ads
+    pass
+  
+  # Select resolution
+  resolution_chunks = [chunk for chunk in filtered_chunks if chunk.resolution == user_profile.resolution_preference]
+  if not resolution_chunks:
+      resolution_chunks = sorted(filtered_chunks, key=lambda x: x.resolution, reverse=True)
 
-  ELSE
-    RETURN FALSE // Merkle proof invalid
+  # Create personalized manifest
+  personalized_manifest = Manifest()
+  personalized_manifest.chunks = resolution_chunks
+  personalized_manifest.timestamp = current_timecode
+  return personalized_manifest
 ```
 
-5. **Data Structures:**
+**Potential Benefits:**
 
-*   `LeafNode`:  { `dataEntryId`: String, `hash`: String, `timestamp`: Long }
-*   `TemporalRoot`: { `rootHash`: String, `timestamp`: Long, `previousRootHash`: String }
-
-6.  **Potential Use Cases:**
-    *   **Supply Chain Integrity:**  Verify the provenance and integrity of goods at each stage of the supply chain.
-    *   **Auditing and Compliance:**  Provide immutable audit trails for regulatory compliance.
-    *   **Data Sovereignty:**  Prove that data has not been tampered with, even if it resides on untrusted infrastructure.
+*   Highly personalized live stream experience.
+*   Reduced latency by eliminating unnecessary content requests.
+*   Improved user engagement and satisfaction.
+*   Dynamic adaptation to changing user preferences.
+*   Enhanced advertising effectiveness (or complete ad blocking).
