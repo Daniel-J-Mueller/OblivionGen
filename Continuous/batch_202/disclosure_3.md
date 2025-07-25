@@ -1,64 +1,65 @@
-# 9654623
+# 12093162
 
-## Adaptive Data Granularity & Predictive Prefetching
+## Dynamic Log Template Composition via Genetic Algorithm
 
-**System Specification:** A distributed data aggregation layer operating *ahead* of service calls, utilizing a learned model of request patterns to proactively assemble and cache data at varying granularities.
+**Concept:** Instead of a static log template pool, evolve log templates *during* parsing using a genetic algorithm. This addresses the limitations of predefined templates and allows adaptation to unseen log formats.
 
-**Core Concept:**  Instead of waiting for a service call to determine the necessary data, the system predicts *potential* requests and pre-fetches data, assembling it into multiple “views” representing different levels of detail. These views are cached, and the arriving service request is served from the most appropriate view – minimizing data transfer and processing.  This is accomplished through a multi-tiered cache – a fast, small “hot” cache for frequently requested granularities, and a larger, slower cache for less common ones.
+**Specs:**
 
-**Components:**
+*   **Component 1: Log Entry Feature Extractor:**
+    *   Input: Raw log entry (string).
+    *   Output: Feature vector.
+    *   Functionality: Identifies key characteristics of the log entry. Examples: frequency of alphanumeric characters, presence of IP addresses, timestamps, error codes, keyword density, and structural elements (e.g., delimited fields).
+*   **Component 2: Template Representation (Genome):**
+    *   A template is represented as a series of 'instruction blocks' encoded as a string. These blocks define how to parse the log entry.
+    *   Instruction blocks:
+        *   `REGEX(pattern)`: Matches a regular expression pattern.
+        *   `DELIMITER(character)`: Splits the string by a character.
+        *   `SKIP(n)`: Skips the next 'n' characters.
+        *   `CAPTURE()`: Captures the matched/delimited/skipped value.
+        *   `TYPE(data_type)`: Defines the data type of the captured value (e.g., INT, STRING, FLOAT).
+*   **Component 3: Fitness Function:**
+    *   Takes a log entry and a template (genome) as input.
+    *   Executes the template against the log entry.
+    *   Calculates a fitness score based on:
+        *   **Parse Success Rate:** Percentage of log entry successfully parsed.
+        *   **Data Type Accuracy:**  How well the inferred data types match expected types (using heuristics or a pre-defined schema).
+        *   **Coverage:**  Percentage of log entry covered by the parsing.
+*   **Component 4: Genetic Algorithm Engine:**
+    *   **Population:** Maintains a population of log templates (genomes).
+    *   **Selection:** Selects templates based on fitness score (e.g., tournament selection, roulette wheel selection).
+    *   **Crossover:** Combines parts of two parent templates to create offspring (e.g., single-point crossover, multi-point crossover).
+    *   **Mutation:** Randomly alters parts of a template (e.g., change a regex pattern, add/remove an instruction block).
+    *   **Replacement:** Replaces low-fitness templates with new offspring.
+*   **Component 5: Log Entry Parser:**
+    *   Input: Raw log entry.
+    *   Process: 
+        1.  Extract features from the log entry.
+        2.  Select the best template from the current population (based on feature similarity).
+        3.  Apply the template to parse the log entry.
+        4.  Output parsed log data.
+*   **Component 6: Population Update Mechanism:**
+    *   The population of templates is constantly updated as new log entries are processed.
+    *   Templates that consistently perform well are retained and used as the basis for new templates.
+    *   Templates that consistently perform poorly are removed from the population.
 
-1.  **Request Pattern Analyzer:** A machine learning module (e.g., LSTM network) that ingests historical service request data (input parameters, requested fields, frequency) to predict future requests.  Output: Probability distribution over potential request parameters and fields.
-
-2.  **Data Assembly Engine:**  Responsible for fetching data from underlying services based on the predicted request distributions.  It dynamically assembles data into multiple granularities – e.g., full object, specific fields, aggregated summaries.
-
-3.  **Multi-Tiered Cache:**
-    *   **Hot Cache:** Small, fast in-memory cache storing the most frequently requested granularities.
-    *   **Warm Cache:** Larger, slower storage (e.g., SSD) storing less frequent granularities.
-    *   **Cold Cache:**  Archival storage (e.g., cloud object storage) for rarely accessed data.
-
-4.  **Granularity Selector:**  Upon receiving a service request, this component assesses the request's parameters and selects the pre-assembled granularity from the cache that best matches the request. If no suitable granularity exists, it triggers a fetch from the underlying service *and* initiates pre-assembly of relevant granularities for future requests.
-
-5. **Data Versioning and Invalidation:** Each cached data view is tagged with a version number. Changes in the underlying data trigger invalidation of relevant versions, prompting re-assembly. A lightweight change propagation mechanism is used to minimize the impact of updates.
-
-**Pseudocode (Granularity Selector):**
+**Pseudocode (Population Update):**
 
 ```
-function select_granularity(request_params, request_fields) {
-  // 1. Attempt to find an exact match in the Hot Cache
-  cached_data = hot_cache.get(request_params, request_fields);
-  if (cached_data != null) {
-    return cached_data;
-  }
+function update_population(log_entry, population):
+  best_template = select_best_template(log_entry, population)
+  fitness = evaluate_fitness(log_entry, best_template)
 
-  // 2. Attempt to find a close match in the Warm Cache (e.g., same params, different fields)
-  warm_data = warm_cache.get_close_match(request_params, request_fields);
-  if (warm_data != null) {
-    // Optionally transform warm_data to match request_fields
-    return warm_data;
-  }
+  if fitness > threshold:
+    # Encourage the best template
+    offspring = create_offspring(best_template)
+    add_offspring_to_population(offspring, population)
+  else:
+    # Introduce diversity through mutation
+    mutated_template = mutate_template(select_random_template(population))
+    replace_worst_template(mutated_template, population)
 
-  // 3. Fetch data from underlying service
-  data = fetch_from_service(request_params, request_fields);
-
-  // 4. Assemble multiple granularities of data
-  granularities = assemble_granularities(data, request_params);
-
-  // 5. Cache the granularities
-  cache_granularities(granularities);
-
-  // 6. Return the requested data
-  return data;
-}
+  return population
 ```
 
-**Data Structures:**
-
-*   **Cache Entry:**  {data: object, params: object, fields: array, version: int, timestamp: timestamp}
-*   **Granularity Profile:** {params: object, fields: array, cache_tier: string} – defines which granularity is stored in which cache tier.
-
-**Scalability & Fault Tolerance:**
-
-*   The system should be deployed as a distributed cluster, with data partitioned across multiple nodes.
-*   Data replication should be used to ensure fault tolerance.
-*   A consensus algorithm (e.g., Raft) should be used to maintain consistency across nodes.
+**Refinement:** The `threshold` is dynamic, based on the average fitness of the population. This allows the system to adapt to changing log formats. The system can also incorporate feedback from human operators to improve the accuracy of the templates.
