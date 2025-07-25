@@ -1,43 +1,75 @@
-# 12147496
+# 11075761
 
-## Adaptive Predictive Masking for Dynamic Scenes
+## Secure Attestation & Dynamic Secret Provisioning via Decentralized Identifiers (DIDs)
 
-**Concept:** Extend the automatic training data generation to handle *dynamic* scenes – situations where the object of interest is actively changing shape or pose *during* the imaging process. Current methods seem focused on static objects or predictable motions. This builds on the idea of overlaying 3D models but adds a prediction layer.
+**Concept:** Extend the secure secrets management system by incorporating Decentralized Identifiers (DIDs) and Verifiable Credentials (VCs) for application attestation and dynamic secret provisioning. This moves beyond simply validating a process state to establishing a cryptographically verifiable trust relationship *before* secret access is granted, and allows for fine-grained, time-limited access control.
 
-**Specs:**
+**Specification:**
 
-*   **System Components:**
-    *   Imaging Device (RGB-D camera, LiDAR, or similar) – Captures real-time imaging data.
-    *   Inertial Measurement Unit (IMU) – Tracks the imaging device’s position/orientation.
-    *   Object Tracking System – A secondary system (e.g., optical flow, multi-sensor fusion) capable of tracking key points or surfaces on the object of interest in real-time.  This *doesn't* need to be perfect 3D reconstruction, just reliable tracking of surface movement.
-    *   Prediction Engine – A recurrent neural network (RNN) or transformer model trained to predict the future state (pose, shape) of the object of interest based on its recent history of movement, attribute data, and potentially environmental factors.
-    *   Rendering Engine – Responsible for overlaying the predicted 3D model onto the current imaging data.
-    *   Mask Generation Module –  Generates masks based on the rendered predicted 3D model.
+**1. DID/VC Integration:**
 
-*   **Data Flow:**
+*   **Application Identity:** Each application requesting access to a secret is assigned a DID. This DID acts as its unique, verifiable identity.
+*   **Attestation Process:** Before initial secret access, the application must prove ownership of its DID *and* attest to its current, trusted state. This is done by presenting a Verifiable Credential (VC) signed by a trusted issuer (e.g., a security authority, a platform administrator). The VC contains information about the application’s build, configuration, and integrity checks.
+*   **VC Schema:**  Define a standardized VC schema that includes:
+    *   `subject`: The application’s DID.
+    *   `credentialSubject`: Metadata about the application (version, build hash, authorized runtime environment, security posture).
+    *   `issuer`: The entity attesting to the application’s trustworthiness.
+    *   `validFrom/validUntil`: Time window for VC validity.
 
-    1.  **Real-time Input:** Imaging device captures frames, IMU provides device pose, Object Tracking System provides tracked points/surfaces on the object.
-    2.  **State Estimation:** The Prediction Engine receives the current imaging data, IMU data, object tracking data, and attribute data (if available). It estimates the current state of the object (position, orientation, shape).
-    3.  **Prediction:** The Prediction Engine predicts the *future* state of the object (position, orientation, shape) a short time into the future (e.g., 100ms – 500ms).
-    4.  **Model Adaptation:** The rendering engine updates the 3D model based on the *predicted* future state. This means the model is *not* simply aligned with the current image; it's pre-aligned with where the object is *going*.
-    5.  **Rendering & Masking:** The adapted 3D model is rendered onto the current imaging data. The Mask Generation Module creates a mask based on the rendered model, representing the *predicted* object boundaries.
-    6.  **Training Data Output:** The current imaging data and the predicted mask are output as training data for the machine learning model.
+**2. Secret Provisioning Workflow:**
 
-*   **Pseudocode (Prediction Engine):**
+*   **Initial Handshake:** Application presents its DID and VC to the controlling domain.
+*   **VC Verification:** Controlling domain verifies the VC’s signature, issuer, validity period, and credential subject against a pre-defined trust policy.
+*   **Dynamic Secret Generation/Retrieval:** If verification succeeds:
+    *   The controlling domain generates a unique, short-lived secret (e.g., a randomly generated key or token) specifically for this application instance.
+    *   Alternatively, the controlling domain retrieves an existing secret associated with the application's DID and authorized claims within the VC.
+*   **Secret Delivery:** The secret is delivered to the application via a secure channel (e.g., TLS with mutual authentication).
+*   **Ongoing Attestation:** Implement periodic re-attestation. The application must periodically present a fresh VC to prove its continued trustworthiness and re-authorize secret access. This combats potential runtime compromise.
+*   **Revocation:** A mechanism for revoking access, utilizing DID revocation methods. The controlling domain monitors for DID revocation events and immediately invalidates any associated secrets.
 
-    ```
-    function predict_future_state(current_state, historical_data, attribute_data):
-        # historical_data: sequence of past states (position, orientation, shape)
-        # attribute_data: object properties (e.g., material, weight)
+**3. System Components:**
 
-        # Use RNN or Transformer to learn temporal dependencies
-        predicted_state = model(historical_data, attribute_data)
+*   **DID Provider:** A service for managing DIDs and issuing VCs. This could be a decentralized network (e.g., using a blockchain) or a centralized authority.
+*   **VC Validator:** A module within the controlling domain responsible for verifying VCs.
+*   **Secret Management Service:**  Stores and manages secrets, associating them with DIDs and access policies.
+*   **Attestation Agent:** A component running within the application responsible for obtaining and presenting VCs.
 
-        return predicted_state
-    ```
+**4. Pseudocode (Simplified Secret Request Flow):**
 
-*   **Key Considerations:**
-    *   **Prediction Horizon:** The length of the prediction horizon needs to be tuned based on the speed and dynamics of the object.
-    *   **Prediction Accuracy:**  The accuracy of the prediction is crucial.  Robust prediction models and sensor fusion techniques are essential.
-    *   **Computational Cost:**  Real-time prediction requires efficient algorithms and hardware acceleration.
-    *    **Drift Correction:** Accumulation of prediction error can cause drift. Implement strategies for recalibrating the prediction model using feedback from the imaging data.
+```
+// Application Side:
+did = getApplicationDID()
+vc = getVerifiableCredential() // Obtain from Attestation Agent
+
+// Request to Controlling Domain
+request = {
+  did: did,
+  vc: vc,
+  secretIdentifier: "mySecret"
+}
+
+// Controlling Domain Side:
+function handleSecretRequest(request) {
+  did = request.did
+  vc = request.vc
+  secretIdentifier = request.secretIdentifier
+
+  if (!verifyVC(vc)) {
+    return error("Invalid VC")
+  }
+
+  secret = getSecret(secretIdentifier, did)
+
+  if (secret == null) {
+    return error("Secret not found")
+  }
+
+  return secret // Provide secret to application
+}
+```
+
+**5.  Enhancements:**
+
+*   **Selective Disclosure:** Applications can selectively disclose specific claims from their VC to minimize data exposure.
+*   **Zero-Knowledge Proofs:** Utilize ZKPs to prove compliance with access policies without revealing the underlying data.
+*   **Hardware Security Modules (HSMs):** Store and protect secrets within HSMs for enhanced security.
