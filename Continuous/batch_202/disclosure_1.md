@@ -1,84 +1,65 @@
-# 9578395
+# 11942084
 
-## Dynamic Manifest Stitching for Personalized Live Streams
+## Adaptive Acoustic Fingerprinting for Environmental Context
 
-**Concept:** Extend the embedded manifest idea to enable real-time, personalized live stream experiences by dynamically stitching together manifests tailored to individual user preferences *before* the first chunk is requested. 
+**Concept:** Extend the ‘sound profile’ concept to not just identify repetitive commands, but to build a dynamic acoustic fingerprint of the *environment* a voice assistant operates in. This allows for proactive noise cancellation/adaptation *before* a wakeword is even detected, improving accuracy in challenging conditions, and offering new features related to environmental awareness.
 
 **Specs:**
 
-**1. User Preference Profiles:**
+*   **Component 1: Environmental Acoustic Profiler (EAP)**
+    *   Function: Continuously monitors ambient audio.
+    *   Algorithm: Uses a combination of:
+        *   **Short-Time Fourier Transform (STFT):** For frequency analysis.
+        *   **Mel-Frequency Cepstral Coefficients (MFCCs):** For feature extraction, focusing on perceptual characteristics of sound.
+        *   **Gaussian Mixture Models (GMMs):** To model the distribution of acoustic features in the environment.
+        *   **Anomaly Detection:**  Identifies sounds *outside* the established environmental profile.  (e.g., a dog barking, construction noise).
+    *   Output:  A dynamic ‘Environmental Acoustic Profile’ (EAP) - a probabilistic model of the soundscape.  Updated continuously, with weighting towards recent data.
+*   **Component 2: Predictive Noise Cancellation (PNC)**
+    *   Input: EAP, incoming audio stream.
+    *   Function:  Before processing for a wakeword, PNC predicts potential noise interference based on the EAP.
+    *   Algorithm:
+        *   **Spectral Subtraction:**  Estimates noise spectrum from EAP, subtracts from incoming audio.
+        *   **Wiener Filtering:**  Optimizes filtering based on signal and noise power spectral densities (estimated from EAP and incoming audio).
+        *   **Adaptive Beamforming (Optional):** If multiple microphones are available, steers the microphones to maximize signal and minimize noise based on the EAP (identifying dominant noise sources).
+*   **Component 3: Contextual Awareness Engine (CAE)**
+    *   Input: EAP, anomaly detection results, wakeword detection, command processing.
+    *   Function:  Provides environmental context to the voice assistant.
+    *   Features:
+        *   **Automatic Noise Gate Adjustment:** Dynamically adjusts the noise gate threshold for wakeword detection based on the EAP.
+        *   **Smart Home Integration:**  Triggers actions based on identified environmental events (e.g., “Someone is knocking,” “Baby is crying”).
+        *   **Environmental Reporting:**  Provides a summary of the soundscape to the user (e.g., “It’s currently noisy outside,” “There’s a lot of traffic”).
+        *    **"Sound Event Recognition"** - Identifies specific sounds *before* a command is even issued. (e.g., glass breaking, a siren, a specific musical instrument)
 
-*   Data Structure: JSON object.
-*   Fields:
-    *   `user_id`: Unique identifier for the user.
-    *   `content_interests`: Array of strings representing user's preferred content categories (e.g., "sports", "news", "comedy").
-    *   `preferred_languages`: Array of language codes (e.g., "en", "es", "fr").
-    *   `ad_block_level`: Integer (0-3) indicating the user's tolerance for advertisements (0 = no ads, 3 = maximum ads).
-    *   `resolution_preference`: String ("720p", "1080p", "4k").
-
-**2. Content Metadata Enrichment:**
-
-*   All content chunks (video, audio, advertisements) must be tagged with metadata:
-    *   `content_category`: String (e.g., "sports", "news", "comedy").
-    *   `language`: Language code (e.g., "en", "es", "fr").
-    *   `ad_flag`: Boolean (True if advertisement, False otherwise).
-    *   `resolution`: String ("720p", "1080p", "4k").
-
-**3. Manifest Stitching Service:**
-
-*   Input: User Preference Profile, Live Stream Manifest (base manifest describing available chunks), Current Timecode of Live Stream.
-*   Process:
-    1.  Filter the base manifest to include only chunks that match the user's preferences (content categories, languages).
-    2.  Adjust advertisement frequency based on `ad_block_level`.  (e.g. Level 0: Remove all ads, Level 1: Reduce ad frequency by 50%, Level 2: Standard frequency, Level 3: Increased frequency)
-    3.  Select chunks with the `resolution_preference` if available; otherwise, select the highest available resolution.
-    4.  Create a personalized manifest containing the filtered and prioritized chunks.
-    5.  Embed the personalized manifest into the response to the user’s request for the live stream.
-
-**4. Client-Side Logic:**
-
-*   Receive embedded personalized manifest.
-*   Request content chunks based on the order and locations specified in the personalized manifest.
-*   Continuously request updated personalized manifests (e.g., every 5-10 seconds) to adapt to changing user preferences or live stream content.
-
-**Pseudocode (Manifest Stitching Service):**
+**Pseudocode:**
 
 ```
-function stitch_manifest(user_profile, base_manifest, current_timecode):
-  filtered_chunks = []
-  for chunk in base_manifest.chunks:
-    if (chunk.content_category in user_profile.content_interests and
-        chunk.language in user_profile.preferred_languages):
-      filtered_chunks.append(chunk)
+// EAP - continuously running in background
+function updateEAP(audioData):
+    features = extractMFCC(audioData)
+    updateGMM(features)
 
-  # Adjust advertisement frequency
-  ad_count = 0
-  for chunk in filtered_chunks:
-    if chunk.ad_flag:
-      ad_count += 1
+// PNC - pre-processes audio before wakeword detection
+function preProcessAudio(audioData, EAP):
+    noiseEstimate = estimateNoiseFromEAP(EAP)
+    filteredAudio = subtractNoise(audioData, noiseEstimate)
+    return filteredAudio
 
-  if user_profile.ad_block_level == 0:
-    filtered_chunks = [chunk for chunk in filtered_chunks if not chunk.ad_flag]
-  elif user_profile.ad_block_level == 1:
-    # Reduce ad frequency by 50% (remove half of the ads)
-    # Implement logic to randomly remove ads
-    pass
-  
-  # Select resolution
-  resolution_chunks = [chunk for chunk in filtered_chunks if chunk.resolution == user_profile.resolution_preference]
-  if not resolution_chunks:
-      resolution_chunks = sorted(filtered_chunks, key=lambda x: x.resolution, reverse=True)
+// Main Loop
+while True:
+    audioData = captureAudio()
+    filteredAudio = preProcessAudio(audioData, EAP)
+    wakewordDetected = detectWakeword(filteredAudio)
+    if wakewordDetected:
+        command = processCommand(filteredAudio)
+        executeCommand(command)
+    updateEAP(audioData)
 
-  # Create personalized manifest
-  personalized_manifest = Manifest()
-  personalized_manifest.chunks = resolution_chunks
-  personalized_manifest.timestamp = current_timecode
-  return personalized_manifest
 ```
 
-**Potential Benefits:**
+**Hardware Considerations:**
 
-*   Highly personalized live stream experience.
-*   Reduced latency by eliminating unnecessary content requests.
-*   Improved user engagement and satisfaction.
-*   Dynamic adaptation to changing user preferences.
-*   Enhanced advertising effectiveness (or complete ad blocking).
+*   Requires a microphone array for optimal performance, particularly for adaptive beamforming.
+*   Needs sufficient processing power to run the EAP and PNC in real-time.  Potentially offload some processing to the cloud.
+*   Utilizes existing microphone hardware on current devices.
+
+**Novelty:**  Existing systems primarily focus on noise cancellation *after* speech detection. This proposes a *proactive* approach, using environmental modeling to optimize speech processing *before* the wakeword is even detected. The contextual awareness features further differentiate it from existing solutions. It expands the “sound profile” concept beyond just repetitive commands to represent the entire environmental soundscape.
