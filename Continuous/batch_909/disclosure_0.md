@@ -1,75 +1,70 @@
-# 10038758
+# 9769582
 
-**Dynamic CDN Prioritization via User Device Resource Negotiation**
+## Acoustic Scene Reconstruction with Distributed Phased Array
 
-**Specification:**
+**Concept:** Expand beyond individual microphone testing to create a real-time, spatially-resolved acoustic map of an environment using a dense network of calibrated microphones. This moves from *testing* microphones to *utilizing* them as nodes in a distributed acoustic imaging system.
 
-**I. Overview:**
+**Specifications:**
 
-This system expands on dynamic CDN balancing by incorporating real-time negotiation of resource availability *directly with the user’s device* before selecting a CDN for media fragment delivery. The goal is to move beyond simply balancing load *across* CDNs to actively matching CDN capabilities with *individual user device limitations*, optimizing playback quality within those constraints.
+*   **Node Hardware:**
+    *   Microphone: High-sensitivity, low-noise MEMS microphone (similar to those tested in the provided patent).
+    *   ADC: 24-bit ADC with at least 96 kHz sampling rate.
+    *   Processing Unit: ARM Cortex-M7 processor with dedicated DSP instructions.
+    *   Communication: Wireless communication module (Wi-Fi 6/Bluetooth 5.2) for data transmission and synchronization.
+    *   Power: Battery powered with wireless charging capability.
+    *   Enclosure: Compact, weatherproof enclosure.
+*   **Network Topology:**
+    *   Scalable: Designed to support hundreds or thousands of nodes.
+    *   Mesh Network: Nodes communicate directly with each other, forming a robust and self-healing network.
+    *   Synchronization: Nodes synchronize using a time-over-air protocol (e.g., IEEE 1588) to ensure accurate timing information.  Precision target: +/- 10 nanoseconds.
+*   **Data Acquisition & Processing:**
+    1.  **Calibration:**  Each node is calibrated *in situ* using a known sound source to determine its acoustic transfer function.  Leverage the test tone generation methods from the reference patent for this initial calibration, automating the process through network communication.
+    2.  **Beamforming:** Each node performs basic beamforming to steer its sensitivity in multiple directions.
+    3.  **Data Fusion:**  A central server receives raw beamformed data from all nodes.
+    4.  **Acoustic Scene Reconstruction:** The server performs advanced signal processing techniques (e.g., Delay-and-Sum beamforming, MUSIC algorithm, sparse array reconstruction) to reconstruct a 3D acoustic map of the environment. This map represents the amplitude and direction of sound sources within the monitored area.
+*   **Software:**
+    *   Node Firmware: Real-time operating system (RTOS) for efficient data acquisition and processing.
+    *   Server Software: Cloud-based platform for data storage, processing, and visualization.
+    *   API: Open API for integration with other applications and services.
 
-**II. Components:**
-
-*   **Resource Probe Module (RPM):**  A lightweight client-side module integrated into the media player.  The RPM periodically (e.g., every 5 seconds, or triggered by network conditions) probes the device for:
-    *   CPU utilization
-    *   Available memory
-    *   Network bandwidth (up/down)
-    *   Battery level (mobile devices)
-    *   Screen resolution/density
-    *   Decoding capabilities (codec support, hardware acceleration status)
-*   **Negotiation Server (NS):** A server-side component responsible for receiving resource information from the RPM, analyzing it, and generating a prioritized CDN list tailored to that specific device.
-*   **CDN Profile Database:** A database containing detailed profiles for each CDN, including:
-    *   Geographic location
-    *   Bandwidth capacity
-    *   Codec support
-    *   Caching efficiency
-    *   Historical performance data (latency, error rates)
-    *   *Cost per bit delivered* (critical for optimization)
-*   **Manifest Modifier:**  A component that intercepts the manifest data (e.g., HLS, DASH) and reorders the available fragments according to the prioritized CDN list.
-
-**III. Workflow:**
-
-1.  **Device Probe:**  The RPM initiates a resource probe and transmits the collected data to the NS.
-2.  **Resource Analysis:** The NS analyzes the device resource profile.  This analysis determines the device's *playback capacity* – a metric representing the maximum bitrate/resolution it can reliably handle.  The analysis also identifies any specific limitations (e.g., limited CPU, slow network).
-3.  **CDN Scoring:** The NS scores each CDN based on:
-    *   **Proximity:** Distance to the user (lower latency).
-    *   **Capacity:** Current load and available bandwidth.
-    *   **Codec Compatibility:**  Support for codecs required by the media content.
-    *   **Cost:**  Cost per bit delivered.
-    *   **Device Compatibility Score:** A new metric calculated based on matching CDN characteristics to the user’s device capabilities.  For example, if the device has limited CPU, CDNs offering lower-complexity codecs (e.g., VP9 Profile 0) will receive a higher score.
-4.  **Prioritized CDN List Generation:** The NS generates a prioritized list of CDNs based on the calculated scores. This list is dynamically updated as network conditions or CDN load changes.
-5.  **Manifest Modification:** The Manifest Modifier intercepts the manifest data and reorders the fragment URLs to prioritize delivery from the CDNs at the top of the list.
-6.  **Fragment Request:** The media player requests fragments from the CDNs in the prioritized order.
-7.  **Feedback Loop:** The media player reports playback statistics (buffering events, errors) back to the NS. This data is used to refine the CDN scoring algorithm and improve future prioritization.
-
-**IV. Pseudocode (NS – CDN Scoring):**
+**Pseudocode (Server-Side Reconstruction):**
 
 ```
-function calculate_cdn_score(cdn, device_profile):
-  proximity_score = calculate_proximity_score(cdn, device_location)
-  capacity_score = calculate_capacity_score(cdn)
-  compatibility_score = calculate_compatibility_score(cdn, device_profile)
-  cost_score = calculate_cost_score(cdn)
+// Input: Raw beamformed data from all nodes
+// Output: 3D acoustic map
 
-  #Weighting factors (adjustable)
-  proximity_weight = 0.3
-  compatibility_weight = 0.4
-  cost_weight = 0.1
-  capacity_weight = 0.2
+function reconstructAcousticMap(raw_data):
+  // 1. Calibration Data Load
+  load calibration_data for each node
 
-  total_score = (proximity_score * proximity_weight) + (compatibility_score * compatibility_weight) + (cost_score * cost_weight) + (capacity_score * capacity_weight)
+  // 2. Data Alignment & Synchronization
+  align data streams based on synchronization timestamps
 
-  return total_score
+  // 3. Geometric Modeling of Node Network
+  create 3D model of node positions
 
-function calculate_compatibility_score(cdn, device_profile):
-  codec_support = check_codec_support(cdn, device_profile)  //Returns a score based on supported codecs
-  cpu_score = calculate_cpu_score(cdn, device_profile) //Based on CPU usage of codecs offered
-  memory_score = calculate_memory_score(cdn, device_profile)
+  // 4. Iterative Reconstruction Algorithm:
+  for each grid point in 3D space:
+    sum_signal = 0
+    for each node:
+      distance = calculate distance from node to grid point
+      phase_delay = (distance / speed_of_sound) * 2 * PI
+      signal_contribution = node.signal * exp(-j * phase_delay) // j is the imaginary unit
+      sum_signal += signal_contribution
 
-  compatibility_score = (codec_support * 0.5) + (cpu_score * 0.3) + (memory_score * 0.2)
-  return compatibility_score
+    acoustic_amplitude = abs(sum_signal)
+    acoustic_map[grid_point] = acoustic_amplitude
+
+  // 5. Noise Reduction & Filtering (e.g., spectral subtraction)
+  apply noise reduction algorithms to acoustic_map
+
+  // 6. Visualization & Output
+  return acoustic_map
 ```
 
-**V.  Innovation:**
+**Potential Applications:**
 
-This system transcends simple CDN load balancing by actively factoring in *individual device limitations* into the CDN selection process. This minimizes buffering, improves playback quality, and reduces bandwidth consumption. By prioritizing CDNs offering codecs tailored to a device's CPU and memory, the system ensures a smoother and more efficient media experience.  The real-time device negotiation and feedback loop enable continuous optimization and adaptation to changing conditions.
+*   Environmental monitoring (noise mapping, wildlife tracking).
+*   Security and surveillance (intrusion detection, gunshot localization).
+*   Industrial applications (machine health monitoring, leak detection).
+*   Virtual/augmented reality (immersive audio experiences).
