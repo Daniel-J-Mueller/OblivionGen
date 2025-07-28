@@ -1,63 +1,44 @@
-# 10367676
+# 10834158
 
-## Dynamic Role-Based Sharding with Predictive Load Balancing
+## Dynamic Manifest Watermarking with Per-Frame Noise Injection
 
-**Concept:** Extend the role-based leadership concept to dynamically shard a distributed service's workload *based on predicted resource availability of nodes holding specific roles*, rather than static sharding or purely reactive load balancing. This leverages the role assignment system to proactively optimize performance and resilience.
+**Concept:** Extend the idea of encoding identifiers into manifest data by embedding a unique, subtly varying noise pattern directly into the video frames *before* they are segmented into content fragments. This noise pattern acts as a digital watermark, linked to the client identifier, and is resilient to common video compression and manipulation techniques. The manifest then references these subtly watermarked fragments.
 
-**Specifications:**
+**Specs:**
 
-**1. Role-Aware Resource Monitoring:**
+*   **Watermark Generation:**
+    *   Algorithm: Utilize a pseudo-random noise generator seeded with the client identifier.  The seed ensures each client receives a unique noise pattern.
+    *   Noise Distribution: Apply a spatially varying noise distribution.  Instead of uniform noise, employ a Perlin noise or similar procedural texture to create more organic and less detectable variations.
+    *   Bit Depth:  The noise pattern should be applied at a sub-pixel level (e.g., 8-bit grayscale noise added to 10-bit or 12-bit video data). This minimizes visible artifacts.
+    *   Temporal Consistency: Implement temporal filtering to ensure the noise pattern evolves smoothly between frames, further reducing detectability.
 
-*   Each node continuously monitors its resource utilization (CPU, memory, network I/O, disk I/O).
-*   This data is tagged with the node’s currently assigned role(s) – leader, follower, backup leader, etc.
-*   A central ‘Resource Prediction Service’ (RPS) aggregates this data.  RPS employs time-series forecasting (e.g., ARIMA, Prophet, LSTM) to *predict* future resource availability for each role. This allows anticipating bottlenecks *before* they occur.
-*   The RPS maintains a ‘Role Capacity Map’ – a dynamic representation of available resources categorized by role.
+*   **Manifest Integration:**
+    *   Fragment Metadata: Each content fragment in the manifest will include metadata indicating the noise seed used to generate the corresponding watermarked frames.
+    *   Seed Rotation:  Implement a periodic rotation of the noise seed across successive fragments. This enhances security and makes it more difficult to remove the watermark.
+    *   Manifest Encryption:  Encrypt the manifest data (including the noise seed metadata) using client-specific encryption keys.
 
-**2. Work Request Tagging:**
+*   **Client-Side Decoding & Verification:**
+    *   Decoding Process: The client device receives the manifest and decrypts the fragment metadata, including the noise seed.
+    *   Watermark Extraction: The client device applies the noise seed to generate the expected watermark pattern for each frame.
+    *   Verification Algorithm:  A correlation algorithm compares the extracted watermark pattern to the actual pixel data in each frame. A high correlation score indicates a valid, unaltered fragment.
 
-*   Incoming work requests are tagged with a ‘Service Category’ (e.g., ‘data processing,’ ‘API request,’ ‘background task’).
-*   Each Service Category has a ‘Resource Profile’ specifying its average and peak resource requirements.
-
-**3. Intelligent Sharding Logic (Integrated with Role Manager):**
-
-*   The Role Manager, *prior to assigning a work request*, consults the RPS's Role Capacity Map.
-*   The Role Manager selects a node *based on both its role and its predicted resource availability for the tagged Service Category*.  This is a multi-criteria optimization problem.
-*   Priority is given to nodes holding roles that are *well-suited* to the work (e.g., a data processing request is routed to a leader or follower node with significant memory).
-*   The Role Manager dynamically adjusts the sharding distribution based on the predicted load. If a leader is predicted to become overloaded, work is proactively diverted to follower nodes.
-
-**4.  Dynamic Role Adjustment (Reactive Component):**
-
-*   If RPS detects a sudden, unexpected resource bottleneck *despite* proactive sharding, a ‘Role Adjustment Protocol’ is triggered.
-*   This protocol temporarily ‘demotes’ the overloaded node (e.g., from leader to follower) and promotes a backup node. This minimizes disruption to service.
-*   Demotion/promotion decisions are based on a cost-benefit analysis considering the impact on overall service performance.
-
-**5.  Pseudocode (Role Manager - Work Request Routing):**
+**Pseudocode (Client-Side Verification):**
 
 ```
-function routeWorkRequest(request):
-  category = request.serviceCategory
-  resourceProfile = getResourceProfile(category)
-  
-  eligibleNodes = []
-  for node in allNodes:
-    if node.role in getEligibleRoles(category):
-      predictedAvailability = getPredictedAvailability(node, category)
-      if predictedAvailability > threshold:
-        eligibleNodes.append(node)
+function verifyFragment(fragmentData, manifestMetadata, clientIdentifier):
+  noiseSeed = deriveNoiseSeed(clientIdentifier, fragmentData.fragmentIndex)  //Derive seed from client ID and fragment index
+  expectedWatermark = generateWatermark(noiseSeed, fragmentData.width, fragmentData.height)
+  actualWatermark = extractWatermark(fragmentData.pixelData) //Extract existing watermark
+  correlationScore = calculateCorrelation(expectedWatermark, actualWatermark)
 
-  if eligibleNodes is empty:
-    // Handle overload – escalate, queue, etc.
-    return ERROR
-
-  bestNode = selectBestNode(eligibleNodes, resourceProfile) // Uses a weighted score based on predicted availability, role priority, and network latency
-  
-  sendWorkRequest(request, bestNode)
+  if correlationScore > threshold:
+    return True // Fragment is valid
+  else:
+    return False // Fragment is potentially altered or invalid
 ```
 
-**6.  Data Structures:**
+**Enhancements:**
 
-*   **Role Capacity Map:**  `{role: {CPU_availability: float, Memory_availability: float, …}, …}`
-*   **Resource Profile:**  `{CPU_required: float, Memory_required: float, …}`
-*   **Node Status:**  `{role: string, CPU_usage: float, Memory_usage: float, …}`
-
-**Novelty:** This goes beyond simply assigning roles and distributing load. It proactively *predicts* resource needs based on roles and dynamically optimizes sharding *before* bottlenecks occur, using time-series forecasting and multi-criteria optimization. It combines role-based assignment with intelligent, predictive sharding, creating a highly resilient and performant distributed system.
+*   **Adaptive Watermarking:** Dynamically adjust the noise level based on video content complexity. Higher noise levels can be applied to areas with more detail, making the watermark less noticeable.
+*   **Watermark Shielding:** Introduce small, imperceptible distortions to the video content to mask the watermark. This can further enhance robustness against removal attempts.
+*   **Decoy Watermarks:** Inject multiple decoy watermarks with different seeds. Only the watermark corresponding to the client identifier is valid, making it more difficult for attackers to identify and remove the correct watermark.
