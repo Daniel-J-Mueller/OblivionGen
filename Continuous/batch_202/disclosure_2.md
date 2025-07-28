@@ -1,39 +1,57 @@
-# 11864095
+# 11532219
 
-## Temporal Access Point Policies
+## Adaptive Parcel Interaction System
 
-**Specification:** Implement time-based expiry and activation for access point policies. Beyond simple permissions (read/write/VPC restriction), policies should define a 'valid from' timestamp and a 'valid until' timestamp. The system must maintain a history of active/inactive policies per access point.
+**Concept:** Extend parcel monitoring beyond simple theft detection to enable proactive, automated interaction with delivered parcels. The system leverages A/V data and machine learning to categorize parcel state (e.g., delivered, partially opened, damaged) and trigger actions accordingly.
 
-**Details:**
+**Hardware Components:**
 
-*   **Policy Structure:** Each access point policy will include:
-    *   `policy_id`: Unique identifier.
-    *   `access_point_address`: The address the policy applies to.
-    *   `permissions`: (Existing permission structure – read, write, VPC etc.)
-    *   `valid_from`:  ISO 8601 timestamp indicating when the policy becomes active.
-    *   `valid_until`: ISO 8601 timestamp indicating when the policy expires.
-*   **API Extensions:**
-    *   `POST /access_points/{address}/policies`:  Create a policy with `valid_from` and `valid_until`.
-    *   `GET /access_points/{address}/policies?time={timestamp}`: Retrieve policies active at a given timestamp.  This allows auditing of permissions at a specific moment in time.
-    *   `PUT /access_points/{address}/policies/{policy_id}`: Modify `valid_from` and `valid_until` for existing policies.
-*   **Request Handling Logic:**
-    1.  When a request arrives at an access point, the system retrieves *all* policies associated with that access point.
-    2.  The system filters the policies to include only those where the current time falls between `valid_from` and `valid_until`.
-    3.  The effective permissions are determined by combining the permissions from the active policies (e.g., using a priority or least privilege model).
-*   **Use Cases:**
-    *   **Temporary Access:** Granting access to a consultant or contractor for a specific duration.
-    *   **Scheduled Policy Changes:** Automating policy updates based on time (e.g., escalating access permissions during peak hours).
-    *   **Compliance:** Enforcing time-bound access restrictions to meet regulatory requirements.
-    *   **Automated Revocation:** Automatically revoking access after a defined period.
-*   **Pseudocode (Request Handling):**
+*   Existing A/V device (camera and microphone)
+*   Small robotic actuator – integrated into/mountable near the A/V device. This actuator has limited degrees of freedom – pan/tilt for basic manipulation. Payload capacity of ~500g.
+*   Small, integrated lighting system (controllable brightness/color).
+*   Optional: Weatherproof enclosure for outdoor deployment.
+
+**Software Components:**
+
+*   **Parcel State Engine:** A machine learning model trained on images and audio data to classify parcel state. States include: ‘Delivered – Sealed’, ‘Delivered – Opened (Partial)’, ‘Delivered – Opened (Full)’, ‘Damaged’, ‘Moved/Removed’.
+*   **Action Planner:** Based on the identified parcel state, the Action Planner determines the appropriate response.
+*   **Actuator Control Module:** Translates Action Planner instructions into actuator commands (pan, tilt, light control).
+*   **User Interface:** Allows users to customize action plans, view parcel state, and review event logs.
+
+**Operational Flow:**
+
+1.  **Parcel Detection:** The A/V device detects a parcel.
+2.  **State Analysis:** The Parcel State Engine analyzes A/V data to determine the parcel’s current state.
+3.  **Action Selection:** The Action Planner selects an appropriate action based on the state and user-defined preferences.
+4.  **Actuation (Examples):**
+    *   **‘Delivered – Sealed’:** No action. Periodic status updates to the user.
+    *   **‘Delivered – Opened (Partial)’:** Activate the lighting system to illuminate the parcel. Send a notification to the user with a snapshot of the open parcel.
+    *   **‘Damaged’:** Capture detailed images/video of the damage. Automatically initiate a claim with the delivery service (integration with APIs).
+    *   **‘Moved/Removed’:** Initiate recording of the removal and send an alert.
+
+**Pseudocode (Action Planner):**
 
 ```
-function handleRequest(accessPointAddress, request):
-    policies = getPolicies(accessPointAddress)
-    activePolicies = filterPoliciesByTime(policies, currentTime())
-    effectivePermissions = combinePermissions(activePolicies)
-    if requestAllowed(request, effectivePermissions):
-        processRequest(request)
-    else:
-        denyRequest(request)
+function plan_action(parcel_state, user_preferences):
+  if parcel_state == "Delivered - Sealed":
+    action = "monitor"
+  elif parcel_state == "Delivered - Opened (Partial)":
+    action = "illuminate_and_notify"
+  elif parcel_state == "Damaged":
+    action = "capture_details_and_claim"
+  elif parcel_state == "Moved/Removed":
+    action = "record_and_alert"
+  else:
+    action = "unknown"
+
+  return action
 ```
+
+**System Specifications:**
+
+*   **Power:** PoE or dedicated power supply.
+*   **Communication:** Wi-Fi, Bluetooth, Ethernet.
+*   **Data Storage:** Local storage (SD card) and cloud storage options.
+*   **API Integration:** Support for third-party delivery services and smart home platforms.
+
+**Novelty:** This system expands beyond simple parcel theft alerts. It provides proactive monitoring and automated interaction, turning the A/V device into an active participant in the parcel delivery process. This creates an innovative experience for the end-user.
