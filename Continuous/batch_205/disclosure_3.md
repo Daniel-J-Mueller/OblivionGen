@@ -1,55 +1,68 @@
-# 11392889
+# 9092410
 
-## Autonomous Inventory Drone with Predictive Restocking
+## Dynamic Highlight Evolution & Reader Persona Integration
 
-**System Overview:** A fully autonomous drone system operating within a retail or warehouse environment, tasked with continuous inventory monitoring *and* proactive restocking based on predictive algorithms. This builds on the idea of event detection to anticipate needs before they become apparent.
+**Concept:** Extend the popular highlight system to not just *identify* popular segments, but to *evolve* them over time based on reader interactions and dynamically adapt to individual reader personas.
 
-**Hardware Components:**
+**Specifications:**
 
-*   **Drone Platform:**  Small, agile drone with advanced obstacle avoidance (LiDAR, ultrasonic sensors, cameras). Payload capacity of approximately 5lbs.
-*   **RFID/Barcode Scanner:** Integrated scanner for item identification.
-*   **Weight Sensor:**  High-precision weight sensor integrated into the drone's payload mechanism.
-*   **Secure Payload Compartment:** Locking compartment for carrying small quantities of frequently needed items.
-*   **Charging Dock:**  Automated charging dock with quick-charge capability.
-*   **Base Station:** Central server for data processing, algorithm execution, and drone management.
+**1. Data Acquisition & Processing:**
 
-**Software/Algorithm Components:**
+*   **Interaction Logging:** Track all reader interactions with highlighted text beyond initial highlighting. This includes:
+    *   **Re-highlights:**  A reader re-highlighting an already highlighted segment. (Weight: +3)
+    *   **Copy/Paste:**  Copying highlighted text to another application. (Weight: +2)
+    *   **Note Taking:**  Adding a note specifically referencing the highlighted segment. (Weight: +4)
+    *   **Sharing:** Sharing the highlighted segment with others (Weight: +5)
+    *   **Time Spent:**  Amount of time the reader spends actively viewing the highlighted text. (Weight: variable, based on duration)
+*   **Sentiment Analysis:** Perform sentiment analysis on notes associated with highlights.  Positive sentiment increases highlight weight, negative decreases.
+*   **Temporal Decay:** Implement a temporal decay function.  Older interactions contribute less to the overall highlight weight. This allows the system to adapt to evolving understanding.
+*   **Reader Persona Building:** Construct reader personas based on their reading history, highlighted content, interaction patterns, and demographic data (if available).  Categorize personas (e.g., "Academic Researcher", "Casual Reader", "Novice Learner").
 
-*   **Event Data Integration:** The system will ingest the event data described in the patent. This data will form the foundation for training predictive models.
-*   **Predictive Restocking Algorithm:**
-    *   **Data Sources:** Event data (customer removals, associate tasks, returns), historical sales data, seasonality, promotions, external factors (weather, local events).
-    *   **Model:**  Recurrent Neural Network (RNN) – specifically, a Long Short-Term Memory (LSTM) network.  LSTM is well-suited for time-series data and can identify patterns in event sequences.
-    *   **Output:** Probability of stockout for each item within a defined time window (e.g., next hour, next shift).
-*   **Path Planning & Navigation:**  Real-time path planning using a combination of SLAM (Simultaneous Localization and Mapping) and pre-mapped store layouts.  Dynamic obstacle avoidance.
-*   **Inventory Verification Algorithm:** Computer vision system for confirming the presence and quantity of items on shelves.  Discrepancies flagged for human review.
-*   **Drone Fleet Management:** Software for managing a fleet of drones, assigning tasks, monitoring battery levels, and scheduling maintenance.
-*   **Secure Communication Protocol:**  Encrypted communication between drones, base station, and inventory management system.
+**2. Dynamic Highlight Adjustment:**
 
-**Operational Workflow:**
+*   **Highlight Weighting:** Assign weights to each interaction type (see above). Calculate a dynamic "Highlight Score" for each segment, continuously updated based on incoming data.
+*   **Highlight Boundary Refinement:**  Based on interaction data, subtly adjust highlight boundaries. 
+    *   If many readers highlight *slightly beyond* the original boundaries, automatically extend the highlight.
+    *   If interaction density drops off sharply at a boundary, contract the highlight.
+*   **Highlight Splitting/Merging:** If interaction data reveals distinct thematic segments within a single original highlight, automatically split it into multiple, smaller highlights. Conversely, merge adjacent highlights with consistently high interaction density.
 
-1.  **Continuous Monitoring:** Drones autonomously patrol designated inventory areas, scanning shelves and recording item counts.
-2.  **Event Data Ingestion:** The system continuously ingests event data from sensors (as in the original patent).
-3.  **Predictive Analysis:**  The LSTM network analyzes event data and other data sources to predict the probability of stockouts.
-4.  **Restocking Task Generation:**  If the probability of stockout exceeds a predefined threshold, a restocking task is generated.
-5.  **Automated Restocking:** The drone navigates to the designated restocking area, retrieves the required items from a central storage location, and delivers them to the shelf.
-6.  **Inventory Verification:** After restocking, the drone verifies the item count on the shelf.
-7.  **Data Feedback Loop:** The actual stock levels and restocking events are fed back into the LSTM network to improve prediction accuracy.
+**3. Personalized Highlight Delivery:**
 
-**Pseudocode (Restocking Task Generation):**
+*   **Persona-Specific Filtering:**  Filter popular highlights based on reader persona.  Display highlights most relevant to the reader's identified interests and reading level.
+*   **Highlight Explanation:**  Provide a brief explanation of *why* a segment is highlighted, based on the aggregated interaction data.  (e.g., "This section is frequently cited by researchers in the field of X").
+*   **Highlight Recommendations:**  Suggest related highlights or sections based on the reader's current reading and persona.
+*   **"Trending Now" vs "Historically Significant" Highlights:** Offer distinct views of highlights: "Trending Now" (based on recent interactions) and "Historically Significant" (based on long-term cumulative data).
+
+**Pseudocode (Dynamic Highlight Update):**
 
 ```
-FOR each item in Inventory:
-    stockoutProbability = LSTM_Network.predict(item, EventData, HistoricalSalesData, Seasonality)
-    IF stockoutProbability > StockoutThreshold:
-        GenerateRestockTask(item, QuantityToRestock)
-        AssignTaskToDrone(Task)
+function updateHighlightScore(highlightID, interactionType, interactionWeight):
+    score = getHighlightScore(highlightID)
+    score += interactionWeight
+    score *= (1 - temporalDecayRate) // Apply temporal decay
+    setHighlightScore(highlightID, score)
+
+function refineHighlightBoundaries(highlightID):
+    interactions = getInteractionsForHighlight(highlightID)
+    startBoundary = calculateBoundary(interactions, "start")
+    endBoundary = calculateBoundary(interactions, "end")
+    updateHighlightBoundaries(highlightID, startBoundary, endBoundary)
+
+function calculateBoundary(interactions, boundaryType):
+    // Analyze interaction data to determine optimal boundary position
+    // (e.g., average position of interaction start/end points)
+    return boundaryPosition
+
+function filterHighlightsForPersona(personaID, highlights):
+    relevantHighlights = []
+    for highlight in highlights:
+        if isHighlightRelevantToPersona(personaID, highlight):
+            relevantHighlights.append(highlight)
+    return relevantHighlights
 ```
 
-**Scalability:** The system can be scaled by adding more drones and expanding the central storage capacity. Multiple drones can operate concurrently within a single facility.
+**Hardware Considerations:**
 
-**Safety Considerations:**
-
-*   Drone equipped with emergency stop button and collision avoidance system.
-*   Restricted flight zones to prevent interference with other systems.
-*   Regular drone maintenance and safety inspections.
-*   Remote override capability for human intervention.
+*   Requires significant server-side processing power to handle real-time data analysis and highlight updates.
+*   May require edge computing to reduce latency for personalized highlight delivery.
+*   Sufficient storage capacity to store interaction data and updated highlight information.
