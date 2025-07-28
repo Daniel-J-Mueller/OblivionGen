@@ -1,75 +1,76 @@
-# 11075761
+# 8655786
 
-## Secure Attestation & Dynamic Secret Provisioning via Decentralized Identifiers (DIDs)
+## Dynamic Constraint Tokens & Predictive Authorization
 
-**Concept:** Extend the secure secrets management system by incorporating Decentralized Identifiers (DIDs) and Verifiable Credentials (VCs) for application attestation and dynamic secret provisioning. This moves beyond simply validating a process state to establishing a cryptographically verifiable trust relationship *before* secret access is granted, and allows for fine-grained, time-limited access control.
+**Concept:** Extend the existing aggregate constraint system with *predictive* authorization based on user behavior and machine learning, and introduce dynamic tokens that *evolve* their constraints over time.
 
-**Specification:**
+**Specs:**
 
-**1. DID/VC Integration:**
+**1. Dynamic Constraint Token Generation:**
 
-*   **Application Identity:** Each application requesting access to a secret is assigned a DID. This DID acts as its unique, verifiable identity.
-*   **Attestation Process:** Before initial secret access, the application must prove ownership of its DID *and* attest to its current, trusted state. This is done by presenting a Verifiable Credential (VC) signed by a trusted issuer (e.g., a security authority, a platform administrator). The VC contains information about the application’s build, configuration, and integrity checks.
-*   **VC Schema:**  Define a standardized VC schema that includes:
-    *   `subject`: The application’s DID.
-    *   `credentialSubject`: Metadata about the application (version, build hash, authorized runtime environment, security posture).
-    *   `issuer`: The entity attesting to the application’s trustworthiness.
-    *   `validFrom/validUntil`: Time window for VC validity.
+*   **Input:** User profile data (purchase history, browsing behavior, stated preferences), time of day, day of week, external factors (e.g., sales events, holidays), initial constraint parameters (max cost, max quantity, time period).
+*   **Process:**
+    *   A machine learning model (trained on aggregated, anonymized user data) *predicts* future transaction patterns for the user. This generates a probability distribution for likely future purchases (price, quantity, category).
+    *   Based on the predicted distribution, the system dynamically adjusts the initial constraint parameters to create a 'buffer' – increasing max cost or quantity slightly to anticipate legitimate purchases while still providing constraint protection. This 'buffer' amount is calculated based on a confidence interval derived from the predictive model.
+    *   The system generates a unique, dynamically-encoded token containing the adjusted constraint parameters, a timestamp indicating token creation, and a 'decay rate'.
+    *   The decay rate determines how quickly the constraint parameters 'erode' over time (see 'Token Decay' below).
+*   **Output:** Dynamic Constraint Token (alphanumeric string encoding adjusted constraints, timestamp, decay rate).
 
-**2. Secret Provisioning Workflow:**
+**2. Token Decay:**
 
-*   **Initial Handshake:** Application presents its DID and VC to the controlling domain.
-*   **VC Verification:** Controlling domain verifies the VC’s signature, issuer, validity period, and credential subject against a pre-defined trust policy.
-*   **Dynamic Secret Generation/Retrieval:** If verification succeeds:
-    *   The controlling domain generates a unique, short-lived secret (e.g., a randomly generated key or token) specifically for this application instance.
-    *   Alternatively, the controlling domain retrieves an existing secret associated with the application's DID and authorized claims within the VC.
-*   **Secret Delivery:** The secret is delivered to the application via a secure channel (e.g., TLS with mutual authentication).
-*   **Ongoing Attestation:** Implement periodic re-attestation. The application must periodically present a fresh VC to prove its continued trustworthiness and re-authorize secret access. This combats potential runtime compromise.
-*   **Revocation:** A mechanism for revoking access, utilizing DID revocation methods. The controlling domain monitors for DID revocation events and immediately invalidates any associated secrets.
+*   **Process:** A background service monitors active tokens.
+    *   At regular intervals (e.g., hourly), the service calculates the remaining constraint values based on the token's timestamp, current time, and decay rate.  
+    *   The decay rate is *not* linear. It is adaptive, increasing more rapidly when a high percentage of the original constraints have already been used, and slowing down when constraints are less utilized. (e.g. exponential decay with an adjustment factor).
+    *   Each authorized transaction *further* reduces the remaining constraints encoded in the token.
+*   **Output:** Updated Dynamic Constraint Token (with adjusted remaining constraints).
 
-**3. System Components:**
+**3. Predictive Authorization Flow:**
 
-*   **DID Provider:** A service for managing DIDs and issuing VCs. This could be a decentralized network (e.g., using a blockchain) or a centralized authority.
-*   **VC Validator:** A module within the controlling domain responsible for verifying VCs.
-*   **Secret Management Service:**  Stores and manages secrets, associating them with DIDs and access policies.
-*   **Attestation Agent:** A component running within the application responsible for obtaining and presenting VCs.
+1.  User initiates a payment transaction.
+2.  The system receives the transaction request *and* the associated Dynamic Constraint Token.
+3.  The system *decodes* the token to retrieve the *current* remaining constraint values.
+4.  The system calculates the aggregated price and quantity (as in the original patent).
+5.  *Before* authorization, the system runs a 'likelihood score' calculation based on the user's historical data, the current transaction, and the remaining constraint values. This score estimates the probability that the transaction is legitimate and within the user’s normal spending patterns.
+6.  **Conditional Authorization:**
+    *   If the aggregated values are within the constraints *AND* the likelihood score exceeds a predefined threshold, the transaction is authorized *without explicit user confirmation*.
+    *   If either condition fails, the system requests explicit user authorization.
+7.  Upon authorization, the Dynamic Constraint Token is updated with the new aggregated values.
 
-**4. Pseudocode (Simplified Secret Request Flow):**
+**4. System Components:**
+
+*   **Constraint Token Generator:** Generates Dynamic Constraint Tokens.
+*   **Predictive Model:** Trained on user data to predict future transactions.
+*   **Constraint Token Monitor:**  Tracks and updates active tokens.
+*   **Likelihood Scoring Engine:** Calculates the probability of legitimate transactions.
+*   **Authorization Engine:** Authorizes or requests user confirmation for transactions.
+
+
+
+**Pseudocode (Likelihood Scoring Engine):**
 
 ```
-// Application Side:
-did = getApplicationDID()
-vc = getVerifiableCredential() // Obtain from Attestation Agent
+function calculateLikelihoodScore(transactionPrice, transactionQuantity, remainingMaxPrice, remainingMaxQuantity, userHistoricalData) {
 
-// Request to Controlling Domain
-request = {
-  did: did,
-  vc: vc,
-  secretIdentifier: "mySecret"
-}
+  // Features derived from userHistoricalData:
+  averageTransactionPrice = calculateAverage(userHistoricalData.prices);
+  priceVariance = calculateVariance(userHistoricalData.prices);
+  averageTransactionQuantity = calculateAverage(userHistoricalData.quantities);
+  quantityVariance = calculateVariance(userHistoricalData.quantities);
 
-// Controlling Domain Side:
-function handleSecretRequest(request) {
-  did = request.did
-  vc = request.vc
-  secretIdentifier = request.secretIdentifier
+  // Calculate normalized differences
+  priceDifference = (transactionPrice - averageTransactionPrice) / (priceVariance + 0.0001);  //Add small value to avoid division by zero
+  quantityDifference = (transactionQuantity - averageTransactionQuantity) / (quantityVariance + 0.0001);
 
-  if (!verifyVC(vc)) {
-    return error("Invalid VC")
-  }
+  // Constraint proximity scores
+  priceProximity = 1 - (remainingMaxPrice - transactionPrice) / remainingMaxPrice;
+  quantityProximity = 1 - (remainingMaxQuantity - transactionQuantity) / remainingMaxQuantity;
 
-  secret = getSecret(secretIdentifier, did)
+  // Combine features with weights (tunable parameters)
+  score = (0.4 * priceProximity) + (0.4 * quantityProximity) + (0.1 * priceDifference) + (0.1 * quantityDifference);
 
-  if (secret == null) {
-    return error("Secret not found")
-  }
+  // Apply sigmoid function to normalize score between 0 and 1
+  score = 1 / (1 + Math.exp(-score));
 
-  return secret // Provide secret to application
+  return score;
 }
 ```
-
-**5.  Enhancements:**
-
-*   **Selective Disclosure:** Applications can selectively disclose specific claims from their VC to minimize data exposure.
-*   **Zero-Knowledge Proofs:** Utilize ZKPs to prove compliance with access policies without revealing the underlying data.
-*   **Hardware Security Modules (HSMs):** Store and protect secrets within HSMs for enhanced security.
