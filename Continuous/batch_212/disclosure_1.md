@@ -1,55 +1,58 @@
-# D1051750
+# 10706166
 
-## Adaptive Camouflage Security Device
+## Dynamic Schema Tag Inheritance & Resolution
 
-**Concept:** A security device that dynamically alters its visual appearance to blend with the surrounding environment, rendering it nearly invisible to casual observation. This goes beyond static camouflage; it's *adaptive* – responding to changes in lighting, color, and even texture.
+**Concept:** Extend the schema modification capability to enable *inheritance* of tags (and associated classes) between objects within the hierarchical data structure. This facilitates a system where changes to a 'parent' object's tags automatically propagate, with configurable constraints, to its 'children', streamlining management and enforcing consistency.
 
 **Specifications:**
 
-*   **Core Component:** A flexible, high-resolution e-ink or OLED display surface conforming to the device’s exterior. Minimum resolution: 200 PPI. Material: Durable, weather-resistant polymer.
-*   **Sensor Suite:**
-    *   **RGB Camera:** High dynamic range, continuous feed for ambient color analysis.
-    *   **Depth Sensor:** Time-of-Flight or structured light for capturing environmental texture data. Range: 0.5m - 10m.
-    *   **Light Sensor:** Measures ambient light intensity and color temperature.
-    *   **Microphone Array:** Captures ambient sound to detect movement/vibration even when visually camouflaged.
-*   **Processing Unit:** Embedded system capable of real-time image/texture processing and display control. Minimum: Quad-core ARM Cortex-A72 processor.
-*   **Power Source:** Rechargeable battery with wireless charging capability. Expected runtime: 24 hours.
-*   **Camouflage Algorithm:**
-    1.  **Data Acquisition:** Sensors capture ambient color, texture, and lighting information.
-    2.  **Image Processing:** Algorithm analyzes sensor data to create a “camouflage map” representing the surrounding environment. Edge detection and color blending are crucial.
-    3.  **Display Control:** The camouflage map is projected onto the flexible display, dynamically adjusting to match the environment.
-    4.  **Adaptive Learning:** Machine learning component tracks environmental changes over time, improving camouflage accuracy and speed.
-*   **Activation Modes:**
-    *   **Static Camouflage:** Device analyzes and blends into the current environment upon activation.
-    *   **Dynamic Camouflage:** Continuously adapts to changing environmental conditions.
-    *   **Motion Detection Override:** If motion is detected, the device briefly displays a high-contrast pattern (e.g., flashing red grid) to alert observers before reverting to camouflage.
-    *   **Beacon Mode:** Device emits a faint, customizable light pattern to aid in location (useful for search & rescue or emergency situations) - this overrides camouflage.
-*   **Housing:** Weatherproof, impact-resistant enclosure. Modular design for easy sensor/component replacement. Size variable, but aiming for roughly the size of a standard security camera.
-*   **Communication:** Bluetooth/Wi-Fi connectivity for remote monitoring and control (optional).
+**1. Tag Inheritance Levels:**
 
-**Pseudocode (Camouflage Algorithm - Simplified):**
+*   Introduce an integer value (“Inheritance Level”) associated with each tag within the schema. Values range from 0-10 (configurable).
+*   Level 0: Tag applies only to the object it’s directly assigned to. No inheritance.
+*   Level > 0:  Tag inheritance is enabled. The value represents the maximum depth of inheritance.
+
+**2. Inheritance Resolution Algorithm:**
+
+*   When accessing an object, the system traverses *up* the hierarchy, collecting all tags with Inheritance Level > 0.
+*   Tags are collected *until* the root of the hierarchy is reached, or the maximum Inheritance Level is exceeded.
+*   Collected tags are *merged* with the object’s directly assigned tags.  Conflict resolution (if tags with the same name exist) is determined by a configurable priority scheme (e.g., direct assignment overrides inherited tags, last tag wins).
+
+**3. Inheritance Constraints:**
+
+*   **Tag Filters:** Introduce “Tag Filters” associated with objects. These filters define specific criteria (e.g., tag name, tag value) that *prevent* inheritance of certain tags.  A filter acts as a boolean condition.
+*   **Hierarchy Limits:**  Configurable maximum inheritance depth per branch of the hierarchy. Prevents unbounded inheritance propagation.
+
+**4. Schema Update API Extension:**
+
+*   `updateTagInheritance(objectID, tagName, inheritanceLevel, tagFilter)`:  Updates the inheritance level and filter for a specific tag on an object.
+*   `simulateInheritance(objectID, tagName)`:  Simulates the inheritance process for a given tag on an object, returning a list of all tags that would be applied.  Useful for debugging and verification.
+
+**Pseudocode (Inheritance Resolution):**
 
 ```
-// Initialize sensors
-sensor_init()
+function resolveInheritedTags(objectID):
+  inheritedTags = []
+  currentObjectID = objectID
+  depth = 0
 
-loop:
-    // Acquire data
-    color_data = get_color_data()
-    texture_data = get_texture_data()
+  while (currentObjectID != rootObjectID and depth < maxInheritanceDepth):
+    parentObjectID = getParent(currentObjectID)
+    tags = getTags(parentObjectID)
 
-    // Analyze data
-    avg_color = calculate_average_color(color_data)
-    dominant_texture = identify_dominant_texture(texture_data)
+    for tag in tags:
+      if tag.inheritanceLevel > 0:
+        if not tagIsFiltered(tag, currentObjectID):
+          inheritedTags.append(tag)
 
-    // Generate camouflage pattern
-    camouflage_pattern = create_pattern(avg_color, dominant_texture)
+    currentObjectID = parentObjectID
+    depth++
 
-    // Display pattern
-    display_pattern(camouflage_pattern)
-
-    // Wait briefly
-    delay(0.1 seconds)
+  // Merge inherited tags with object's directly assigned tags
+  mergedTags = mergeTags(getTags(objectID), inheritedTags)
+  return mergedTags
 ```
 
-**Innovation:** Moves beyond simply *looking* like the environment to actively *becoming* the environment through dynamic visual adaptation. The combination of texture and color mapping, coupled with machine learning for optimization, creates a significantly more effective and sophisticated camouflage system. The Beacon mode provides a unique failsafe/utility function.
+**Example Use Case:**
+
+Imagine a system managing access control policies. A 'company' object has a tag 'securityLevel=high' with inheritance level 5. All departments and users nested under that company automatically inherit that security level unless overridden by a specific filter. This ensures consistent security across the entire organization without requiring manual configuration for each individual object.
