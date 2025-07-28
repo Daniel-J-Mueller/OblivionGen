@@ -1,77 +1,48 @@
-# 10594699
+# 11939156
 
-## Dynamic Policy Orchestration via Decentralized Identifiers (DIDs)
+## Modular Suspension & Articulation for Container Pods
 
-**Concept:** Extend the existing access control mechanism by incorporating Decentralized Identifiers (DIDs) and Verifiable Credentials (VCs) to enable a more granular, dynamic, and trustless policy enforcement system. This moves beyond static IP-based access and allows for policies tied to the *entity* requesting access, not just its network location.
+**Concept:** Expand the container carrying assembly’s adaptability by integrating a dynamically adjustable suspension and articulation system. This moves beyond static support to active stabilization and positioning, especially crucial for autonomous transport across uneven terrain or within dynamic robotic workspaces.
 
-**Specification:**
+**Specs:**
 
-**1. DID/VC Integration:**
+*   **Core Component:** Replace the fixed base/tubular leg structure with a four-point parallel linkage suspension system per pod. Each linkage consists of two parallel arms connected to the center plate and a ‘foot’ assembly.
+*   **Actuation:** Each foot assembly incorporates a linear actuator (pneumatic or electric) enabling independent height adjustment (range: 100mm). These actuators are synchronized via a central control unit.
+*   **Articulation:** Introduce a rotational actuator (servo motor) at the connection point between each linkage arm and the center plate. This permits controlled tilting/pivoting of the pod – up to +/- 15 degrees in any direction.
+*   **Sensors:** Integrate inertial measurement units (IMUs) on the center plate to detect tilt, acceleration, and vibration. Load cells at each foot assembly monitor weight distribution.
+*   **Control System:** Develop a software module to process sensor data and adjust actuator positions. Modes include:
+    *   **Leveling:** Automatically maintain a level container pod, compensating for terrain variations.
+    *   **Stabilization:** Dampen vibrations and shocks during transport.
+    *   **Dynamic Positioning:** Precisely orient the container for robotic access (e.g., tilting for easy grasping).
+    *   **Terrain Following:**  Adapt to uneven surfaces (e.g., slight inclines) during autonomous navigation.
+*   **Power/Communication:** Integrate a wireless communication module (Bluetooth/WiFi) for remote control and data logging. Power can be supplied via a rechargeable battery pack (integrated into the center plate) or externally.
+*   **Materials:** High-strength aluminum alloy for linkages and feet. Carbon fiber composite for the center plate to minimize weight.
 
-*   Each client (computing device associated with a customer) is assigned a unique DID.
-*   The service (hosted in the private network) issues VCs representing authorized access levels or specific permissions. These VCs are digitally signed by the service provider.
-*   The external endpoint acts as a VC verifier. Before forwarding a request, it demands a valid, signed VC from the client.
-
-**2. Policy Definition & Storage:**
-
-*   Policies are defined using a standardized schema (e.g., JSON-LD) and stored in a decentralized, tamper-proof manner (e.g., a blockchain or distributed ledger). 
-*   Policy rules specify which VCs are required for specific actions/resources.
-*   Instead of relying solely on IP address whitelisting, access is granted based on *presentation* of a valid VC.
-
-**3. External Endpoint Logic:**
-
-*   Upon receiving a request:
-    *   The external endpoint requests a signed VC from the client.
-    *   The endpoint verifies the VC’s signature and validity (expiry, revocation status).
-    *   The endpoint checks if the presented VC satisfies the policy requirements for the requested action.
-    *   If authorized, the endpoint adds supplemental information (DID, VC details) to the request before forwarding it to the internal endpoint.
-*   The endpoint maintains a lightweight cache of verified VCs to reduce verification overhead.
-
-**4. Internal Endpoint Logic:**
-
-*   The internal endpoint receives the supplemented request.
-*   It uses the DID and VC information to further validate the request. (An extra layer of verification).
-*   Access is granted or denied based on the combined policy evaluation.
-
-**5. Dynamic Policy Updates:**
-
-*   Policy changes are propagated through the decentralized storage system.
-*   The external endpoint periodically synchronizes with the decentralized storage to ensure it has the latest policy definitions.
-*   The internal endpoint can also subscribe to policy updates.
-
-**Pseudocode (External Endpoint):**
+**Pseudocode (Simplified Control Loop):**
 
 ```
-function handleRequest(request):
-  clientDID = request.clientDID
-  requestVC = request.requestVC
+LOOP:
+    READ IMU data (tilt, acceleration)
+    READ Load Cell data (weight distribution)
 
-  if not requestVC:
-    return Error("VC required")
+    // Calculate desired foot heights based on terrain & leveling mode
+    desired_heights = CalculateHeights(IMU, LoadCells, leveling_mode)
 
-  verificationResult = verifyVC(requestVC)
+    // Calculate desired tilt angles for dynamic positioning
+    desired_tilt_angles = CalculateTiltAngles(dynamic_positioning_mode)
 
-  if verificationResult != Success:
-    return Error("VC verification failed")
+    // Send commands to actuators
+    FOR EACH foot:
+        SetHeight(foot, desired_heights[foot])
+        SetTilt(foot, desired_tilt_angles[foot])
 
-  policy = getPolicy(request.resource)
-
-  if not policy.isAuthorized(verificationResult):
-    return Error("Access denied")
-
-  supplementedRequest = request + { "clientDID": clientDID, "VC": verificationResult }
-
-  forwardRequest(supplementedRequest)
-
-  return Success
+    DELAY (10ms)
+ENDLOOP
 ```
 
-**Technology Stack:**
+**Adaptations:**
 
-*   **DID Method:**  Choose a suitable DID method (e.g., DID:Web, DID:Key)
-*   **VC Standard:** W3C Verifiable Credentials Data Model v1.0
-*   **Decentralized Storage:** Blockchain (e.g., Ethereum, Hyperledger Fabric) or Distributed Ledger (e.g., IPFS)
-*   **Cryptography:**  EdDSA, ECDSA for digital signatures
-*   **API/Protocol:** RESTful APIs, gRPC for communication
-
-**Novelty:** This moves beyond simple IP-based access control to a more robust, dynamic, and trustless system based on verifiable credentials. It allows for fine-grained access control tied to the *entity* requesting access, not just its network location.  It's especially useful for scenarios where network addresses are dynamic or untrusted.
+*   **Scalability:** The number of linkage points (currently four) can be increased for heavier loads or greater stability.
+*   **Modularity:** The entire suspension/articulation module can be designed as a swappable component, allowing for quick replacement or upgrades.
+*   **Adaptive Damping:** Integrate variable dampers into the linkage system to further enhance vibration isolation.
+*   **Swarm Coordination:**  Develop algorithms to synchronize the movement of multiple container pods within a swarm, enabling complex maneuvers and coordinated delivery.
