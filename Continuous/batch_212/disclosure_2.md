@@ -1,60 +1,60 @@
-# 10834141
+# 10135916
 
-## Adaptive Policy Synthesis via Generative Models
+## Dynamic Health Check Weighting Based on User Impact
 
-**Specification:** A system for proactively generating and suggesting access policy updates based on observed access patterns and predicted future needs, moving beyond simple non-compliance detection.
+**Concept:** The current patent focuses on removing unhealthy servers. This expands on that by *dynamically weighting* health checks based on real-time user impact analysis. Instead of simply marking a server 'unhealthy' and removing it, we assess *who* is affected by its degraded performance and adjust health check frequency & weighting accordingly. Critical user segments (identified by attributes like subscription level, geographic location, or specific application usage) receive higher-priority health checks on associated servers.
 
-**Core Concept:** Leverage generative AI models (specifically, Variational Autoencoders or Generative Adversarial Networks) to learn the 'latent space' of valid and effective access policies.  The system doesn't just flag outdated policies; it *creates* potential updates tailored to specific instances and users.
+**System Specifications:**
 
-**Components:**
+1.  **User Impact Profiler (UIP):**
+    *   Input: Real-time user session data (user ID, location, subscription tier, current application/feature usage).
+    *   Processing:  Assigns each user session to one or more ‘Impact Groups’ (e.g., 'Platinum Subscribers - US East', 'Free Tier - EU').  Maintains a dynamic count of active sessions within each Impact Group associated with each server.
+    *   Output:  A mapping of servers to Impact Groups, with an associated active session count for each group.  This data is updated every 5 seconds.
 
-1.  **Access Log Aggregator:** Collects comprehensive access logs (timestamps, user IDs, resource IDs, actions attempted/granted, reasons for denial).  Logs are anonymized/pseudonymized to protect privacy.
+2.  **Weighted Health Check Scheduler (WHCS):**
+    *   Input:  Data from the UIP, server health status, configurable weighting parameters.
+    *   Processing:
+        *   Calculates a 'Weighting Score' for each server based on the following:
+            *   Impact Group Session Counts: Higher session counts in high-priority Impact Groups increase the weighting score.
+            *   Server Load: Current CPU/memory utilization of the server.  Higher load *decreases* the weighting score.
+            *   Historical Performance:  Recent error rates and latency data for the server.  Poor historical performance *decreases* the weighting score.
+        *   Adjusts the frequency and type of health checks sent to each server based on its Weighting Score.  Servers with high scores receive more frequent, more comprehensive checks (e.g., full transaction simulations).  Servers with low scores receive fewer, simpler checks (e.g., basic ping tests).
+    *   Output:  A dynamic schedule of health checks for each server, specifying the check type, frequency, and any associated data.
 
-2.  **Policy Encoding Module:** Transforms existing access policies (represented as structured data - rules, conditions, actions) into a vector embedding.  This embedding captures the policy's intent and constraints.
+3.  **Adaptive Thresholding Engine (ATE):**
+    *   Input: Health check results, server performance data, ATE Configuration
+    *   Processing: ATE is a machine learning model which is re-trained using the new incoming data.
+        *   Dynamic determination of acceptable thresholds.
+        *   Anomaly detection based on baseline performance of each server and the cluster.
+        *   Flags potential issues before they escalate.
+    *   Output: Refined thresholds and anomaly flags.
 
-3.  **Generative Policy Model:** A VAE or GAN trained on the embeddings of valid access policies.  The model learns to generate new policy embeddings that conform to established guidelines.  Crucially, it's trained to *maximize* access granted while *minimizing* security risk – a defined cost function.
+4. **Integration Points:**
+    *   Connects to existing DNS resolution systems as described in the patent.
+    *   Requires access to user session data (authentication/authorization system).
+    *   Requires access to server performance metrics (monitoring system).
 
-4.  **Access Pattern Analyzer:**  Analyzes access logs to identify evolving access patterns – frequently requested resources, emerging user roles, common access workflows.
-
-5.  **Policy Synthesis Engine:**  This is the core logic.
-    *   Receives output from the Access Pattern Analyzer.
-    *   Queries the Generative Policy Model to create a set of candidate policy updates tailored to the identified patterns. The query includes constraints (e.g., maintain existing security level, prioritize usability).
-    *   Evaluates candidate policies based on a risk/reward model.
-    *   Presents a ranked list of policy suggestions to the service user/administrator.
-
-6.  **Automated Policy Testing Environment:** A sandbox where suggested policies can be tested against simulated access patterns *before* deployment.
-
-**Pseudocode (Policy Synthesis Engine):**
-
-```
-function synthesize_policy_update(access_patterns, current_policy, security_constraints):
-  // Encode current policy into vector embedding
-  policy_embedding = encode_policy(current_policy)
-
-  // Generate candidate policy embeddings based on access patterns
-  candidate_embeddings = generate_policy_embeddings(policy_embedding, access_patterns)
-
-  // Evaluate each candidate embedding
-  scored_candidates = []
-  for candidate_embedding in candidate_embeddings:
-    candidate_policy = decode_policy(candidate_embedding)
-    risk_score = assess_risk(candidate_policy, security_constraints)
-    reward_score = calculate_reward(candidate_policy, access_patterns)
-    combined_score = reward_score - risk_score
-    scored_candidates.append((candidate_policy, combined_score))
-
-  // Sort candidates by score (descending)
-  sorted_candidates = sorted(scored_candidates, key=lambda x: x[1], reverse=True)
-
-  // Return top N candidates
-  return sorted_candidates[:N]
+**Pseudocode (WHCS):**
 
 ```
+function calculate_weighting_score(server_id, impact_group_counts, server_load, historical_performance):
+  score = 0
+  for impact_group, count in impact_group_counts:
+    score += count * impact_group_priority[impact_group] #Impact Group Priority is a dictionary
+  score -= server_load * server_load_penalty
+  score -= historical_performance_penalty * historical_performance
+  return score
 
-**Data Structures:**
+function adjust_health_check_schedule(server_id, weighting_score):
+  if weighting_score > high_threshold:
+    health_check_frequency[server_id] = high_frequency
+    health_check_type[server_id] = comprehensive_check
+  elif weighting_score > medium_threshold:
+    health_check_frequency[server_id] = medium_frequency
+    health_check_type[server_id] = standard_check
+  else:
+    health_check_frequency[server_id] = low_frequency
+    health_check_type[server_id] = basic_check
+```
 
-*   `AccessLogEntry`: {timestamp, userId, resourceId, action, granted, reason}
-*   `Policy`: {name, rules: [condition, action], version}
-*   `PolicyEmbedding`:  Vector (e.g., 128-dimensional float array)
-
-**Novelty:**  Moves beyond reactive policy management to *proactive* policy generation. It anticipates user needs and security threats rather than simply responding to them. The use of generative AI allows for the creation of nuanced policy updates that are tailored to specific contexts.  It’s not just about fixing what’s broken; it’s about making access control *smarter*.
+**Novelty:** This system doesn’t just react to server failure; it *proactively* prioritizes health checks based on user impact. This reduces latency and improves the user experience, especially during peak load or partial outages. It transforms health checking from a purely reactive system to a predictive, user-centric one.
