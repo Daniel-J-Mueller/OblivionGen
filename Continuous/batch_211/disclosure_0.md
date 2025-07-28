@@ -1,75 +1,48 @@
-# 9036943
+# 10013763
 
-## Dynamic Object Masking & Relighting
+## Dynamic Predictive Stitching with Environmental Context
 
-**Core Concept:** Extend the image alignment and averaging to incorporate dynamic object masking and relighting based on identified object materials and environmental lighting estimation. This allows for not just stitching images together, but intelligently *reconstructing* scenes with improved realism and control.
+**Concept:** Extend the field-of-view merging concept by incorporating real-time environmental data – not just visual alignment, but *predictive* alignment based on known spatial relationships and object permanence. Instead of solely reacting to detected matches, anticipate where objects *will* be in the combined view and proactively stitch based on that prediction.
 
-**Specifications:**
+**Specs:**
 
-**1. Object Material Database:**
+*   **Sensor Suite:** Integrate IMU (Inertial Measurement Unit), GPS, and potentially LiDAR or depth sensors into each image capture device.
+*   **Environmental Mapping:** Each device maintains a localized environmental map (point cloud or similar) that is continuously updated. This map focuses on static elements – buildings, trees, ground plane, etc. – to provide a stable reference frame.
+*   **Object Tracking & Prediction:** Implement robust object tracking algorithms.  Extend this to predictive modeling – estimate the future trajectory of moving objects (vehicles, pedestrians). Kalman filters or similar techniques are appropriate.
+*   **Stitching Engine:** 
+    *   **Phase 1: Static Alignment:**  Initially align based on static environmental map features. This provides a coarse but stable base.
+    *   **Phase 2: Dynamic Prediction & Stitching:**  For each frame:
+        *   Predict object positions in the combined view based on tracking data.
+        *   Use these predicted positions as anchor points for stitching.  
+        *   Employ a weighted blending approach.  Give higher weight to areas with strong feature matches *and* high prediction confidence.
+    *   **Phase 3: Refinement:** Continuously refine the stitch based on incoming visual data and updated predictions.
+*   **Data Fusion:** Implement a Kalman filter (or equivalent) to fuse data from all sensors (IMU, GPS, vision, LiDAR) to create a unified state estimate for each device. This provides a robust and accurate pose estimate, even in challenging conditions (e.g., GPS denial, poor lighting).
+*   **Communication Protocol:**  A low-latency, high-bandwidth communication link between the image capture devices is essential for real-time data exchange.  Wi-Fi 6E or 5G are potential options.
 
-*   **Data Structure:** A structured database storing material properties (reflectance, roughness, subsurface scattering, etc.) for common objects. This database is seeded with known values but dynamically updated via image analysis (see section 4). Material data is indexed by object type and potentially by specific instance (e.g., "wood - oak - sample1").
-*   **Storage:** Cloud-based, accessible by all processing nodes.
-
-**2. Environmental Lighting Estimation:**
-
-*   **Input:** The set of images (reference and subsequent).
-*   **Process:** Employ computer vision algorithms to estimate the direction and intensity of primary and secondary light sources within each image. This includes:
-    *   Specular highlight detection.
-    *   Shadow analysis.
-    *   Color temperature estimation.
-*   **Output:** A 3D lighting map representing the light environment at the time of capture.
-
-**3. Dynamic Object Masking:**
-
-*   **Input:** Set of images, 3D lighting map, material database.
-*   **Process:**
-    *   **Object Segmentation:** Utilize advanced object segmentation techniques (e.g., Mask R-CNN, Segment Anything Model) to identify and delineate objects in each image.
-    *   **Material Assignment:** Based on identified object type and visual cues (color, texture), assign a material from the database. If the object is not recognized, trigger a material analysis process (see section 4).
-    *   **Mask Generation:** Create a per-pixel alpha mask for each object, defining its boundaries.
-
-**4. Material Analysis & Database Update:**
-
-*   **Trigger:**  Unrecognized object in material assignment (section 3).
-*   **Process:**
-    *   **Specular/Diffuse Decomposition:** Analyze the object's reflectance patterns in multiple images to estimate specular and diffuse components.
-    *   **BRDF Estimation:**  Approximate the Bidirectional Reflectance Distribution Function (BRDF) of the object's surface.
-    *   **Material Creation/Update:** Based on the BRDF, create a new material entry in the database or refine an existing one.
-
-**5. Image Averaging with Relighting:**
-
-*   **Input:** Set of images, object masks, material properties, 3D lighting map.
-*   **Process:**
-    *   **Per-Object Processing:** For each object:
-        *   Extract the object from each image using the generated mask.
-        *   Apply a physically-based rendering (PBR) shader to the extracted object, using the estimated lighting map and material properties. This relights the object as if it were illuminated consistently across all images.
-        *   Average the relit object from each image.
-    *   **Composite Image Generation:**  Combine the averaged objects with the averaged background from the remaining image areas to create a final composite image.
-
-**Pseudocode:**
+**Pseudocode (Stitching Engine - Core Logic):**
 
 ```
-function process_images(image_set):
-  lighting_map = estimate_lighting(image_set)
-  for each image in image_set:
-    objects = segment_objects(image)
-    for each object in objects:
-      material = get_material(object)
-      if material is null:
-        material = analyze_material(object)
-        add_material_to_database(material)
-      masked_object = apply_mask(image, object)
-      relit_object = render_with_lighting(masked_object, lighting_map, material)
-      averaged_object += relit_object
+function stitch_frames(frame1, frame2, state_estimate1, state_estimate2):
+  # state_estimate: Contains pose (position, orientation) + object tracking data
 
-  background = average_background(image_set)
-  composite_image = combine(averaged_object, background)
-  return composite_image
+  # 1. Static Alignment (Initial coarse alignment based on environmental map)
+  aligned_frame2 = align_using_static_map(frame2, frame1, state_estimate1, state_estimate2)
+
+  # 2. Dynamic Prediction & Stitching
+  predicted_object_positions = predict_object_positions(state_estimate1, state_estimate2)
+
+  stitch_mask = create_stitch_mask(frame1, aligned_frame2, predicted_object_positions)  # Weight mask based on prediction confidence + feature matches
+
+  merged_frame = blend_frames(frame1, aligned_frame2, stitch_mask)
+
+  # 3. Refinement (Optional: Apply image enhancement/correction techniques)
+
+  return merged_frame
 ```
 
-**Hardware/Software Considerations:**
+**Innovation Notes:** 
 
-*   GPU acceleration is crucial for rendering and image processing.
-*   Cloud-based infrastructure for storage and parallel processing.
-*   Machine learning frameworks (TensorFlow, PyTorch) for object segmentation and material analysis.
-*   Physically-based rendering engine (e.g., Unreal Engine, Unity) for relighting.
+*   This system moves beyond reactive stitching to proactive alignment.
+*   By incorporating environmental context, it can handle more challenging scenarios (e.g., low texture, dynamic scenes).
+*   The predictive element improves the smoothness and stability of the combined view.
+*   Potential applications: Autonomous vehicles, drones, augmented reality, immersive video conferencing.
