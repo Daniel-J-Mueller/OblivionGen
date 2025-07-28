@@ -1,50 +1,61 @@
-# 10397207
+# 12182498
 
-## Dynamic Credential Aging with Behavioral Biometrics
+**Adaptive Redaction Granularity based on Semantic Role Labeling**
+
+**Concept:** Expand the redaction capabilities beyond simply identifying *what* to redact, to *how much* of the surrounding context should also be redacted, dynamically adjusting redaction granularity based on semantic importance.
 
 **Specification:**
 
-This system enhances credential rotation by dynamically adjusting the rotation frequency based on real-time behavioral biometric analysis of the user. Instead of fixed rotation intervals or purely random additive numbers, the system monitors user interaction patterns – keystroke dynamics, mouse movements, scrolling speed, touch pressure, and even subtle variations in typing rhythm – to assess the risk level associated with the current session. 
+1.  **Semantic Role Labeling (SRL) Integration:**  Implement an SRL module that analyzes the normalized text data *before* redaction.  SRL identifies the semantic roles of words/phrases (Agent, Patient, Instrument, Location, Time, Manner, etc.). This goes beyond Named Entity Recognition (NER) which just identifies *types* of entities.
 
-**Components:**
+2.  **Redaction Granularity Score (RGS):** Develop an RGS algorithm. The RGS considers:
+    *   The type of redacted entity (e.g., PII, sensitive keyword).
+    *   The SRL roles of the redacted entity.  (e.g., If "John Smith" is the Agent in an action, the action itself is more likely to be sensitive).
+    *   Distance to other redacted entities. (Clustering of sensitive information increases the need for broader redaction.)
+    *   User-defined policy thresholds (e.g.  Redact everything within +/- 5 words of a PII entity with high confidence.)
 
-1.  **Behavioral Biometric Sensor Suite:** Software component integrated into the client application capturing the specified biometric data during user interaction. Data is collected passively without requiring explicit user actions.
-2.  **Risk Engine:** A machine learning model trained on a dataset of legitimate and fraudulent user behaviors. The Risk Engine analyzes the data stream from the Behavioral Biometric Sensor Suite in real-time, generating a continuous risk score.
-3.  **Adaptive Rotation Controller:**  This module receives the risk score from the Risk Engine and dynamically adjusts the additive number used in the credential rotation process.  Higher risk scores translate to more frequent credential rotations (smaller additive numbers or more iterations), while lower risk scores allow for less frequent rotations (larger additive numbers or fewer iterations).
-4.  **Credential Rotation Module:** This module is identical to that described in the referenced patent, but utilizes the dynamically adjusted additive number provided by the Adaptive Rotation Controller.
+3.  **Dynamic Redaction Mask:** Based on the RGS, generate a dynamic redaction mask. The mask specifies *how much* of the surrounding text to redact, not just the identified entity.  This isn't binary (redact/don't redact), but a sliding scale of redaction levels (e.g. full redaction, partial masking with asterisks, semantic anonymization replacing words with synonyms).
 
-**Workflow:**
+4.  **Anonymization Options:**  Beyond simply replacing with "[REDACTED]", include:
+    *   **Semantic Replacement:** Replace with a semantically similar, non-identifying term (requires a large knowledge graph/ontology).  Example: "visited New York" -> "visited a major city".
+    *   **Generalized Location:** Replace specific locations with broader categories (e.g., "123 Main Street, Anytown" -> "a residential address").
+    *   **Temporal Generalization:**  Replace specific times with ranges or broader time periods.
 
-1.  User initiates a session with the client application.
-2.  Behavioral Biometric Sensor Suite begins collecting data.
-3.  Risk Engine analyzes the data and generates a risk score.
-4.  Adaptive Rotation Controller receives the risk score and calculates the appropriate additive number for the current credential rotation.
-5.  Credential Rotation Module executes the rotation process using the calculated additive number.
-6.  Steps 2-5 repeat continuously throughout the session, adjusting the rotation frequency in real-time based on the user's behavior.
-
-**Pseudocode (Adaptive Rotation Controller):**
+5.  **Pseudocode for Redaction Granularity Calculation:**
 
 ```
-function calculate_additive_number(risk_score):
-  // Define risk thresholds and corresponding additive number ranges
-  low_risk_threshold = 0.2
-  medium_risk_threshold = 0.5
-  high_risk_threshold = 0.8
+FUNCTION CalculateRedactionGranularity(entity, entityType, confidence, surroundingText, policyThreshold)
 
-  // Define the range of possible additive numbers.
-  min_additive_number = 1 
-  max_additive_number = 100
+    roles = SemanticRoleLabeling(surroundingText)
+    granularityScore = 0
 
-  if risk_score <= low_risk_threshold:
-    additive_number = max_additive_number # Low risk, infrequent rotation
-  else if risk_score <= medium_risk_threshold:
-    additive_number = int(max_additive_number * (1 - (risk_score - low_risk_threshold) / (medium_risk_threshold - low_risk_threshold))) # Moderate risk, intermediate rotation
-  else:
-    additive_number = min_additive_number # High risk, frequent rotation
-  
-  return additive_number
+    IF entityType == "PII" AND confidence > 0.9 THEN
+        granularityScore += 5  // High confidence PII gets a base score
+    ENDIF
+
+    FOR role IN roles
+        IF role.entity == entity AND role.type == "Agent" THEN
+            granularityScore += 3
+        ELSIF role.entity == entity AND role.type == "Patient" THEN
+            granularityScore += 2
+        ENDIF
+    ENDFOR
+
+    IF proximityToOtherRedactedEntity(surroundingText) < 5 words THEN
+        granularityScore += 4
+    ENDIF
+
+    IF granularityScore > policyThreshold THEN
+        redactionGranularity = "Full Redaction"
+    ELSE
+        redactionGranularity = "Partial Masking"
+    ENDIF
+
+    RETURN redactionGranularity
+
+END FUNCTION
 ```
 
-**Innovation:**
+6.  **Integration Points:**  This system integrates after the inverse text normalization and *before* final output. The machine learning model for redaction would provide the initial entities and confidence scores.
 
-This system moves beyond static or random credential rotation to a *proactive*, *behavior-driven* approach. By continuously assessing risk, it can significantly reduce the burden on legitimate users while simultaneously increasing security against unauthorized access. This also provides a means to tune rotation frequency based on user experience. A user who is obviously themselves might have less frequent rotations, while someone behaving strangely will have them more often.
+7. **Adaptive Policy Framework**: Allow administrators to define granular policies based on entity types, semantic roles, and the sensitivity of the data. This framework enables dynamic adjustment of redaction rules without modifying the core algorithm.
