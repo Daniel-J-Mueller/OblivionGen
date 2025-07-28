@@ -1,65 +1,91 @@
-# 8819795
+# 11003959
 
-## Adaptive Credential Chains with Reputation Scoring
+## Adaptive Embedding Granularity via Dynamic Cluster Merging
 
-**Concept:** Extend automated credential submission by introducing a dynamic "credential chain" based on a reputation score derived from successful authentication attempts *and* user-provided trust levels. This goes beyond simply selecting a credential; it proactively *tests* credentials in a prioritized order, learning from success and failure, and incorporating user-defined trust.
+**Concept:** This system builds on the idea of vector norms for cluster quality, but instead of simply *removing* low-quality clusters, it dynamically merges and splits clusters based on real-time data flow and embedding space density. This creates a continuously adapting embedding space granularity optimized for categorization performance.
 
-**Specs:**
+**Specifications:**
 
-*   **Component:** Credential Chain Manager (CCM) – a client-side module integrated with the existing authentication management client.
-*   **Data Structure:** `CredentialChainEntry`
+**1. Data Input & Initial Embedding:**
 
-    *   `credentialID`: Unique identifier for the account/credential.
-    *   `domain`: Associated domain name(s).
-    *   `trustScore`: User-defined trust level (1-10, default 5).
-    *   `successRate`: Calculated success rate for this credential (0.0-1.0).
-    *   `lastAttemptTimestamp`: Timestamp of the last authentication attempt.
-    *   `failCount`: Number of consecutive failed attempts.
-*   **Algorithm:**
+*   Input: Stream of images.
+*   Process: Initial embedding generated using a pre-trained neural network (potentially the first network described in the patent) creating an initial embedding space.
 
-    1.  **Initialization:** Upon system start, populate a `CredentialChain` for each domain from the existing account list. Initial `successRate` is 0.0 for all.
-    2.  **Domain Matching:** When a secured resource is accessed, identify potential credentials from the `CredentialChain` associated with the domain.
-    3.  **Prioritization:** Sort potential credentials within the `CredentialChain` using a combined score: `PriorityScore = (successRate * 0.7) + (trustScore/10 * 0.3)`.
-    4.  **Credential Testing Loop:**
-        *   Iterate through the sorted `CredentialChain`.
-        *   Attempt authentication using the current credential.
-        *   If successful:
-            *   Update `successRate`:  `successRate = successRate * 0.9 + 0.1` (exponential smoothing).
-            *   Reset `failCount` to 0.
-            *   Exit the loop.
-        *   If failed:
-            *   Increment `failCount`.
-            *   If `failCount` exceeds a threshold (e.g., 3):
-                *   Temporarily reduce `trustScore` (e.g., by 1).
-                *   Add a time penalty before re-attempting this credential.
-    5.  **Fallback:** If all credentials fail, prompt the user for manual input.
-    6.  **Learning:** Continuously update `successRate` and `trustScore` based on authentication outcomes.
-*   **User Interface Integration:**
-    *   A settings panel allowing users to view and adjust `trustScore` for each account.
-    *   Optional visual feedback (e.g., a small icon next to the account name indicating trust level).
-*   **API Considerations:**
-    *   An API endpoint for external applications to query and update account `trustScore`.
-    *   A mechanism for applications to provide feedback on authentication success/failure.
-*   **Pseudocode:**
+**2. Cluster Formation & Evaluation:**
+
+*   Initial Clustering: Apply a clustering algorithm (e.g., k-means, DBSCAN) to the embedded data.
+*   Vector Norm Calculation: For each cluster, calculate the average vector norm of the embedded vectors within the cluster.
+*   Density Estimation: Calculate a density score for each cluster based on the number of vectors within a fixed radius in embedding space.
+
+**3. Dynamic Cluster Adjustment:**
+
+*   **Merging Criterion:** If two or more clusters meet *both* of the following conditions, merge them:
+    *   Average vector norm difference is below a threshold (indicates similar magnitude of features).
+    *   Distance between cluster centroids is below a threshold.
+*   **Splitting Criterion:** If a cluster meets *both* of the following conditions, split it:
+    *   Density exceeds a threshold (cluster is too crowded).
+    *   Variance of vector norms within the cluster exceeds a threshold (indicates heterogeneous features).
+*   **Splitting Implementation:** Utilize a k-means algorithm *within* the cluster to create sub-clusters. The number of sub-clusters is determined by the variance threshold.
+
+**4. Real-time Adaptation Loop:**
+
+*   Stream Processing: As new images arrive, embed them into the embedding space.
+*   Assignment: Assign each new image to the closest cluster.
+*   Evaluation: Re-calculate vector norms, density, and cluster variance at fixed intervals, or after a set number of new images have been assigned.
+*   Adjustment: Apply the merging and splitting criteria as needed to dynamically adjust the embedding space.
+
+**5. Categorization & Label Propagation:**
+
+*   Label Assignment: Manually label a small subset of clusters.
+*   Label Propagation: Propagate labels to newly assigned images based on their cluster membership.
+*   Confidence Scoring: Assign a confidence score to each label based on the cluster's density and the image’s distance from the cluster centroid.
+
+**Pseudocode:**
 
 ```
-function authenticate(domain):
-  credentialChain = getCredentialChain(domain)
-  sortedCredentials = sortCredentials(credentialChain)
+// Initialization
+preTrainedNetwork = loadPreTrainedNetwork()
+clusteringAlgorithm = selectClusteringAlgorithm()
+densityRadius = 0.5
+normThreshold = 0.1
+varianceThreshold = 0.2
 
-  for credential in sortedCredentials:
-    if attemptAuthentication(credential):
-      updateSuccessRate(credential)
-      resetFailCount(credential)
-      return success
+// Main Loop
+while (imagesAvailable()) {
+    image = getImage()
+    embedding = preTrainedNetwork.embed(image)
 
-    incrementFailCount(credential)
-    if failCount(credential) > threshold:
-      decreaseTrustScore(credential)
-      addTimePenalty(credential)
+    closestCluster = clusteringAlgorithm.findClosestCluster(embedding, clusters)
+    clusters.assign(embedding, closestCluster)
 
-  promptUserForManualInput()
-  return failure
+    // Periodic Adjustment
+    if (frameCount % adjustmentInterval == 0) {
+        // Calculate metrics
+        for each cluster in clusters {
+            calculateVectorNorm(cluster)
+            calculateDensity(cluster)
+            calculateVariance(cluster)
+        }
+
+        // Merge and Split
+        for each cluster in clusters {
+            // Check for merge
+            for each otherCluster in clusters {
+                if (areClustersMergeable(cluster, otherCluster)) {
+                    mergeClusters(cluster, otherCluster)
+                }
+            }
+            // Check for split
+            if (isClusterSplittable(cluster)) {
+                splitCluster(cluster)
+            }
+        }
+    }
+}
 ```
 
-**Innovation:** This system isn’t just about automating authentication; it's about *learning* user preferences and adapting to authentication reliability over time.  By incorporating a dynamic trust system and prioritizing credentials based on real-world performance, it enhances both security and user experience.  The potential for integration with third-party risk assessment services could further refine the credential selection process.
+**Potential Extensions:**
+
+*   **Adaptive Thresholds:**  Dynamically adjust the thresholds for merging and splitting based on overall embedding space characteristics.
+*   **Hierarchical Clustering:** Incorporate hierarchical clustering to create a multi-scale embedding space.
+*   **Automated Labeling:**  Utilize active learning techniques to automatically label clusters with minimal human intervention.
