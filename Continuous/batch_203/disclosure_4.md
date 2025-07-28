@@ -1,54 +1,50 @@
-# 9602806
+# 11782955
 
-## Dynamic Focal Plane Adjustment via Multi-Spectral Proximity & Stereo Disparity
+## Dynamic Granularity Labeling & Policy Enforcement
 
-**Concept:** Enhance stereo depth mapping and recalibration not just through proximity *distance*, but by analyzing the *spectral reflectance* of the target object as determined by a multi-spectral proximity sensor, and tying that to dynamic focal plane adjustments for each camera. This allows for more accurate disparity calculations, especially for objects with low or non-Lambertian reflectance.
+**Concept:** Extend the multi-stage clustering to dynamically adjust granularity of clusters based on observed policy violations.  Instead of fixed hierarchical levels, the system actively refines cluster boundaries to isolate non-compliant elements *more efficiently* and minimize false positives.
 
-**Specifications:**
+**Specs:**
 
-*   **Sensor Suite:** Integrate a multi-spectral proximity sensor (detecting at least Red, Green, Blue, Near-Infrared) alongside the existing stereo camera system. This sensor should provide both distance and spectral reflectance data.
-*   **Dynamic Focus Control:** Each camera in the stereo pair must have independently controllable focus. This could be implemented via voice coil motors or liquid lens technology.
-*   **Reflectance-Disparity Correlation Engine:** A dedicated processing unit (DSP or FPGA) to execute the core algorithm:
+1.  **Policy Violation Monitoring Module:**
+    *   Input:  Cluster labels, policy definitions.
+    *   Function: Continuously monitors cluster labels against defined policies.  Flags instances of non-compliance.  Generates a "Violation Score" for each cluster (higher = more violations).
+2.  **Dynamic Cluster Refinement Engine:**
+    *   Input: Violation Scores, Cluster Assignments, Text Data.
+    *   Function: Based on Violation Scores, this engine triggers *selective* cluster splitting/merging.
+        *   **Splitting:** Clusters with high Violation Scores are subdivided further using the clustering algorithm.  The engine prioritizes splitting along dimensions *most correlated* with policy violations.  (Correlation determined through statistical analysis of text features and violation flags.)
+        *   **Merging:** Clusters with consistently *low* Violation Scores and high intra-cluster similarity can be merged to reduce computational overhead.
+3.  **Adaptive Resource Allocation:**
+    *   Resource allocation is no longer solely determined by the *initial* cluster structure.  It's dynamically adjusted based on cluster *volatility* (rate of splitting/merging).  
+    *   Clusters undergoing frequent refinement receive *more* resources for labeling and verification.
+    *   Stable clusters receive *fewer* resources.
+4.  **Text Feature Engineering Pipeline:**
+    *   Enhance the existing text processing with:
+        *   **Sentiment Analysis:** Determine the emotional tone of text data.  (Useful for identifying potentially problematic content.)
+        *   **Topic Modeling:**  Identify the key topics discussed within each cluster. (Helpful for understanding the context of violations.)
+        *   **Named Entity Recognition (NER):**  Identify key entities (people, organizations, locations) mentioned in text. (Useful for enforcing policies related to specific entities.)
+5.  **Pseudocode (Dynamic Cluster Refinement Engine):**
 
-    1.  **Spectral Signature Acquisition:** When an object is detected by the multi-spectral proximity sensor, capture its spectral reflectance signature.
-    2.  **Material Classification:** Use the signature to classify the material of the object (e.g., matte plastic, glossy metal, organic tissue). A pre-trained machine learning model will be required.
-    3.  **Optimal Focus Adjustment:** Based on the material classification, adjust the focus of each camera to optimize image sharpness *before* capturing the stereo pair. Different materials require different optimal focus settings for maximal contrast.
-    4.  **Stereo Capture:** Simultaneously capture the stereo image pair.
-    5.  **Disparity Map Generation:** Generate a disparity map using standard stereo matching algorithms.
-    6.  **Reflectance-Weighted Disparity:**  Weight the disparity values in the map based on the captured spectral reflectance.  Higher reflectance = higher weight.  This prioritizes accurate matching in areas with strong signal.
-    7.  **Recalibration Refinement:**  Use the weighted disparity map to refine camera calibration parameters, reducing errors caused by specular reflections or low-contrast surfaces.
-*   **Algorithm (Pseudocode):**
+```pseudocode
+function refine_clusters(clusters, violation_scores, text_data, threshold_split, threshold_merge):
+  for each cluster in clusters:
+    if violation_scores[cluster] > threshold_split:
+      # Split cluster using clustering algorithm
+      new_clusters = apply_clustering(cluster, text_data)
+      # Update cluster list
+      clusters.remove(cluster)
+      clusters.extend(new_clusters)
 
-    ```
-    FUNCTION ProcessStereoCapture()
-        // 1. Acquire proximity data
-        proximityData = MultiSpectralSensor.ReadData()
-        distance = proximityData.Distance
-        reflectance = proximityData.Reflectance
+    elif intra_cluster_similarity(cluster, text_data) > threshold_merge:
+      # Check for neighbor clusters to merge with
+      merge_candidate = find_merge_candidate(cluster, clusters)
+      if merge_candidate != null:
+        # Merge clusters
+        merged_cluster = merge(cluster, merge_candidate)
+        clusters.remove(cluster)
+        clusters.remove(merge_candidate)
+        clusters.append(merged_cluster)
+  return clusters
+```
 
-        // 2. Material classification
-        materialType = MaterialClassifier.Classify(reflectance)
-
-        // 3. Adjust camera focus
-        Camera1.SetFocus(materialType.OptimalFocus1)
-        Camera2.SetFocus(materialType.OptimalFocus2)
-
-        // 4. Capture stereo image
-        Image1 = Camera1.Capture()
-        Image2 = Camera2.Capture()
-
-        // 5. Generate initial disparity map
-        disparityMap = StereoMatcher.Generate(Image1, Image2)
-
-        // 6. Weight disparity map by reflectance
-        weightedDisparityMap = ApplyReflectanceWeighting(disparityMap, Image1, Image2)
-
-        // 7. Refine calibration
-        calibrationParameters = CalibrateCameras(weightedDisparityMap, distance)
-
-        RETURN calibrationParameters
-    END FUNCTION
-    ```
-*   **Calibration Enhancement:** The recalibration process should specifically target parameters related to lens distortion and camera pose, and be weighted by the confidence level of the disparity matches.
-*   **Power Management:** Implement a duty cycle for the multi-spectral sensor to minimize power consumption. Activation should be triggered by motion detection or user input.
-*   **Housing Integration:** The multi-spectral sensor should be integrated into the device housing in a way that minimizes interference with the camera field of view and maximizes ambient light capture.
+**Novelty:**  This system moves beyond static, pre-defined hierarchies. It allows the clustering process to *react* to policy violations, improving both accuracy and efficiency. The dynamic resource allocation ensures that labeling efforts are focused on the areas where they are most needed, while the enhanced text feature engineering pipeline provides richer insights into the data.
