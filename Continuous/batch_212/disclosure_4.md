@@ -1,66 +1,55 @@
-# 8977554
+# 9580245
 
-## Personalized Sensory Shopping Assistant
+## Automated Robotic Item Re-Orientation within Mobile Inventory
 
-**Concept:** Extend the assisted shopping experience beyond voice and data to incorporate real-time sensory feedback tailored to the user's preferences and the product being considered. This builds upon the patent's foundation of contextual assistance but moves into a more immersive and personalized realm.
+**System Overview:** A robotic system integrated with the mobile inventory holder and sensor network to automatically re-orient protruding items *in situ* before movement is initiated. This moves beyond simply *detecting* the protrusion to *actively resolving* it.
+
+**Core Components:**
+
+*   **Miniature Robotic Arm:** A small, multi-axis robotic arm integrated into the receiving station. The arm possesses a compliant gripper designed for various object shapes and materials.
+*   **High-Resolution Depth Camera Array:** An array of depth cameras positioned around the receiving zone, providing a dense 3D point cloud of the items and mobile inventory holder. This goes beyond the existing sensor’s distance information.
+*   **AI-Powered Object Recognition & Trajectory Planning:** A dedicated AI module that identifies protruding items, determines their optimal re-orientation angle and force, and plans a collision-free trajectory for the robotic arm.
+*   **Force/Torque Sensor Integration:** Force/torque sensors integrated into the robotic arm’s gripper provide feedback during the re-orientation process, preventing damage to the item or mobile inventory holder.
+*   **Real-time Sensor Fusion:** Combines data from the depth cameras and the original sensor network for improved accuracy and robustness.
+*   **Integrated Control System:** Manages the robotic arm, sensor data, and overall system operation.
+
+**Operational Procedure:**
+
+1.  **Initial Scan:** As the mobile inventory holder enters the receiving zone, the sensor network detects its presence and initiates a 3D scan of the items using the depth camera array.
+2.  **Protrusion Detection & Analysis:** The AI module analyzes the 3D scan to identify protruding items, measure their protrusion distance, and assess their material properties (e.g., rigidity, fragility).
+3.  **Re-Orientation Planning:** Based on the analysis, the AI module plans a safe and efficient re-orientation trajectory for each protruding item. This includes determining the optimal gripper approach angle, force application, and movement speed.
+4.  **Robotic Re-Orientation:** The robotic arm executes the planned trajectory, gently re-orienting each protruding item until it is fully contained within the mobile inventory holder’s boundaries. The force/torque sensors provide feedback to prevent damage.
+5.  **Verification & Movement Enablement:** After re-orientation, the sensor network verifies that all items are fully contained. If successful, the system enables movement of the mobile inventory holder.
+6.  **Dynamic Adjustment:** The system constantly monitors item positions during movement and dynamically adjusts the robotic arm to re-orient any items that become newly protruding.
+
+**Pseudocode (Simplified):**
+
+```
+//Main Loop
+While(InventoryHolderPresent)
+{
+  Data = AcquireSensorData();
+  Protrusions = DetectProtrusions(Data);
+
+  For Each(Protrusion in Protrusions)
+  {
+    Trajectory = PlanReorientationTrajectory(Protrusion);
+    ExecuteTrajectory(Trajectory);
+    VerifyReorientation(Protrusion);
+  }
+
+  If (AllItemsContained)
+  {
+    EnableMovement();
+  }
+}
+```
 
 **Specifications:**
 
-**I. Hardware Components (Integrated with Second Computing Device - User’s Device):**
-
-*   **Haptic Feedback Array:** A small, flexible array integrated into the device’s casing (or a wearable extension like a glove) capable of generating localized vibrations, textures, and pressures.
-*   **Micro-Scent Diffuser:** A miniaturized diffuser capable of releasing subtle scents corresponding to product attributes. Cartridges would be replaceable.
-*   **Ambient Light Emitter:** A small, low-power LED array capable of projecting soft, colored light onto nearby surfaces or the user’s hand/arm.
-*   **Proximity Sensor Enhancement:** Existing proximity data is augmented with *material* proximity identification (wood, metal, fabric, plastic etc.)
-*   **Environmental Sensor Suite:** Temperature, Humidity, Air Quality sensors - to feed into the personalized sensory profile.
-
-**II. Software Architecture (Resides on First Computing Device - Assistance Server):**
-
-1.  **Sensory Profile Manager:**
-    *   Stores user preferences for haptic feedback, scents, and light colors/intensities.
-    *   Learns user preferences over time through implicit feedback (e.g., adjusting intensity, duration) and explicit ratings.
-    *   Integrates data from user accounts (purchase history, stated preferences) to build a comprehensive sensory profile.
-
-2.  **Product Sensory Mapping Engine:**
-    *   Maintains a database mapping product attributes to sensory stimuli. For example:
-        *   "Leather Jacket" ->  Haptic: Soft, textured vibration. Scent: Leather. Light: Warm amber.
-        *   "Stainless Steel Watch" -> Haptic: Cool, smooth vibration. Scent: Metallic. Light: Silver/Blue.
-        *   "Pine Scented Candle" -> Haptic: Subtle warmth. Scent: Pine. Light: Soft green.
-    *   Dynamically adjusts sensory output based on user interaction (e.g., zooming in on a product image triggers a more intense sensory response).
-
-3.  **Contextual Sensory Blending Module:**
-    *   Combines sensory stimuli based on the current shopping context. For example, if the user is browsing outdoor equipment, the system might subtly simulate a cool breeze (through temperature regulation and light color) along with the sensory attributes of the specific products.
-    *   Integrates environmental sensor data to enhance realism (e.g., simulating a warmer temperature for products intended for warmer climates).
-
-4.  **API Integration:** 
-    *  Seamlessly integrates with existing e-commerce platforms and customer service systems.
-    *  Allows for remote control and configuration of sensory profiles by customer service agents.
-
-**III. Operational Flow:**
-
-1.  User initiates assistance request via voice command (as in the patent).
-2.  Assistance server establishes data and voice sessions.
-3.  Server retrieves user’s sensory profile.
-4.  As the user browses products, the server dynamically activates the appropriate sensory stimuli via the user’s device (haptic, scent, light).
-5.  The system monitors user reactions (e.g., adjusting sensory intensity, expressed preferences) and updates the sensory profile accordingly.
-6.  Customer service agent can remotely adjust the sensory experience to optimize engagement and provide a more personalized shopping experience.
-7.  The proximity sensor is used to determine distance to objects, and if the object is one being shopped for, the relevant sensory output is triggered. 
-
-**Pseudocode (Server-Side):**
-
-```
-function processShoppingRequest(userID, speechInput, proximityData):
-    userProfile = loadUserProfile(userID)
-    product = findProductFromSpeech(speechInput)
-    sensoryStimuli = getSensoryStimuliForProduct(product, userProfile)
-    if proximityData.objectDetected and proximityData.object == product:
-        triggerSensoryOutput(userDevice, sensoryStimuli)
-    transmitSearchResults(userDevice, searchResults)
-
-function triggerSensoryOutput(userDevice, stimuli):
-    userDevice.haptic.activate(stimuli.haptic)
-    userDevice.scent.release(stimuli.scent)
-    userDevice.light.emit(stimuli.light)
-```
-
-**Novelty:** This expands upon the existing assisted shopping paradigm by introducing multi-sensory feedback.  It moves beyond simply *telling* the user about a product to allowing them to *experience* it, creating a more engaging and memorable shopping experience. This also opens possibilities for accessibility features for visually or hearing impaired users.
+*   **Robotic Arm:** 6-DoF, payload capacity 500g, repeatability +/- 0.1mm.
+*   **Depth Camera Array:** Resolution 1280x720, range 0.1-3m, accuracy +/- 5mm.
+*   **AI Module:** Trained on a diverse dataset of common inventory items.
+*   **Communication Protocol:** ROS (Robot Operating System)
+*   **Safety Features:** Emergency stop button, collision avoidance algorithms, force limiting.
+*   **Power Requirements:** 24VDC, 5A.
