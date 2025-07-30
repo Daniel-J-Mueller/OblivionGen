@@ -1,60 +1,49 @@
-# 11500839
+# 10951960
 
-## Dynamic Data Materialization with Predictive Prefetching
+## Dynamic Content Personalization via Predictive Fragment Generation
 
-**Concept:** Extend the virtual column/index system to proactively materialize data *before* it's explicitly requested in a formula. This shifts the paradigm from reactive indexing to predictive data readiness, dramatically reducing latency for complex queries, particularly those involving multi-table joins.
+**Concept:** Extend dynamic content insertion by *predictively* generating fragments tailored to individual user preferences *before* they are requested, leveraging user profiles and real-time behavioral data. This moves beyond simply inserting existing content and creates a more fluid, personalized viewing experience.
 
 **Specs:**
 
-*   **Prefetch Engine:** A background process continuously monitors formula definitions and data access patterns. It identifies potential future data requirements based on formula dependencies (e.g., a formula referencing a linked table).
-*   **Dependency Graph:** Construct a dynamic dependency graph of all formulas, tables, and columns within the workbook.  This graph tracks data relationships and potential access sequences.
-*   **Prediction Model:** Employ a time-series prediction model (e.g., LSTM, ARIMA) trained on historical query data and formula access patterns.  This model predicts which virtual columns and indices will be needed in the near future.
-*   **Materialization Queue:** A prioritized queue of virtual columns/indices awaiting materialization.  Priority is determined by the prediction model's confidence score and the estimated computational cost of materialization.
-*   **Adaptive Materialization:**  Dynamically adjust the degree of materialization based on system load, available memory, and prediction accuracy.  Avoid over-materialization (wasting resources) and under-materialization (performance bottlenecks).
-*   **Multi-Tier Cache:** Implement a multi-tiered caching system for materialized virtual columns/indices. Tier 1: Fast in-memory cache. Tier 2: SSD-based cache. Tier 3: Traditional disk storage.
-*   **Formula Rewriting (Optional):** Automatically rewrite formulas to leverage pre-materialized data.  For example, replace a lookup with a direct reference to a cached value.
+*   **Component 1: User Profile & Behavior Engine:**
+    *   Input: User ID, Viewing History, Demographics, Explicit Preferences (e.g., rated content), Real-time Interaction Data (pauses, rewinds, skips, dwell time).
+    *   Processing: Employ machine learning models (collaborative filtering, content-based filtering, reinforcement learning) to predict user interest in different content types (ads, commentary, alternative story branches). Generate a "preference vector" representing predicted likelihood of engagement with various content categories.
+    *   Output: Preference Vector (updated in real-time).
 
-**Pseudocode (Prefetch Engine):**
+*   **Component 2: Predictive Fragment Generator:**
+    *   Input: Main Content Stream (video/audio), Preference Vector, Insertion Point Data (defined by content provider - e.g., natural breaks in programming).
+    *   Processing:
+        1.  Based on the Preference Vector, select potential secondary content fragments.
+        2.  Generate *multiple* versions of the main content stream, each with *different* secondary content fragments inserted at the defined insertion points.  These are pre-rendered or dynamically assembled.
+        3.  Store these pre-generated fragments in a fragment cache, keyed by user ID and predicted content variant.  Fragment duration must be consistent with the original stream, using adaptive bitrate techniques if necessary.
+    *   Output: Pre-generated fragments stored in fragment cache.
+
+*   **Component 3: Adaptive Fragment Delivery System:**
+    *   Input: User Request for Fragment, User ID, Fragment Cache.
+    *   Processing:
+        1.  Upon user request for a fragment, retrieve the User ID.
+        2.  Query the fragment cache for the pre-generated fragment associated with the User ID and the requested fragment index.
+        3.  If a pre-generated fragment exists, deliver it immediately.
+        4.  If a pre-generated fragment *does not* exist (e.g., first-time user, rapidly changing preferences), fall back to on-demand fragment generation (similar to the original patent), but prioritize caching the generated fragment for future requests.
+    *   Output: Delivered Fragment.
+
+**Pseudocode (Fragment Delivery System):**
 
 ```
-// Main Loop
-while (WorkbookActive) {
-  // 1. Analyze Formula Changes/New Formulas
-  FormulaChanges = DetectFormulaChanges();
-  NewFormulas = DetectNewFormulas();
+function deliverFragment(fragmentIndex, userId):
+  cacheKey = generateCacheKey(userId, fragmentIndex)
+  cachedFragment = getFragmentFromCache(cacheKey)
 
-  // 2. Update Dependency Graph
-  UpdateDependencyGraph(FormulaChanges, NewFormulas);
-
-  // 3. Predict Future Data Needs
-  PredictedDataNeeds = PredictionModel.Predict(DependencyGraph);
-
-  // 4. Prioritize Materialization Queue
-  MaterializationQueue = PrioritizeQueue(PredictedDataNeeds);
-
-  // 5. Materialize Data (Background Thread)
-  while (MaterializationQueue.NotEmpty()) {
-    VirtualColumn = MaterializationQueue.Dequeue();
-    MaterializeVirtualColumn(VirtualColumn);
-  }
-
-  Sleep(UpdateInterval);
-}
-
-function MaterializeVirtualColumn(VirtualColumn) {
-  // 1. Calculate Virtual Column Values
-  Values = CalculateValues(VirtualColumn);
-
-  // 2. Store Values in Cache (Tier 1, Tier 2, Tier 3)
-  StoreInCache(Values, VirtualColumn);
-
-  // 3. Update Dependency Graph with Materialization Status
-  UpdateDependencyGraph(VirtualColumn, "Materialized");
-}
+  if cachedFragment != null:
+    return cachedFragment
+  else:
+    # On-demand generation (fallback)
+    generatedFragment = generateFragmentOnDemand(fragmentIndex)
+    cacheFragment(generatedFragment, cacheKey)
+    return generatedFragment
 ```
 
-**Potential Enhancements:**
+**Novelty:**
 
-*   **Collaborative Prefetching:** Share prefetch predictions across multiple workbooks and users.
-*   **Federated Learning:** Train the prediction model using data from multiple sources without sharing sensitive data.
-*   **AI-Powered Optimization:** Use reinforcement learning to optimize the materialization strategy and cache configuration.
+The core difference from the base patent is *proactive* fragment generation based on predicted user preferences.  The patent describes *reactive* insertion based on existing content. This is about anticipating what the user wants *before* they request it, minimizing latency and creating a seamless, personalized viewing experience. This approach also allows for significantly more complex personalization than simply inserting pre-existing ads or PSAs.  It unlocks the potential for branching narratives, tailored commentary, and truly individualized content streams.
