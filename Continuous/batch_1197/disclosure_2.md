@@ -1,47 +1,52 @@
-# 9208133
+# 9235476
 
-## Dynamic Glyph Substitution Based on Perceptual Hashing
+## Temporal Data Shards with Predictive Rehydration
 
-**Specification:**
+**Concept:** Extend the logical deletion concept to create a system where deleted (logically) data isn’t just marked, but sharded based on predicted future access probability. This allows for aggressive space reclamation while maintaining fast re-access for frequently anticipated data.
 
-**I. Overview:**
+**Specs:**
 
-This system aims to further optimize content transmission and display by dynamically substituting glyphs within a document based on a perceptual hash comparison between the original glyph rendering and a simplified/lossy compression of that glyph. This allows for significantly reduced data transfer without discernible visual degradation, tailored to the specific rendering context.
+1.  **Access Prediction Engine:** Implement a machine learning model (Time Series forecasting, Markov Models, or similar) integrated with the storage system. This engine analyzes access patterns for each 'key' (as defined in the patent) *before* a delete operation is initiated.  The output is a 'Rehydration Score' (0.0 – 1.0) indicating the probability of future access within a configurable timeframe.
 
-**II. Core Components:**
+2.  **Sharding Strategy:** When a delete operation (without a version ID) is received:
+    *   Determine the Rehydration Score for the key.
+    *   If the Rehydration Score is above a threshold (e.g., 0.2), the data is *not* immediately moved to long-term storage or purged. Instead, create the delete marker *and* a 'Temporal Shard'. The Temporal Shard is a short-lived, high-performance storage location (e.g., NVMe SSD cache) holding a *compressed* copy of the deleted data.
+    *   If the Rehydration Score is below the threshold, the data is moved to long-term, lower-cost storage (e.g., object storage) *or* eligible for full deletion, depending on retention policies.
+    *   The delete marker indicates the *location* of the data - either the Temporal Shard or long-term storage.
 
-1.  **Glyph Perceptual Hash Generator:**  A module that analyzes a rendered glyph (bitmap or vector) and generates a perceptual hash.  This hash captures the *visual essence* of the glyph, being robust to minor distortions.  Consider using a Discrete Cosine Transform (DCT) based approach, or a learned perceptual image patch similarity metric (like a simplified version of LPIPS).
-2.  **Glyph Library with Perceptual Hashes:** A repository storing glyphs alongside their pre-calculated perceptual hashes.  This library includes both the original glyph and a set of progressively simplified/lossy versions. Simplification can involve reducing vector point count, decreasing bit depth, or applying smoothing filters.  Each version has its associated perceptual hash.
-3.  **Content Analysis & Hash Mapping:**  When processing a document, this module analyzes each glyph in the page record. It generates a perceptual hash for the original glyph as rendered within the document’s style context (font size, color, anti-aliasing).  It then searches the Glyph Library for the closest matching perceptual hash *below a certain threshold* (defining acceptable visual loss).
-4.  **Glyph Substitution Engine:** If a sufficiently similar, simplified glyph is found, the engine replaces the reference to the original glyph in the page record with a reference to the simplified version.  This substitution is tracked for decompression/restoration purposes.
-5.  **Dynamic Threshold Adjustment:** A system to dynamically adjust the perceptual hash threshold based on network bandwidth, device rendering capabilities (screen resolution, GPU power), and user preferences. A lower threshold permits more aggressive simplification and greater bandwidth savings, but at the potential cost of visual fidelity.
+3.  **Data Retrieval Process:**
+    *   When a read request is received for a key:
+    *   Check for the delete marker.
+    *   If the delete marker exists, determine the data location.
+    *   If the data is in a Temporal Shard, retrieve it *directly* from the shard (fast path).
+    *   If the data is in long-term storage, retrieve it from there (slower path).
 
-**III. Data Structures & Algorithms:**
+4.  **Shard Lifecycle Management:**
+    *   Each Temporal Shard has a Time-To-Live (TTL) based on the Rehydration Score. Higher scores = longer TTL.
+    *   A background process monitors shard TTLs.  Expired shards are either purged or the data is moved to long-term storage.
+    *   Shards should be sized to optimize for common data block sizes and retrieval patterns.
 
-1.  **Glyph Library:**  A hash table or KD-tree storing glyphs, keyed by their perceptual hash.
-2.  **Perceptual Hash Calculation:**
-    *   Input: Rendered Glyph (Bitmap or Vector)
-    *   Process:
-        1.  Convert to grayscale (if color).
-        2.  Resize to a standard size (e.g., 32x32).
-        3.  Apply DCT.
-        4.  Retain only the low-frequency coefficients.
-        5.  Calculate a hash based on these coefficients.
-3.  **Similarity Metric:** Hamming distance or Euclidean distance between perceptual hash vectors.
-4.  **Glyph Substitution Algorithm:**
-    1.  For each glyph in the page record:
-        2.  Calculate the perceptual hash of the original glyph.
-        3.  Search the Glyph Library for a matching glyph within the threshold.
-        4.  If a match is found:
-            5.  Replace the original glyph reference with the simplified glyph reference.
-            6.  Store substitution information (original glyph ID, simplified glyph ID) for decompression.
-        7.  Otherwise, retain the original glyph reference.
+**Pseudocode (Data Retrieval):**
 
-**IV. Implementation Notes:**
+```
+function retrieveData(key):
+  marker = getDeleteMarker(key)
+  if marker == null:
+    // Data exists – return it
+    return getData(key)
+  else:
+    location = marker.dataLocation
+    if location == "temporalShard":
+      data = getFromTemporalShard(key)
+      return data
+    else: // location == "longTermStorage"
+      data = getFromLongTermStorage(key)
+      return data
+```
 
-*   The pre-calculation of perceptual hashes for the Glyph Library can be done offline.
-*   The simplification process for glyphs should be designed to minimize visual distortion while maximizing compression.
-*   The dynamic threshold adjustment should be responsive to changes in network conditions and device capabilities.
-*   A fallback mechanism should be implemented to ensure that the original glyph is used if no suitable simplified glyph is found.
-*   This system could be combined with existing compression techniques (e.g., variable-length encoding) to further reduce data transfer.
-*   The system is designed for reflowable content, but could be adapted for fixed-layout documents.
+**Potential Benefits:**
+
+*   **Reduced Latency:** Frequent access to logically deleted data is significantly faster, as it remains in high-performance storage.
+*   **Optimized Storage Costs:** Infrequent data is moved to lower-cost storage tiers.
+*   **Adaptive Storage:** The system learns access patterns and dynamically adjusts data placement.
+*   **Improved User Experience:** Seamless access to data, even after logical deletion.
