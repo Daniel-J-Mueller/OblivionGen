@@ -1,69 +1,74 @@
-# 11243953
+# 11228449
 
-## Adaptive Data Provenance & Predictive Re-computation
+## Secure Attestation of Virtual Machine Internal State
 
-**Concept:** Extend the MapReduce system to incorporate real-time data provenance tracking *within* the data stream itself, combined with predictive re-computation triggers based on potential data corruption or staleness.
+**Concept:** Extend the secure interface to not only authorize *operations* on VMs but to cryptographically attest to the *internal state* of a VM at a specific point in time, allowing for verifiable debugging, forensic analysis, and rollback capabilities.
 
 **Specification:**
 
-**1. Provenance Encoding:**
+**1. Attestation Module within Hypervisor:**
 
-*   Modify the map task to prepend a provenance header to each output message.
-*   Header fields:
-    *   `DataID`: Unique identifier for the original data source.
-    *   `Lineage`: Nested list tracking all preceding map/reduce tasks & parameters applied.
-    *   `Timestamp`: Creation timestamp.
-    *   `Checksum`:  CRC32/SHA256 checksum of the data payload.
-*   The stream processing system must be able to parse this header *without* impacting stream throughput.
+*   A new module within the hypervisor will be responsible for capturing a cryptographic hash of a VM's memory space, CPU registers, and key data structures (e.g., process control blocks).
+*   This module will utilize a hardware-based Trusted Execution Environment (TEE) – Intel SGX or AMD SEV – to ensure the integrity of the hashing process. The private key used for signing will *only* exist within the TEE.
+*   The hashing will be triggered by either a hypervisor call from a privileged external entity *or* by a timer-based mechanism to establish a continuous stream of attested states.
+*   The module will generate a signed attestation report containing:
+    *   VM Identifier
+    *   Timestamp
+    *   Cryptographic Hash of VM State
+    *   Digital Signature (using the private key within the TEE)
+    *   Attestation Report Version Number
 
-**2. Stream-Based Validation & Monitoring:**
+**2. Secure External Interface Extension:**
 
-*   Introduce a 'Validator' microservice deployed alongside the stream processing system.
-*   Validator subscribes to the output stream.
-*   For each message, Validator:
-    *   Retrieves the original data source (using `DataID`).
-    *   Recalculates the checksum based on the original data.
-    *   Compares recalculated checksum with the header checksum.
-    *   If checksums mismatch, flags the message as potentially corrupted.
-    *   Monitors data staleness.  If the original data source hasn't been updated within a defined window, flags the message as potentially stale.
+*   Extend the existing secure interface to include a new API endpoint: `AttestVMState()`.
+*   This endpoint will accept a VM Identifier as input.
+*   The endpoint will return the latest signed attestation report for the specified VM.
+*   The interface will utilize the existing cryptographic authentication mechanism (private/public key pairs) to verify the identity of the requester.
 
-**3. Predictive Re-Computation Trigger:**
+**3.  State Verification & Rollback Mechanism:**
 
-*   Introduce a "Re-computation Manager" service.
-*   Re-computation Manager receives alerts from the Validator (checksum mismatch, data staleness).
-*   Based on the alert and configurable policies (e.g., criticality of data, acceptable error rate), the Re-computation Manager:
-    *   Identifies the affected portion of the MapReduce pipeline.  (Uses the `Lineage` information in the message header.)
-    *   Initiates a targeted re-computation of that section of the pipeline.  (e.g., re-run the map task, re-run the reduce task for a specific sub-stream.)
-    *   The re-computation uses the original data source and the stored parameters from the `Lineage` to ensure consistency.
+*   A separate "Verifier" component (can be a remote server or a local application) will be responsible for:
+    *   Receiving the attested state reports.
+    *   Storing the reports in a tamper-proof database.
+    *   Calculating the cryptographic hash of a current VM state.
+    *   Comparing the calculated hash with the stored hashes.
+*   If a discrepancy is detected (indicating potential tampering or corruption), the Verifier can initiate a rollback to a previously attested state.  This involves restoring the VM to a snapshot taken at the time the attested state was captured.
+*   The Verifier will leverage the existing secure interface to instruct the hypervisor to perform the rollback operation.
+*   The rollback mechanism will include integrity checks to ensure that the restored VM state is valid and consistent.
 
-**4. Stream Partitioning Enhancement:**
+**Pseudocode (Verifier Component - State Comparison & Rollback):**
 
-*   The stream processing system should support a dynamic partitioning key based on data 'age' or 'confidence level'.
-*   Messages with low confidence (e.g., recently re-computed) are placed on a separate sub-stream with higher priority.
-*   This ensures that fresh data is processed before potentially stale data.
+```pseudocode
+function verify_vm_state(vm_id):
+  latest_attestation = retrieve_latest_attestation(vm_id)
+  if latest_attestation is null:
+    return "No attestation found for VM"
 
-**Pseudocode (Re-computation Manager):**
+  current_vm_state = capture_vm_state(vm_id)
+  current_hash = hash(current_vm_state)
+
+  if current_hash == latest_attestation.hash:
+    return "VM state verified"
+  else:
+    print "VM state discrepancy detected!"
+    rollback_to_attested_state(vm_id, latest_attestation)
+    return "VM rolled back to attested state"
+
+function rollback_to_attested_state(vm_id, attestation):
+  // 1. Restore VM snapshot taken at attestation timestamp
+  restore_snapshot(vm_id, attestation.timestamp)
+
+  // 2. Verify restored state integrity (checksums, etc.)
+  if verify_restored_integrity():
+      print "Rollback successful"
+  else:
+      print "Rollback failed - integrity check failed"
 
 ```
-function handle_validation_alert(alert):
-  affected_pipeline_section = extract_pipeline_section_from_alert(alert)
-  recomputation_policy = get_recomputation_policy(affected_pipeline_section)
 
-  if recomputation_policy.enabled:
-    if alert.type == "checksum_mismatch" or alert.type == "data_staleness":
-      original_data_source = alert.data_source
-      pipeline_parameters = alert.pipeline_parameters
+**Security Considerations:**
 
-      # Trigger re-computation of the affected section
-      recompute_result = trigger_recomputation(original_data_source, pipeline_parameters, affected_pipeline_section)
-
-      # Update the stream with the re-computed results
-      publish_recomputed_results_to_stream(recompute_result)
-```
-
-**Engineer Notes:**
-
-*   Focus on minimizing overhead for provenance encoding and checksum calculation.
-*   Ensure the stream processing system can handle the additional metadata without impacting throughput.
-*   The re-computation trigger should be configurable and adaptable to different data sources and pipeline configurations.
-*   Consider implementing a caching layer for frequently accessed data to reduce the need for re-computation.
+*   The private key used for signing must be securely protected within the TEE.
+*   The snapshot mechanism must be reliable and ensure the integrity of the captured state.
+*   The communication channel between the Verifier and the Hypervisor must be encrypted and authenticated.
+*   Regular auditing and vulnerability assessments are crucial to maintain the security of the system.
