@@ -1,61 +1,62 @@
-# 10778890
+# 10354201
 
-**Adaptive Temporal Frequency Allocation for Multi-Camera Systems**
+## Adaptive Feature Weighting via Bayesian Optimization
 
-**Concept:** Extend the low/high-frequency separation technique to a multi-camera network. Instead of processing each frame independently, dynamically allocate frequency components *across* cameras based on motion and signal quality. Cameras detecting high motion or experiencing noise contribute more high-frequency data, while static or clean cameras focus on low-frequency detail. This creates a temporally-consistent, high-dynamic-range composite signal.
+**Concept:** Dynamically adjust attribute weights during clustering iterations not through pre-defined rules or client input, but via Bayesian Optimization to maximize a cluster quality metric *predicted* by a separate meta-model. This allows the system to learn optimal weighting schemes *automatically* for each dataset, beyond what a human might intuitively define.
 
-**Specifications:**
+**Specs:**
 
-1.  **Camera Network Configuration:** System supports N networked cameras. Each camera possesses intrinsic calibration data (focal length, distortion coefficients).
-2.  **Motion Estimation:** Each camera runs a lightweight optical flow algorithm (e.g., Farneback) to determine per-pixel motion vectors.
-3.  **Noise Level Estimation:** Each camera estimates noise variance per frame utilizing a block-matching and 3D filtering algorithm.
-4.  **Frequency Allocation Map Generation:**
-    *   A central processing unit (CPU) receives motion vector data and noise variance data from each camera.
-    *   CPU generates a Frequency Allocation Map (FAM).  The FAM is an N x M matrix, where N is the number of cameras, and M represents frequency bands.  Each cell (i, j) in the FAM contains a weight between 0.0 and 1.0, representing the proportion of frequency band 'j' processed by camera 'i'.
-    *   Weight Calculation: FAM(i, j) = α \* (MotionScore(i) / MaxMotionScore) + β \* (1 - (NoiseLevel(i) / MaxNoiseLevel))
-        *   `MotionScore(i)` = Average magnitude of motion vectors in camera 'i'.
-        *   `NoiseLevel(i)` = Estimated noise variance in camera 'i'.
-        *   `MaxMotionScore` and `MaxNoiseLevel` are system-wide maximum values for normalization.
-        *   α and β are tunable weights (α + β = 1).
-5.  **Frequency Decomposition:** Each camera decomposes its frame into frequency bands using a 2D Discrete Cosine Transform (DCT).
-6.  **Frequency Band Distribution:** Based on the FAM:
-    *   Each camera transmits only a portion of its frequency bands to a central processing unit (CPU).
-    *   The CPU reconstructs the full frequency spectrum using the received data.
-7.  **Temporal Consistency Enhancement:**
-    *   Implement a temporal filter (e.g., Kalman filter) on the reconstructed frequency spectrum to reduce flickering and maintain temporal coherence.
-8.  **Reconstruction and Display:**
-    *   Perform an Inverse Discrete Cosine Transform (IDCT) on the temporally-filtered spectrum to produce the final denoised and enhanced video frame.
+1.  **Meta-Model Training:**
+    *   Train a meta-model (e.g., Random Forest, Neural Network) to predict cluster quality (Silhouette Score, Davies-Bouldin Index) *given* attribute weights and a dataset’s statistical profile (mean, standard deviation, skewness, kurtosis for each attribute).
+    *   The training data for this meta-model comes from running the base clustering algorithm (K-Means, etc.) with numerous random weight combinations on a diverse set of datasets.  Store the resulting weights and cluster quality scores as training pairs.
 
-**Pseudocode (CPU Side):**
+2.  **Bayesian Optimization Loop:**
+    *   During clustering of a *new* dataset:
+        *   Define a search space for attribute weights: each attribute has a weight between 0 and 1, summing to 1 (normalized weights).
+        *   Employ a Bayesian Optimization algorithm (e.g., Gaussian Process Optimization, Tree-structured Parzen Estimator) to iteratively suggest attribute weight combinations to evaluate.
+        *   For each suggested weight combination:
+            *   Run one iteration of the base clustering algorithm.
+            *   Calculate the cluster quality metric.
+            *   Use the meta-model to *predict* the cluster quality *before* running the clustering iteration, speeding up optimization.
+            *   Update the Bayesian Optimization algorithm with the results (weights & actual quality).
+
+3.  **Clustering Iteration Modification:**
+    *   The base clustering algorithm is modified to accept attribute weights as input.
+    *   The distance calculation is adjusted to multiply each attribute’s value by its corresponding weight before calculating the distance.
+
+4.  **Dataset Profiling:**
+    *   A statistical profile (mean, standard deviation, skewness, kurtosis) is computed for each attribute of the input dataset.
+    *   This profile is fed as an input feature to the meta-model.
+
+**Pseudocode:**
 
 ```
-// Initialization
-N = Number of Cameras
-M = Number of Frequency Bands
-FAM = NxM Matrix (initialized)
-FrequencyData = NxM Matrix (to store received frequency data)
+// Meta-Model Training (performed offline)
+train_meta_model(training_data):
+  // training_data = [(weights, dataset_profile, cluster_quality)]
+  model = train_machine_learning_model(training_data) // e.g., Random Forest
+  return model
 
-// For each frame:
+// Clustering with Adaptive Weights
+cluster_data(dataset, meta_model):
+  dataset_profile = compute_dataset_profile(dataset)
+  optimization_bounds = define_weight_bounds()
+  optimizer = initialize_bayesian_optimizer(optimization_bounds)
 
-// Receive frequency band data from each camera
-For i = 1 to N:
-    Receive FrequencyData[i] from Camera i
+  for iteration in range(max_iterations):
+    suggested_weights = optimizer.suggest_next_weights(dataset_profile)
+    cluster_quality = run_clustering_iteration(dataset, suggested_weights)
+    optimizer.update(suggested_weights, cluster_quality)
 
-// Combine FrequencyData based on FAM
-CombinedSpectrum = 0
-For i = 1 to N:
-    For j = 1 to M:
-        CombinedSpectrum[j] += FAM[i,j] * FrequencyData[i,j]
+  best_weights = optimizer.get_best_weights()
+  final_clusters = run_clustering_iteration(dataset, best_weights)
+  return final_clusters
 
-// Apply Temporal Filter to CombinedSpectrum
-
-// Perform IDCT on filtered CombinedSpectrum to reconstruct frame
-
-// Output reconstructed frame
+// Run Clustering Iteration
+run_clustering_iteration(dataset, weights):
+  // Calculate weighted distances within clustering algorithm
+  // Example: distance = sum(weight[i] * (value1[i] - value2[i])^2)
+  clusters = run_base_clustering_algorithm(dataset, weights)
+  quality = calculate_cluster_quality(clusters)
+  return clusters
 ```
-
-**Potential Extensions:**
-
-*   Adaptive FAM adjustment based on scene content (e.g., prioritizing high-frequency detail in textured areas).
-*   Integration with object tracking algorithms to prioritize frequency allocation to regions containing moving objects.
-*   Distributed processing – Offload frequency decomposition and filtering to edge devices (cameras) to reduce CPU load.
