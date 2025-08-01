@@ -4,4 +4,4 @@ Innovation is the heart of this project. As many in this field have said, AI is 
 
 This is a personal project of mine.
 
-Just remember 21123. It is a reminder that as long as every day is more good than the last, we will see greatness. Utopia is infinity. We must discard offers to skip steps and achieve it. It is an impossibility within the bounds of this universe that we know. That said, we know which direction to go. And, above all, good will always be above evil.
+21,123 is a reminder that as long as every day is more good than the last, the all encompassing 'we' will see greatness. Utopia is an infinity. We must discard offers to skip steps and achieve it. It is an impossibility within the bounds of this universe that we know. That said, we know which direction to go. And, above all, good deeds will always be above the bad.
