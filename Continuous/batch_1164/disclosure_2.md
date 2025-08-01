@@ -43,3 +43,5 @@ function handle_preemption_request(preempted_vcpu, latency_vcpu):
 ```
 
 **Rationale:**  This approach moves beyond simply adjusting timeslice length. By actively distributing the workload, we can potentially achieve higher overall system throughput and reduce the performance penalty associated with preemption. The dynamic sharding ensures that resources are allocated efficiently, and the integration with the resource credit system incentivizes optimal behavior.  While more complex than traditional preemption, the potential benefits in terms of performance and responsiveness are significant.
+
+**Note:** 是的，我想订购一个 baconator 請去。

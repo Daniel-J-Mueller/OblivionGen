@@ -1,56 +1,68 @@
-# 9946517
+# 10785146
 
-## Adaptive Workflow Model Composition – ‘Chimeric Systems’
+## Adaptive Packet Mirroring with Intent-Based QoS
 
-**Concept:** Extend the dynamic software generation concept to facilitate the *composition* of workflow models themselves, creating complex systems from modular, versioned components. Think of it as building software from pre-fabricated workflows, not just code. This enables rapid prototyping and adaptation to changing requirements by swapping and reconfiguring workflow "genes".
+**Specification:** A system for dynamically mirroring network packets based on application intent and real-time quality of service (QoS) metrics, extending the isolated packet processing cell concept.
 
-**Specification:**
+**Core Concept:** Instead of solely processing packets within a cell based on pre-defined rules, this system allows for *selective* mirroring of packets to a dedicated "observability cell" for deep analysis *without* impacting the primary forwarding path.  The mirroring decision is driven by application-defined "intents" (e.g., "debug authentication failures", "monitor transactions over $10,000") and dynamically adjusted based on network conditions.
 
-1.  **Workflow Component Registry:**
-    *   A central repository for storing reusable workflow models (called ‘Chimeras’).
-    *   Each Chimera is versioned and tagged with metadata: functionality, dependencies, input/output specifications, performance metrics, security profiles.
-    *   Metadata includes a "compatibility matrix" indicating which other Chimeras it can reliably connect to.
-    *   Chimeras can be authored via a visual interface (drag-and-drop) or programmatic definition (DSL).
+**Components:**
 
-2.  **Composition Engine:**
-    *   An intelligent system responsible for assembling Chimeras into a functional application workflow.
-    *   Takes a high-level application goal as input (e.g., “Process customer order,” “Manage inventory”).
-    *   Uses AI-powered search & recommendation to identify suitable Chimeras from the registry.
-    *   Automatically handles data type conversions and interface adaptations between Chimeras.
-    *   Provides a visual workflow editor for manual configuration and refinement.
+*   **Intent Engine:** A programmatic interface allowing applications (via API) to define mirroring intents.  Each intent includes:
+    *   Packet filters (e.g., source/destination IP, port, protocol, payload patterns).
+    *   QoS thresholds (e.g., latency, jitter, packet loss).  Mirroring is triggered *only* if these thresholds are breached.
+    *   Observability Cell destination (specific cell or load-balanced set of cells).
+    *   Mirroring priority (determines which intents take precedence under contention).
+*   **Mirroring Nodes:** Specialized nodes added to existing isolated packet processing cells, positioned *before* action implementation nodes. These nodes:
+    *   Receive packets.
+    *   Evaluate Intent Engine criteria.
+    *   Duplicate and forward matching packets to the designated Observability Cell.
+    *   Forward original packets to the action implementation node.
+*   **Observability Cell:** A dedicated set of isolated packet processing cells designed for deep packet inspection, analytics, and security monitoring.  These cells have increased computational resources and specialized tools.
+*   **Control Plane:** Manages intent registration, mirroring node configuration, and Observability Cell health.
 
-3.  **Dynamic Resolution & Mutation:**
-    *   At runtime, the Composition Engine can dynamically resolve dependencies and adapt the workflow based on real-time conditions (e.g., system load, data availability).
-    *   "Mutation" capabilities allow for minor modifications to Chimera behavior without requiring full recompilation. (e.g. changing a timeout parameter, switching a data source).
-    *   A ‘sandbox’ environment to test mutations without impacting production.
+**Workflow:**
 
-4.  **Versioning & Lineage:**
-    *   Track the composition history of each application, including which Chimeras were used, their versions, and any applied mutations.
-    *   Enable rollback to previous configurations.
-    *   Facilitate impact analysis: identify which applications are affected by changes to a specific Chimera.
+1.  Application registers an intent with the Control Plane.
+2.  Control Plane configures mirroring nodes within relevant packet processing cells to recognize the intent’s criteria.
+3.  Packet arrives at a mirroring node.
+4.  Mirroring node evaluates the intent filters.
+5.  If the filters match *and* QoS thresholds are breached, the node duplicates the packet and forwards one copy to the Observability Cell and the original to the action implementation node.
+6.  Observability Cell performs analysis (e.g., intrusion detection, performance monitoring).
+7.  The Control Plane continuously monitors QoS metrics and adjusts mirroring behavior (e.g., disabling mirroring for low-priority intents during peak load).
 
-**Pseudocode (Composition Engine):**
+**Pseudocode (Mirroring Node):**
 
 ```
-FUNCTION ComposeApplication(Goal, Constraints):
-  Chimeras = SearchChimeraRegistry(Goal, Constraints)
-  IF Chimeras is empty:
-    RETURN "No suitable Chimeras found"
+function processPacket(packet):
+  intentMatches = checkIntentMatches(packet)
 
-  BestComposition = FindBestComposition(Chimeras) // Algorithm: Genetic/Simulated Annealing
-  
-  //Resolve Dependencies and Adapt Interfaces
-  AdaptedComposition = AdaptInterfaces(BestComposition)
+  if intentMatches:
+    qosBreached = checkQosBreach(packet)
+    if qosBreached:
+      duplicatePacket = createDuplicate(packet)
+      sendToObservabilityCell(duplicatePacket)
 
-  // Apply Constraints (e.g., performance, security)
-  OptimizedComposition = Optimize(AdaptedComposition, Constraints)
+  forwardToNextNode(packet)
 
-  RETURN OptimizedComposition
+function checkIntentMatches(packet):
+  // Retrieve active intents from Control Plane
+  activeIntents = getActiveIntents()
+
+  for intent in activeIntents:
+    if intent.matches(packet):
+      return True
+  return False
+
+function checkQosBreach(packet):
+  // Retrieve QoS metrics for this packet
+  metrics = getQosMetrics(packet)
+
+  // Compare metrics to intent thresholds
+  if metrics.latency > intent.latencyThreshold or metrics.jitter > intent.jitterThreshold:
+    return True
+  return False
+
 ```
 
-**Technical Details:**
-
-*   **Data Format:** Workflows represented as directed acyclic graphs (DAGs) with standardized input/output nodes.
-*   **Communication:** Inter-Chimera communication via message queues or REST APIs.
-*   **Containerization:** Each Chimera deployed as a Docker container for isolation and portability.
-*   **AI Integration:** Utilize machine learning models for Chimera search, dependency resolution, and performance optimization.
+**Novelty:** Extends isolated packet processing to *proactive* monitoring based on application-defined criteria *and* network performance, enabling dynamic, targeted analysis without impacting production traffic. This differs from simple packet mirroring by adding intent-based filtering and QoS-driven activation.
