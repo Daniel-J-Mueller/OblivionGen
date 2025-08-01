@@ -1,55 +1,48 @@
-# 8301294
+# 9664577
 
-## Dynamic Zone Creation via Mote-Based Spatial Mapping
+## Variable Stiffness Force Sensor Array
 
-**Concept:** Extend the mote functionality beyond item confirmation to create a dynamic, real-time map of the materials handling facility, enabling adaptable picking zones and optimized routing.
+**Concept:** A force sensor array utilizing variable stiffness elements created via microfluidic channels embedded within the FSR substrate. This allows for localized control of sensor sensitivity and dynamic adaptation to varying force ranges.
 
 **Specifications:**
 
-*   **Mote Hardware Enhancement:** Each mote will integrate a low-power, short-range (e.g., UWB, Bluetooth AoA) positioning sensor. This sensor will *not* track individual items, but measure relative distances to neighboring motes.
-*   **Spatial Mapping Algorithm (executed on central control system):**
-    *   Motes continuously broadcast their relative position data (distances to 3+ neighbors).
-    *   A central algorithm uses trilateration/multilateration (or similar) to construct a dynamic graph representing the facility layout. This isn't a precise CAD model, but a probabilistic occupancy grid.
-    *   The system maintains a history of mote positions to filter noise and account for temporary obstructions (e.g., a worker briefly blocking a path).
-*   **Dynamic Zone Definition:**
-    *   The control system allows operators to define picking zones *not* as fixed coordinates, but as regions *relative to motes*. Example: "Create a picking zone encompassing all receptacles within 3 meters of motes with IDs X, Y, and Z."
-    *   The system automatically updates zone boundaries as mote positions shift due to facility changes or relocation of equipment.
-*   **Intelligent Routing:**
-    *   The routing algorithm leverages the dynamic map to find the optimal path for pickers, avoiding obstacles and congested areas.
-    *   Routes can be adjusted *in real-time* based on current traffic conditions (determined by monitoring the movement of motes associated with pickers).
-*   **Automated Reconfiguration:**
-    *   If a mote detects that its position has changed significantly (e.g., it's been moved), it broadcasts a "position update" signal.
-    *   This triggers a localized remapping of the surrounding area and automatic adjustment of any affected picking zones or routes.
-*   **Mote Communication Protocol:** Extend the existing communication protocol to include:
-    *   Relative distance readings to neighboring motes (timestamped).
-    *   “Position Update” signals.
-    *   Signal strength indicators (RSSI) for quality assessment.
-*   **Power Management:** Implement duty cycling for the positioning sensors to minimize power consumption.
+*   **Substrate:** Polyimide base (as per patent) with integrated microfluidic channel network. Channel dimensions: 50-200µm width, 20-100µm height. Channel material: PDMS or similar flexible polymer.
+*   **FSR Material:** Thermoset ink (carbon black/silver particles) formulated for compatibility with microfluidic channel material. Ink deposited in a patterned array over microfluidic channels.
+*   **Actuation Fluid:** Electrorheological (ER) or Magnetorheological (MR) fluid. Fluid chosen for rapid viscosity change with low voltage/magnetic field application.
+*   **Microfluidic Control:** Each channel controlled by integrated micro-pumps/valves (MEMS based) for precise fluid delivery and removal.
+*   **Electrode Integration:** Micro-electrodes integrated into channel walls for ER fluid control, or micro-coils for MR fluid control.
+*   **Sensor Architecture:** Array of individual sensing elements. Each element comprises a section of the FSR material bridging the microfluidic channel.
+*   **Sensing Mechanism:**  Force applied deforms the FSR material. The deformation changes the resistance of the FSR. By altering the viscosity of the fluid within the channel, the stiffness of the FSR element can be controlled. This effectively tunes the sensitivity of each sensor in the array.
+*   **Control System:** Algorithm to dynamically adjust fluid viscosity (and therefore sensor stiffness) based on applied force and desired sensitivity.
+*   **Calibration:** Individual sensor elements calibrated to establish baseline resistance and force-response curve.
 
-**Pseudocode (Dynamic Zone Creation):**
+**Pseudocode (Control Algorithm):**
 
 ```
-function createDynamicZone(zoneID, centerMoteIDs, radius):
-  zoneReceptacles = []
-  for moteID in centerMoteIDs:
-    moteLocation = getMoteLocation(moteID)
-    nearbyReceptacles = findReceptaclesWithinRadius(moteLocation, radius)
-    zoneReceptacles.extend(nearbyReceptacles)
-  return zoneReceptacles
+// Initialize: Baseline Resistance (R0) for each sensor element
+//              Force Thresholds (High/Low)
+//              Target Sensitivity Levels
 
-function updateZone(zoneID):
-  zoneReceptacles = []
-  for moteID in getZoneCenterMoteIDs(zoneID):
-    moteLocation = getMoteLocation(moteID)
-    nearbyReceptacles = findReceptaclesWithinRadius(moteLocation, getZoneRadius(zoneID))
-    zoneReceptacles.extend(nearbyReceptacles)
-  setZoneReceptacles(zoneID, zoneReceptacles)
+loop:
+    read resistance (R) from each sensor element
+    calculate force (F) = function(R) // based on calibrated curve
+
+    if F > HighThreshold:
+        decrease fluid viscosity in corresponding channel
+        increase sensitivity
+    elif F < LowThreshold:
+        increase fluid viscosity in corresponding channel
+        decrease sensitivity
+    else:
+        maintain current viscosity
+
+    adjust micro-pump/valve to achieve target viscosity
 ```
 
-**Potential Benefits:**
+**Potential Applications:**
 
-*   Increased flexibility and adaptability of the materials handling facility.
-*   Reduced downtime associated with facility changes.
-*   Optimized picking routes and increased picker efficiency.
-*   Improved inventory accuracy.
-*   Enhanced safety through dynamic obstacle avoidance.
+*   High-resolution tactile sensors for robotics
+*   Adaptive prosthetic limbs
+*   Biometric authentication (pressure mapping)
+*   Medical imaging (pressure distribution)
+*   Gaming controllers (force feedback)
