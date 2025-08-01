@@ -1,73 +1,58 @@
-# 11169666
+# 11593270
 
-## Adaptive Fidelity Streaming with Predictive Pre-Rendering
+## Adaptive Erasure Coding with Predictive Prefetching
 
-**Concept:** Extend the hardware-independent command streaming concept to encompass adaptive fidelity *and* predictive pre-rendering, targeted towards scenarios with fluctuating network conditions and user intent. Rather than simply streaming commands for visible portions, proactively stream commands for *likely* future visible portions at varying levels of detail.
+**Concept:** Enhance the erasure coding scheme by dynamically adjusting the coding parameters (k, m – data shards and parity shards respectively) *based on predicted access patterns* and prefetching data shards proactively. This aims to reduce latency and bandwidth consumption compared to static erasure coding.
 
-**Specs:**
+**Specification:**
 
-**1. Client-Side Predictive Engine:**
+**1. Access Pattern Prediction Module:**
 
-*   **Input:** User interaction data (mouse movements, scroll speed, gaze tracking), historical rendering data (command sequences, rendering times), network bandwidth, device processing power.
-*   **Process:**
-    *   Employ a lightweight machine learning model (e.g., LSTM or Transformer) trained on user behavior and rendering patterns.
-    *   Predict likely viewport changes (pans, zooms, scrolls) based on input data.
-    *   Generate a probability distribution over potential viewport regions.
-    *   Prioritize regions with high probability and begin pre-rendering at *multiple fidelity levels*.
-*   **Output:**  A queue of pre-rendered command sets for predicted viewport regions, each associated with a fidelity level and confidence score.
+*   **Input:** Historical access logs (object IDs, request timestamps, access frequency).  Can integrate with existing cache monitoring systems.
+*   **Algorithm:** Employ a time-series forecasting model (e.g., Exponential Smoothing, ARIMA, LSTM) to predict future object access probabilities and frequencies.
+*   **Output:**  A probability distribution of object accesses over a sliding window (e.g., next 5 seconds).
 
-**2. Server-Side Fidelity Control & Streaming:**
+**2. Dynamic Erasure Coding Controller:**
 
-*   **Input:** Client's predicted viewport queue, current network bandwidth, server load.
-*   **Process:**
-    *   Evaluate the client’s request for predicted regions.
-    *   Select the optimal fidelity level for each region based on network conditions and server load.  Fidelity levels could include:
-        *   **Low:**  Simplified geometry, low-resolution textures, minimal effects.
-        *   **Medium:**  Balanced quality and performance.
-        *   **High:**  Full detail, high-resolution textures, advanced effects.
-    *   Dynamically generate hardware-independent graphics commands for the selected fidelity levels.
-    *   Stream command sets in a prioritized order, based on predicted viewport visibility and confidence scores. Employ a differential encoding scheme to minimize bandwidth usage.
+*   **Input:** Access probability distribution from the Access Pattern Prediction Module, current cache load, network bandwidth constraints, object size.
+*   **Logic:**
+    *   For frequently accessed objects (high probability): Reduce redundancy (smaller 'm' in k/m erasure coding) to minimize storage overhead and maximize read performance.  May even approach no redundancy for extremely frequent items.
+    *   For infrequently accessed objects (low probability): Increase redundancy to improve data durability and availability, accepting higher storage costs.
+    *   Implement a hysteresis mechanism to prevent rapid switching between coding schemes.
+*   **Output:**  Erasure coding parameters (k, m) for each object or object group.
 
-**3. Client-Side Rendering & Transition:**
+**3. Prefetching Mechanism:**
 
-*   **Input:** Streamed command sets, current viewport.
-*   **Process:**
-    *   Render pre-rendered command sets in a background buffer.
-    *   Upon viewport change, seamlessly transition from the current buffer to the pre-rendered buffer. Implement cross-fading or other visual effects to smooth the transition.
-    *   If the network is degraded or the prediction is inaccurate, fallback to traditional rendering methods.
-    *   Continuously update the predictive engine with new user interaction data.
+*   **Input:** Erasure coding parameters (k, m), Access probability distribution, current cache state.
+*   **Logic:**
+    *   Based on predicted access probabilities and the erasure coding scheme, proactively fetch data shards (not just the most likely ones) *before* a request arrives.  Prioritize shards that, if lost, would require the most expensive recovery (e.g., those residing on slow storage or geographically distant nodes).
+    *   Leverage a ‘confidence interval’ around the predicted access probability – prefetch more shards when the prediction is uncertain.
+    *   Utilize network bandwidth limits to throttle prefetching and avoid congestion.
+*   **Output:**  List of data shards to prefetch.
 
-**Pseudocode (Client-Side):**
+**4. Cache Node Integration:**
+
+*   Cache nodes must be aware of the dynamic erasure coding scheme and prefetching mechanism.
+*   Each node stores a mapping of object IDs to their corresponding erasure coding parameters and expected shard locations.
+*   Upon receiving a request, the cache node checks if the required shards are present. If not, it retrieves them from other nodes or origin storage.  Prefetched shards are served directly from the cache.
+
+**Pseudocode (Dynamic Erasure Coding Controller):**
 
 ```
-function processUserInput(event) {
-  // Update predictive model with event data
-  predictiveModel.update(event);
-  predictedRegions = predictiveModel.predict();
-
-  requestPreRender(predictedRegions);
-}
-
-function requestPreRender(regions) {
-  // Send request to server for pre-rendered commands for regions
-  server.requestCommands(regions);
-}
-
-function onReceiveCommands(commands) {
-  // Store commands in a buffer
-  commandBuffer.store(commands);
-}
-
-function renderFrame() {
-  // Check for available commands in the buffer
-  if (commandBuffer.hasCommandsForCurrentViewport()) {
-    // Render pre-rendered commands
-    renderer.render(commandBuffer.getCommandsForCurrentViewport());
-  } else {
-    // Render using traditional methods
-    renderer.renderTraditional();
-  }
-}
+function determine_erasure_coding_scheme(object_id, access_probability, cache_load, bandwidth):
+  if access_probability > HIGH_THRESHOLD and cache_load < CRITICAL_THRESHOLD and bandwidth > MINIMUM_BANDWIDTH:
+    k = 8
+    m = 1
+  elif access_probability > MEDIUM_THRESHOLD and cache_load < MEDIUM_THRESHOLD:
+    k = 6
+    m = 2
+  else:
+    k = 4
+    m = 3
+  return k, m
 ```
 
-**Novelty:** This goes beyond simply optimizing visible portions. By proactively rendering likely future portions, it aims to eliminate perceived latency, even in challenging network conditions.  The multi-fidelity streaming allows for dynamic adaptation to resource constraints, ensuring a smooth and responsive experience. The combination of predictive modeling and dynamic fidelity control creates a truly adaptive rendering pipeline.
+**Data Structures:**
+
+*   **Object Metadata:** {object_id, k, m, shard_locations, access_history}
+*   **Cache Node Metadata:** {node_id, capacity, available_bandwidth, stored_shards}
